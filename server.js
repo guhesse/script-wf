@@ -127,8 +127,8 @@ app.post('/api/share-documents', async (req, res) => {
             try {
                 console.log(`\n📋 Compartilhando: ${selection.folder}/${selection.fileName}`);
                 
-                // Usar a função shareDocument importada
-                await shareDocument(projectUrl, selection.fileName);
+                // Usar a função shareDocument importada com folder e fileName
+                await shareDocument(projectUrl, selection.folder, selection.fileName);
                 
                 results.push({
                     folder: selection.folder,

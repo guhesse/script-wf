@@ -121,7 +121,7 @@ class WorkfrontSharingManager {
             const data = await response.json();
             
             if (data.success) {
-                this.documents = data.documents;
+                this.documents = { folders: data.folders }; // 🎯 CORREÇÃO: usar data.folders
                 this.renderDocuments();
                 this.showToast(`Documentos extraídos com sucesso! Encontradas ${data.totalFolders || 0} pastas com ${data.totalFiles || 0} arquivos.`, 'success');
             } else {
@@ -197,10 +197,21 @@ class WorkfrontSharingManager {
             <div class="file-item" data-folder="${folderName}" data-file="${file.name}" onclick="app.toggleFileSelection('${folderName}', '${file.name}')">
                 <div class="d-flex align-items-center">
                     <input type="checkbox" class="form-check-input me-3" id="${fileId}">
-                    <i class="bi ${iconClass} me-3 text-primary"></i>
+                    <i class="bi ${iconClass} me-3 text-primary fs-4"></i>
                     <div class="flex-grow-1">
                         <div class="fw-medium">${file.name}</div>
-                        <small class="text-muted">${file.size}</small>
+                        <small class="text-muted">
+                            ${file.size || 'N/A'}
+                            ${file.addedInfo ? ` • ${file.addedInfo}` : ''}
+                        </small>
+                        ${file.url && file.url !== 'N/A' ? `
+                            <div class="mt-1">
+                                <a href="${file.url}" target="_blank" class="text-decoration-none text-primary" onclick="event.stopPropagation()">
+                                    <i class="bi bi-eye me-1"></i>
+                                    <small>Preview</small>
+                                </a>
+                            </div>
+                        ` : ''}
                     </div>
                     <span class="badge bg-secondary">${file.type}</span>
                 </div>
@@ -210,6 +221,17 @@ class WorkfrontSharingManager {
 
     getFileIcon(type) {
         const icons = {
+            'ZIP Archive': 'bi-file-earmark-zip',
+            'PDF Document': 'bi-file-earmark-pdf',
+            'Word Document': 'bi-file-earmark-word',
+            'Excel Spreadsheet': 'bi-file-earmark-excel',
+            'PowerPoint': 'bi-file-earmark-ppt',
+            'Image': 'bi-image',
+            'Video': 'bi-camera-video',
+            'Document': 'bi-file-earmark-text',
+            'Archive': 'bi-file-earmark-zip',
+            'Spreadsheet': 'bi-file-earmark-excel',
+            'Presentation': 'bi-file-earmark-slides',
             'image': 'bi-image',
             'video': 'bi-camera-video',
             'document': 'bi-file-earmark-text',
@@ -324,12 +346,19 @@ class WorkfrontSharingManager {
         }
 
         const projectUrl = document.getElementById('projectUrl').value;
-        const selections = Array.from(this.selectedFiles.entries()).map(([folder, files]) => ({
-            folder,
-            files
-        }));
+        
+        // 🎯 CORREÇÃO: Criar uma lista plana de arquivos com folder e fileName
+        const selections = [];
+        for (const [folder, files] of this.selectedFiles.entries()) {
+            for (const fileName of files) {
+                selections.push({
+                    folder: folder,
+                    fileName: fileName
+                });
+            }
+        }
 
-        const totalFiles = selections.reduce((sum, sel) => sum + sel.files.length, 0);
+        const totalFiles = selections.length;
         
         this.showLoading(`Compartilhando ${totalFiles} arquivo(s)...\\nEste processo pode demorar alguns minutos.`);
         
@@ -371,11 +400,14 @@ class WorkfrontSharingManager {
         
         let html = '';
         results.forEach(result => {
-            const iconClass = result.status === 'success' ? 'bi-check-circle text-success' : 'bi-x-circle text-danger';
+            const iconClass = result.success ? 'bi-check-circle text-success' : 'bi-x-circle text-danger';
+            const alertClass = result.success ? 'alert-success' : 'alert-danger';
+            const message = result.success ? result.message : result.error;
+            
             html += `
-                <div class="alert ${result.status === 'success' ? 'alert-success' : 'alert-danger'} py-2">
+                <div class="alert ${alertClass} py-2">
                     <i class="bi ${iconClass} me-2"></i>
-                    <strong>${result.file}</strong> (${result.folder}): ${result.message}
+                    <strong>${result.fileName}</strong> (${result.folder}): ${message}
                 </div>
             `;
         });
