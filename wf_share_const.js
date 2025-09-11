@@ -33,7 +33,7 @@ async function login() {
 
 // Função para mapear toda a estrutura de documentos
 async function mapDocumentStructure(frame) {
-    console.log('\n🗂️ Mapeando toda a estrutura de documentos...');
+    console.log('\n🗂️ Mapeando estrutura...');
 
     // Buscar todos os elementos que podem ser documentos ou pastas
     const allItems = await frame.$$eval('*', () => {
@@ -95,7 +95,7 @@ async function mapDocumentStructure(frame) {
         return unique.slice(0, 100); // Limitar para não sobrecarregar
     });
 
-    console.log(`📋 Encontrados ${allItems.length} itens únicos na interface:`);
+    console.log(`Encontrados ${allItems.length} itens na interface`);
 
     // Agrupar por tipo para melhor visualização
     const itemsByType = {
@@ -131,14 +131,7 @@ async function mapDocumentStructure(frame) {
     Object.keys(itemsByType).forEach(category => {
         const items = itemsByType[category];
         if (items.length > 0) {
-            console.log(`\n📁 ${category.toUpperCase()} (${items.length}):`);
-            items.slice(0, 10).forEach((item, i) => {
-                console.log(`  ${i + 1}. ${item.tagName} "${item.textContent.substring(0, 60)}" ${item.isClickable ? '🔗' : ''}`);
-                if (item.testId) console.log(`     └─ testid: "${item.testId}"`);
-            });
-            if (items.length > 10) {
-                console.log(`     ... e mais ${items.length - 10} itens`);
-            }
+            console.log(`${category}: ${items.length} itens`);
         }
     });
 
@@ -146,8 +139,12 @@ async function mapDocumentStructure(frame) {
 }
 
 async function extractDocuments(projectUrl) {
+    // Iniciando cronômetro
+    const startTime = Date.now();
     console.log("=== EXTRAINDO DOCUMENTOS DO PROJETO ===");
     console.log(`\nURL do projeto: ${projectUrl}`);
+    console.log(`⏱️ Processo iniciado em: ${new Date().toLocaleTimeString()}`);
+    console.log("=".repeat(50));
 
     let browser = null;
     try {
@@ -164,28 +161,38 @@ async function extractDocuments(projectUrl) {
 
         const page = await context.newPage();
 
-        console.log("\nAbrindo página de documentos do projeto…");
-        await page.goto(projectUrl, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(3000);
+        console.log("\n🌍 Abrindo página de documentos do projeto…");
+        const pageLoadStart = Date.now();
+        await page.goto(projectUrl, { 
+            waitUntil: "domcontentloaded", // Mais rápido que networkidle
+            timeout: 15000 // Timeout menor
+        });
+        await page.waitForTimeout(500); // Reduzido de 1000ms
+        const pageLoadTime = ((Date.now() - pageLoadStart) / 1000).toFixed(2);
+        console.log(`✓ Página carregada em ${pageLoadTime}s`);
 
-        console.log("Procurando frame do Workfront...");
+        console.log("\n🔍 Procurando frame do Workfront...");
+        const frameSearchStart = Date.now();
         const wf = await getWorkfrontFrame(page);
-        console.log("✓ Frame do Workfront encontrado!");
+        const frameSearchTime = ((Date.now() - frameSearchStart) / 1000).toFixed(2);
+        console.log(`✓ Frame do Workfront encontrado em ${frameSearchTime}s!`);
 
-        console.log("📁 Analisando estrutura de pastas e documentos...");
+        console.log("\n📁 Iniciando análise de estrutura de pastas e documentos...");
+        const analysisStart = Date.now();
 
         try {
-            // Aguarda a página carregar completamente e elementos aparecerem
-            await wf.waitForLoadState('networkidle');
-            console.log("⏳ Aguardando carregamento completo da interface...");
-            await wf.waitForTimeout(5000); // Aumenta tempo de espera
+            // Otimização: Não aguardar networkidle, apenas domcontentloaded
+            await wf.waitForLoadState('domcontentloaded'); // Mais rápido
+            const interfaceLoadTime = ((Date.now() - analysisStart) / 1000).toFixed(2);
+            console.log(`⏳ Interface DOM carregada em ${interfaceLoadTime}s`);
+            await wf.waitForTimeout(1000); // Reduzido de 2000ms
 
-            // Verificar se há indicadores de carregamento
+            // Verificar se há indicadores de carregamento (timeout reduzido)
             try {
-                await wf.waitForSelector('[data-testid*="loading"], .loading, .spinner', { timeout: 2000, state: 'hidden' });
+                await wf.waitForSelector('[data-testid*="loading"], .loading, .spinner', { timeout: 1000, state: 'hidden' });
                 console.log("✓ Indicadores de carregamento removidos");
             } catch (e) {
-                console.log("ℹ️ Nenhum indicador de carregamento detectado");
+                console.log("ℹ️ Nenhum indicador de carregamento detectado (prosseguindo)");
             }
 
             // 🔍 NOVA ESTRATÉGIA: Mapear toda a estrutura primeiro
@@ -254,9 +261,9 @@ async function extractDocuments(projectUrl) {
 
                             if (navigationSuccess) {
                                 // Extrair documentos da pasta
-                                console.log(`📄 Extraindo arquivos da pasta "${folderName}"...`);
+                                console.log(`Extraindo arquivos: ${folderName}`);
                                 const files = await extractFilesFromCurrentFolder(wf);
-                                console.log(`📋 Encontrados ${files.length} arquivos na pasta "${folderName}"`);
+                                console.log(`${files.length} arquivos encontrados`);
 
                                 if (files.length > 0) {
                                     folders.push({
@@ -292,37 +299,78 @@ async function extractDocuments(projectUrl) {
             console.log(`✓ Extração concluída: ${folders.length} pastas, ${folders.reduce((total, folder) => total + folder.files.length, 0)} arquivos`);
 
             // Retorna o resultado
+            // Calculando tempo total
+            const endTime = Date.now();
+            const totalTimeMs = endTime - startTime;
+            const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
+            
+            console.log("\n" + "=".repeat(50));
+            console.log(`⏱️ TEMPO TOTAL DO PROCESSO: ${totalTimeSeconds}s (${totalTimeMs}ms)`);
+            console.log(`📊 Documentos encontrados: ${folders.reduce((total, folder) => total + folder.files.length, 0)} arquivos em ${folders.length} pastas`);
+            console.log(`🏁 Processo concluído em: ${new Date().toLocaleTimeString()}`);
+            console.log("=".repeat(50));
+
             const result = {
                 success: true,
                 folders: folders,
                 totalFolders: folders.length,
-                totalFiles: folders.reduce((total, folder) => total + folder.files.length, 0)
+                totalFiles: folders.reduce((total, folder) => total + folder.files.length, 0),
+                processingTime: {
+                    totalMs: totalTimeMs,
+                    totalSeconds: parseFloat(totalTimeSeconds),
+                    startedAt: new Date(startTime).toISOString(),
+                    completedAt: new Date(endTime).toISOString()
+                }
             };
 
             console.log(`EXTRACT_RESULT:${JSON.stringify(result)}`);
             return result;
 
         } catch (innerError) {
+            // Calculando tempo até o erro
+            const endTime = Date.now();
+            const totalTimeMs = endTime - startTime;
+            const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
+            
+            console.log(`\n⏱️ Tempo até o erro: ${totalTimeSeconds}s`);
             console.log(`❌ Erro na análise de pastas: ${innerError.message}`);
             const errorResult = {
                 success: false,
                 error: innerError.message,
                 folders: [],
                 totalFolders: 0,
-                totalFiles: 0
+                totalFiles: 0,
+                processingTime: {
+                    totalMs: totalTimeMs,
+                    totalSeconds: parseFloat(totalTimeSeconds),
+                    startedAt: new Date(startTime).toISOString(),
+                    failedAt: new Date(endTime).toISOString()
+                }
             };
             console.log(`EXTRACT_RESULT:${JSON.stringify(errorResult)}`);
             return errorResult;
         }
 
     } catch (error) {
+        // Calculando tempo até o erro
+        const endTime = Date.now();
+        const totalTimeMs = endTime - startTime;
+        const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
+        
+        console.log(`\n⏱️ Tempo até o erro: ${totalTimeSeconds}s`);
         console.log(`❌ Erro durante extração: ${error.message}`);
         const errorResult = {
             success: false,
             error: error.message,
             folders: [],
             totalFolders: 0,
-            totalFiles: 0
+            totalFiles: 0,
+            processingTime: {
+                totalMs: totalTimeMs,
+                totalSeconds: parseFloat(totalTimeSeconds),
+                startedAt: new Date(startTime).toISOString(),
+                failedAt: new Date(endTime).toISOString()
+            }
         };
         console.log(`EXTRACT_RESULT:${JSON.stringify(errorResult)}`);
         return errorResult;
@@ -338,13 +386,13 @@ async function extractFilesFromCurrentFolder(frame) {
     const files = [];
 
     try {
-        console.log('📂 ===== ANÁLISE DETALHADA DO CONTEÚDO DA PASTA =====');
+        console.log('📂 Analisando pasta...');
 
-        // Aguarda a pasta carregar completamente
-        await frame.waitForTimeout(3000);
+        // Aguarda a pasta carregar (tempo reduzido)
+        await frame.waitForTimeout(300); // Reduzido de 500ms
 
         // 🎯 ESTRATÉGIA FOCADA: Procurar especificamente pelos containers de documentos do Workfront
-        console.log('🎯 Procurando por containers de documentos do Workfront...');
+        console.log('🎯 Procurando documentos...');
 
         const workfrontDocuments = await frame.evaluate(() => {
             const documentItems = [];
@@ -460,19 +508,10 @@ async function extractFilesFromCurrentFolder(frame) {
             return documentItems;
         });
 
-        console.log(`� ===== DOCUMENTOS WORKFRONT ENCONTRADOS: ${workfrontDocuments.length} =====`);
+        console.log(`Documentos encontrados: ${workfrontDocuments.length}`);
 
         if (workfrontDocuments.length > 0) {
             workfrontDocuments.forEach((doc, index) => {
-                console.log(`\n📄 DOCUMENTO ${index + 1}:`);
-                console.log(`   📛 Nome: "${doc.fileName}"`);
-                console.log(`   📋 Tipo: ${doc.fileType}`);
-                console.log(`   🔗 URL: ${doc.href}`);
-                console.log(`   📅 Info: ${doc.addedInfo}`);
-                console.log(`   🏷️ Title: ${doc.title}`);
-                console.log(`   📦 Container: ${doc.containerIndex}`);
-                console.log(`   🔧 HTML: ${doc.containerHTML.substring(0, 200)}...`);
-
                 // Adicionar ao array de arquivos
                 files.push({
                     name: doc.fileName,
@@ -535,17 +574,8 @@ async function extractFilesFromCurrentFolder(frame) {
             });
         }
 
-        // Mostrar estrutura HTML completa da primeira pasta para debug
-        const fullHTML = await frame.evaluate(() => {
-            return document.body.innerHTML;
-        });
-        
-        console.log(`\n🔧 ===== DEBUG: HTML COMPLETO DA PASTA (PRIMEIROS 2000 CHARS) =====`);
-        console.log(fullHTML.substring(0, 2000));
-        console.log(`===== FIM DO HTML (total: ${fullHTML.length} chars) =====`);
-
     } catch (error) {
-        console.log(`❌ Erro ao extrair arquivos da pasta: ${error.message}`);
+        console.log(`Erro ao extrair arquivos da pasta: ${error.message}`);
     }
 
     console.log(`\n📊 ===== RESUMO FINAL =====`);
@@ -592,14 +622,14 @@ function getFileTypeFromName(fileName) {
 }
 
 async function getWorkfrontFrame(page) {
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2500); // Reduzido de 3000ms
 
-    // Tenta encontrar o frame principal do Workfront
+    // Tenta encontrar o frame principal do Workfront (seletores mais específicos primeiro)
     const frameSelectors = [
         'iframe[src*="workfront"]',
-        'iframe[src*="experience"]',
+        'iframe[src*="experience"]', 
         'iframe[name*="workfront"]',
-        'iframe'
+        'iframe' // Genérico por último
     ];
 
     for (const selector of frameSelectors) {
@@ -608,10 +638,11 @@ async function getWorkfrontFrame(page) {
             if (frameElement) {
                 const frame = await frameElement.contentFrame();
                 if (frame) {
-                    // Verifica se é realmente o frame do Workfront
-                    await frame.waitForTimeout(2000);
+                    // Verificação mais rápida se é o frame do Workfront
+                    await frame.waitForTimeout(500); // Reduzido de 2000ms
                     const url = frame.url();
-                    if (url.includes('workfront') || url.includes('experience')) {
+                    if (url.includes('workfront') || url.includes('experience') || url.includes('adobe')) {
+                        console.log(`✓ Frame encontrado: ${selector} (URL: ${url.substring(0, 50)}...)`);
                         return frame;
                     }
                 }
@@ -622,6 +653,7 @@ async function getWorkfrontFrame(page) {
     }
 
     // Se não encontrou frame, retorna a página principal
+    console.log("ℹ️ Nenhum frame específico encontrado, usando página principal");
     return page;
 }
 
@@ -761,7 +793,7 @@ async function selectDocument(frame, fileName) {
 
     try {
         // Aguardar carregamento da pasta
-        await frame.waitForTimeout(3000);
+        await frame.waitForTimeout(1000);
 
         console.log(`🎯 ESTRATÉGIA FOCADA: Procurando pelo div.doc-detail-view que contém "${fileName}"`);
         

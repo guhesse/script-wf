@@ -5,17 +5,26 @@
   "description": "Interface visual para compartilhamento de documentos no Workfront",
   "main": "server.js",
   "dependencies": {
-    "playwright": "^1.55.0",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "playwright": "^1.55.0"
   },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
     "login": "node wf_share_const.js --login",
-    "share": "node wf_share_const.js --share"
+    "share": "node wf_share_const.js --share",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:preview": "cd frontend && npm run preview",
+    "dev:all": "concurrently \"npm run dev\" \"npm run frontend:dev\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "nodemon server.js",
+    "build": "npm run frontend:build",
+    "build:frontend": "cd frontend && npm run build"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "nodemon": "^3.0.1"
   }
 }

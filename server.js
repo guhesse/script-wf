@@ -15,11 +15,22 @@ const PORT = 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Servir arquivos estáticos do frontend em produção
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static('frontend/dist'));
+} else {
+    // Em desenvolvimento, servir a versão antiga
+    app.use(express.static('public'));
+}
 
 // Serve a UI
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    if (process.env.NODE_ENV === 'production') {
+        res.sendFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
+    } else {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
 });
 
 // API para fazer login no Workfront
@@ -176,6 +187,39 @@ app.post('/api/share-documents', async (req, res) => {
             message: 'Erro interno durante compartilhamento',
             error: error.message 
         });
+    }
+});
+
+// API para limpar cache do navegador (deleta o arquivo de sessão)
+app.post('/api/clear-cache', async (req, res) => {
+    try {
+        console.log('🧹 Limpando cache do navegador...');
+        
+        // Deletar o arquivo de estado da sessão
+        await fs.unlink('wf_state.json');
+        
+        console.log('✅ Cache limpo com sucesso');
+        res.json({ 
+            success: true, 
+            message: 'Cache do navegador limpo com sucesso. Faça login novamente.' 
+        });
+        
+    } catch (error) {
+        // Se o arquivo não existir, considera sucesso
+        if (error.code === 'ENOENT') {
+            console.log('ℹ️ Cache já estava limpo (arquivo não encontrado)');
+            res.json({ 
+                success: true, 
+                message: 'Cache já estava limpo.' 
+            });
+        } else {
+            console.error('❌ Erro ao limpar cache:', error.message);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Erro ao limpar cache',
+                error: error.message 
+            });
+        }
     }
 });
 
