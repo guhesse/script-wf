@@ -4,16 +4,17 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Share, 
-  LogOut, 
-  Search, 
-  FolderOpen, 
+import {
+  Share,
+  LogOut,
+  Search,
+  FolderOpen,
   CheckCircle,
   UserCheck,
   Workflow
 } from 'lucide-react';
 import { FolderSection } from './FolderSection';
+import { ProgressIndicator } from './ProgressIndicator';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import type { WorkfrontFolder, ShareSelection, ShareResult } from '@/types';
 
@@ -29,7 +30,24 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [showResults, setShowResults] = useState(false);
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana'>('carol');
 
-  const { extractDocuments, shareDocuments, clearCache } = useWorkfrontApi();
+  // Estados para progresso
+  const [showProgress, setShowProgress] = useState(false);
+  const [currentProgressStep, setCurrentProgressStep] = useState<{
+    step: string;
+    message: string;
+    progress: number;
+    timestamp: string;
+    data?: unknown;
+  } | null>(null);
+  const [progressSteps, setProgressSteps] = useState<Array<{
+    step: string;
+    message: string;
+    progress: number;
+    timestamp: string;
+    data?: unknown;
+  }>>([]);
+
+  const { extractDocumentsWithProgress, shareDocuments, clearCache } = useWorkfrontApi();
 
   const handleLogoutWithCacheClearing = async () => {
     try {
@@ -52,25 +70,49 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
     }
 
     try {
-      const extractedFolders = await extractDocuments(projectUrl);
+      // Resetar estados
+      setProgressSteps([]);
+      setCurrentProgressStep(null);
+      setShowProgress(true);
+      setShowResults(false);
+
+      // Callback para atualizar progresso
+      const handleProgress = (step: string, message: string, progress: number, data?: unknown) => {
+        const progressData = {
+          step,
+          message,
+          progress,
+          timestamp: new Date().toISOString(),
+          data
+        };
+
+        setCurrentProgressStep(progressData);
+        setProgressSteps(prev => [...prev, progressData]);
+      };
+
+      // Usar a extração com progresso
+      const extractedFolders = await extractDocumentsWithProgress(projectUrl, handleProgress);
+
       setFolders(extractedFolders);
       setSelectedFiles(new Set());
-      setShowResults(false);
+      setShowProgress(false);
+
     } catch (error) {
       console.error('Erro na extração:', error);
+      setShowProgress(false);
     }
   };
 
   const handleFileToggle = (folderName: string, fileName: string) => {
     const fileKey = `${folderName}-${fileName}`;
     const newSelectedFiles = new Set(selectedFiles);
-    
+
     if (newSelectedFiles.has(fileKey)) {
       newSelectedFiles.delete(fileKey);
     } else {
       newSelectedFiles.add(fileKey);
     }
-    
+
     setSelectedFiles(newSelectedFiles);
   };
 
@@ -98,7 +140,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
   const handleShareDocuments = async () => {
     const selections: ShareSelection[] = [];
-    
+
     Array.from(selectedFiles).forEach(fileKey => {
       const [folderName, fileName] = fileKey.split('-', 2);
       selections.push({ folder: folderName, fileName });
@@ -116,7 +158,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const getSelectionSummary = () => {
     const totalFiles = selectedFiles.size;
     const selectedFolders = new Set();
-    
+
     Array.from(selectedFiles).forEach(fileKey => {
       const [folderName] = fileKey.split('-', 2);
       selectedFolders.add(folderName);
@@ -166,6 +208,13 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
         </div>
 
         <div className="grid gap-6">
+          {/* Progress Indicator */}
+          <ProgressIndicator
+            isVisible={showProgress}
+            currentStep={currentProgressStep}
+            steps={progressSteps}
+          />
+
           {/* Step 1: Project URL */}
           <Card className="border-l-4 border-l-purple-500">
             <CardHeader>
@@ -241,7 +290,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                     </Button>
                   </div>
                   <p className="text-sm text-gray-600 mt-2">
-                    {selectedUser === 'carol' 
+                    {selectedUser === 'carol'
                       ? 'Inclui: Yasmin, Gabriela, Eduarda, Evili, Giovanna, Natascha e Carolina'
                       : 'Inclui: Luiza, Gislaine e Giovana'
                     }
@@ -254,7 +303,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                   <p className="text-gray-600 mb-4">
                     Marque os arquivos que deseja compartilhar com a equipe selecionada.
                   </p>
-                  
+
                   {folders.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
                       <FolderOpen className="h-16 w-16 mx-auto mb-4 text-gray-300" />
@@ -293,7 +342,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
               <p className="text-gray-600 mb-4">
                 Execute o processo de compartilhamento para os arquivos selecionados.
               </p>
-              
+
               <div className="flex justify-between items-center">
                 <div>
                   {summary.totalFiles === 0 ? (
@@ -318,7 +367,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                     </div>
                   )}
                 </div>
-                
+
                 <Button
                   onClick={handleShareDocuments}
                   disabled={summary.totalFiles === 0}
@@ -339,12 +388,12 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                   </h4>
                   <div className="space-y-2">
                     {shareResults.map((result, index) => (
-                      <Alert 
+                      <Alert
                         key={index}
                         className={result.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}
                       >
                         <AlertDescription className="flex items-center">
-                          <Badge 
+                          <Badge
                             variant={result.success ? 'default' : 'destructive'}
                             className="mr-3"
                           >

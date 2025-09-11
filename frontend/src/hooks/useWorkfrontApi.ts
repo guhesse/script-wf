@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import type { 
-  WorkfrontFolder, 
-  LoginStatusResponse, 
-  DocumentsResponse, 
-  ShareSelection, 
-  ShareResponse 
+import type {
+  WorkfrontFolder,
+  LoginStatusResponse,
+  DocumentsResponse,
+  ShareSelection,
+  ShareResponse
 } from '@/types';
 
 export const useWorkfrontApi = () => {
@@ -25,7 +25,7 @@ export const useWorkfrontApi = () => {
   const login = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setLoadingMessage('Fazendo login no Workfront...\nEsta janela pode ser minimizada.');
-    
+
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
@@ -33,9 +33,9 @@ export const useWorkfrontApi = () => {
           'Content-Type': 'application/json'
         }
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         toast.success('Login realizado com sucesso!');
       } else {
@@ -60,7 +60,7 @@ export const useWorkfrontApi = () => {
 
     setIsLoading(true);
     setLoadingMessage('Extraindo documentos do projeto...\nEste processo abrirá o navegador para acessar o Workfront.\nAguarde enquanto coletamos os arquivos disponíveis.');
-    
+
     try {
       const response = await fetch('/api/extract-documents', {
         method: 'POST',
@@ -69,21 +69,21 @@ export const useWorkfrontApi = () => {
         },
         body: JSON.stringify({ projectUrl })
       });
-      
+
       const data: DocumentsResponse = await response.json();
-      
+
       if (data.success && data.folders) {
         toast.success(`Documentos extraídos com sucesso! Encontradas ${data.totalFolders || 0} pastas com ${data.totalFiles || 0} arquivos.`);
         return data.folders;
       } else {
         console.error('Erro na extração:', data);
         let errorMessage = data.message || 'Erro ao extrair documentos';
-        
+
         if (data.debug) {
           console.log('Debug info:', data.debug);
           errorMessage += ' (veja o console para mais detalhes)';
         }
-        
+
         toast.error(errorMessage);
         throw new Error(errorMessage);
       }
@@ -97,8 +97,68 @@ export const useWorkfrontApi = () => {
     }
   }, []);
 
+  const extractDocumentsWithProgress = useCallback(async (
+    projectUrl: string,
+    onProgress: (step: string, message: string, progress: number, data?: unknown) => void
+  ): Promise<WorkfrontFolder[]> => {
+    if (!projectUrl) {
+      toast.warning('Por favor, adicione a URL do projeto');
+      throw new Error('URL do projeto é obrigatória');
+    }
+
+    setIsLoading(true);
+
+    try {
+      const projectId = Math.random().toString(36).substring(7);
+      const encodedUrl = encodeURIComponent(projectUrl);
+
+      const eventSource = new EventSource(`/api/extract-documents-stream/${projectId}?url=${encodedUrl}`);
+
+      return new Promise((resolve, reject) => {
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            onProgress(data.step, data.message, data.progress, data.data);
+
+            if (data.step === 'completed' && data.data) {
+              eventSource.close();
+              setIsLoading(false);
+              toast.success(`Documentos extraídos com sucesso! Encontradas ${data.data.totalFolders || 0} pastas com ${data.data.totalFiles || 0} arquivos.`);
+              resolve(data.data.folders);
+            } else if (data.step === 'error') {
+              eventSource.close();
+              setIsLoading(false);
+              toast.error(data.message);
+              reject(new Error(data.message));
+            }
+          } catch (error) {
+            console.error('Erro ao processar evento SSE:', error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('Erro no EventSource:', error);
+          eventSource.close();
+          setIsLoading(false);
+          toast.error('Erro de conexão durante a extração');
+          reject(new Error('Erro de conexão durante a extração'));
+        };
+
+        eventSource.addEventListener('close', () => {
+          eventSource.close();
+          setIsLoading(false);
+        });
+      });
+    } catch (error) {
+      console.error('Erro na extração com progresso:', error);
+      setIsLoading(false);
+      toast.error('Erro de conexão durante a extração');
+      throw error;
+    }
+  }, []);
+
   const shareDocuments = useCallback(async (
-    projectUrl: string, 
+    projectUrl: string,
     selections: ShareSelection[],
     selectedUser: 'carol' | 'giovana' = 'carol'
   ): Promise<ShareResponse> => {
@@ -111,7 +171,7 @@ export const useWorkfrontApi = () => {
     const teamName = selectedUser === 'carol' ? 'Equipe Completa (Carolina)' : 'Equipe Reduzida (Giovana)';
     setIsLoading(true);
     setLoadingMessage(`Compartilhando ${totalFiles} arquivo(s) com ${teamName}...\nEste processo pode demorar alguns minutos.`);
-    
+
     try {
       const response = await fetch('/api/share-documents', {
         method: 'POST',
@@ -125,15 +185,15 @@ export const useWorkfrontApi = () => {
           selectedUser
         })
       });
-      
+
       const data: ShareResponse = await response.json();
-      
+
       if (data.success) {
         toast.success(data.message);
       } else {
         toast.error(data.message || 'Erro durante o compartilhamento');
       }
-      
+
       return data;
     } catch (error) {
       console.error('Erro no compartilhamento:', error);
@@ -148,7 +208,7 @@ export const useWorkfrontApi = () => {
   const clearCache = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setLoadingMessage('Limpando cache do navegador...');
-    
+
     try {
       const response = await fetch('/api/clear-cache', {
         method: 'POST',
@@ -156,9 +216,9 @@ export const useWorkfrontApi = () => {
           'Content-Type': 'application/json'
         }
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         toast.success('Cache limpo com sucesso! Você precisará fazer login novamente.');
       } else {
@@ -181,6 +241,7 @@ export const useWorkfrontApi = () => {
     checkLoginStatus,
     login,
     extractDocuments,
+    extractDocumentsWithProgress,
     shareDocuments,
     clearCache
   };

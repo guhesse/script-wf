@@ -36,7 +36,7 @@ async function login() {
     console.log("🔐 === FAZENDO LOGIN NO WORKFRONT ===");
 
     const browser = await chromium.launch({
-        headless: false,
+        headless: false, // Login sempre visível para autenticação manual
         args: ['--start-maximized']
     });
 
@@ -58,15 +58,16 @@ async function login() {
     await browser.close();
 }
 
-async function extractDocuments(projectUrl) {
+async function extractDocuments(projectUrl, headless = true) {
     const startTime = Date.now();
     console.log("📂 === EXTRAINDO DOCUMENTOS DO PROJETO ===");
     console.log(`🔗 URL: ${projectUrl}`);
     console.log(`⏱️ Iniciado em: ${new Date().toLocaleTimeString()}`);
+    console.log(`👁️ Modo: ${headless ? 'Headless (invisível)' : 'Visível'}`);
 
     const browser = await chromium.launch({
-        headless: false,
-        args: ['--start-maximized']
+        headless: headless, // Configurável: true = invisível, false = visível
+        args: headless ? [] : ['--start-maximized'] // Args diferentes para cada modo
     });
 
     try {
@@ -263,18 +264,19 @@ function getFileTypeFromName(fileName) {
     return typeMap[extension] || 'Document';
 }
 
-async function shareDocument(projectUrl, folderName, fileName, selectedUser = 'carol') {
+async function shareDocument(projectUrl, folderName, fileName, selectedUser = 'carol', headless = true) {
     console.log("🔗 === COMPARTILHANDO DOCUMENTO ===");
     console.log(`📁 Pasta: ${folderName}`);
     console.log(`📄 Arquivo: ${fileName}`);
     console.log(`👥 Equipe: ${selectedUser}`);
+    console.log(`👁️ Modo: ${headless ? 'Headless (invisível)' : 'Visível'}`);
 
     const USERS = getUsers(selectedUser);
     console.log(`👤 ${USERS.length} usuários serão adicionados`);
 
     const browser = await chromium.launch({
-        headless: false,
-        args: ['--start-maximized']
+        headless: headless, // Configurável: true = invisível, false = visível
+        args: headless ? [] : ['--start-maximized'] // Args diferentes para cada modo
     });
 
     try {
