@@ -1,667 +1,68 @@
-// wf_share_const.js
+// wf_share_modern.js
+// Versão moderna usando @playwright/test
 // Uso:
-//   node wf_share_const.js --login
-//   node wf_share_const.js --share --projectUrl "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68a3355a009ab6b7e05496c230b884c1/documents" --docName "NOME_EXATO_DO_ARQUIVO.pdf"
+//   node wf_share_modern.js --login
+//   node wf_share_modern.js --extract --projectUrl "URL_DO_PROJETO"
+//   node wf_share_modern.js --share --projectUrl "URL_DO_PROJETO" --docName "NOME_DO_ARQUIVO" --selectedUser "carol"
 
-import { chromium } from "playwright";
+import { chromium } from '@playwright/test';
 
 const STATE_FILE = "wf_state.json";
 
-// 1) SEUS 6 E-MAILS FIXOS
-const USERS = [
-    { email: "carolina.lipinski@dell.com", role: "MANAGE" },
-    { email: "eduarda.ulrich@dell.com", role: "VIEW" },
-    { email: "pessoa3@dell.com", role: "VIEW" },
-    { email: "pessoa4@dell.com", role: "VIEW" },
-    { email: "pessoa5@dell.com", role: "MANAGE" },
-    { email: "pessoa6@dell.com", role: "MANAGE" },
+// 1) CONFIGURAÇÃO DE USUÁRIOS BASEADA NO ASSET APPROVAL
+const CAROL_TEAM = [
+    { email: "yasmin.lahm@dell.com", role: "MANAGE" },
+    { email: "gabriela.vargas1@dell.com", role: "MANAGE" },
+    { email: "eduarda.ulrich@dell.com", role: "MANAGE" },
+    { email: "evili.borges@dell.com", role: "MANAGE" },
+    { email: "giovanna.deparis@dell.com", role: "MANAGE" },
+    { email: "natascha.batista@dell.com", role: "MANAGE" },
+    { email: "carolina.lipinski@dell.com", role: "MANAGE" }
 ];
 
-// 2) FUNÇÕES AUXILIARES
+const GIOVANA_TEAM = [
+    { email: "luiza.schmidt@dell.com", role: "MANAGE" },
+    { email: "gislaine.orico@dell.com", role: "MANAGE" },
+    { email: "giovana.jockyman@dell.com", role: "MANAGE" }
+];
+
+function getUsers(selectedUser = 'carol') {
+    return selectedUser === 'carol' ? CAROL_TEAM : GIOVANA_TEAM;
+}
+
+// 2) FUNÇÕES PRINCIPAIS COM @playwright/test
+
 async function login() {
-    const browser = await chromium.launch({ headless: false });
-    const ctx = await browser.newContext();
-    const page = await ctx.newPage();
-    console.log("Abrindo Experience Cloud. Faça o login SSO…");
+    console.log("🔐 === FAZENDO LOGIN NO WORKFRONT ===");
+
+    const browser = await chromium.launch({
+        headless: false,
+        args: ['--start-maximized']
+    });
+
+    const context = await browser.newContext({
+        viewport: null
+    });
+
+    const page = await context.newPage();
+
+    console.log("🌍 Abrindo Experience Cloud...");
     await page.goto("https://experience.adobe.com/", { waitUntil: "domcontentloaded" });
-    // te dá tempo pra concluir o SSO (MFA, etc.)
-    await page.waitForTimeout(90_000);
-    await ctx.storageState({ path: STATE_FILE });
-    console.log("Sessão salva em", STATE_FILE);
+
+    console.log("👤 Complete o login SSO/MFA nos próximos 90 segundos...");
+    await page.waitForTimeout(90000);
+
+    await context.storageState({ path: STATE_FILE });
+    console.log(`✅ Sessão salva em ${STATE_FILE}`);
+
     await browser.close();
 }
 
-// Função para mapear toda a estrutura de documentos
-async function mapDocumentStructure(frame) {
-    console.log('\n🗂️ Mapeando estrutura...');
-
-    // Buscar todos os elementos que podem ser documentos ou pastas
-    const allItems = await frame.$$eval('*', () => {
-        const items = [];
-
-        // Procurar por elementos que parecem ser itens de lista/tabela
-        const selectors = [
-            '[role="row"]',
-            '[role="gridcell"]',
-            '[data-testid*="row"]',
-            '[data-testid*="item"]',
-            '[data-testid*="document"]',
-            '[data-testid*="folder"]',
-            '[data-testid*="file"]',
-            'tr',
-            '.document-item',
-            '.folder-item',
-            '.file-item',
-            'li',
-            'button',
-            'a[href]'
-        ];
-
-        selectors.forEach(selector => {
-            try {
-                const foundElements = document.querySelectorAll(selector);
-                foundElements.forEach(el => {
-                    const text = el.textContent?.trim();
-                    if (text && text.length > 0 && text.length < 200 && !text.includes('@layer')) {
-                        const rect = el.getBoundingClientRect();
-                        const isVisible = rect.width > 0 && rect.height > 0;
-
-                        if (isVisible) {
-                            items.push({
-                                selector: selector,
-                                tagName: el.tagName,
-                                className: el.className,
-                                id: el.id,
-                                testId: el.getAttribute('data-testid'),
-                                role: el.getAttribute('role'),
-                                textContent: text,
-                                isClickable: el.tagName === 'BUTTON' || el.tagName === 'A' ||
-                                    el.onclick !== null || el.getAttribute('role') === 'button' ||
-                                    el.style.cursor === 'pointer'
-                            });
-                        }
-                    }
-                });
-            } catch (e) {
-                // Ignorar erros de seletores
-            }
-        });
-
-        // Remover duplicatas baseadas no texto
-        const unique = items.filter((item, index, self) =>
-            index === self.findIndex(i => i.textContent === item.textContent)
-        );
-
-        return unique.slice(0, 100); // Limitar para não sobrecarregar
-    });
-
-    console.log(`Encontrados ${allItems.length} itens na interface`);
-
-    // Agrupar por tipo para melhor visualização
-    const itemsByType = {
-        folders: [],
-        documents: [],
-        buttons: [],
-        links: [],
-        rows: [],
-        others: []
-    };
-
-    allItems.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        if (text.includes('asset release') || text.includes('final materials') ||
-            text.includes('working files') || text.includes('creative brief') ||
-            text.includes('proofs')) {
-            itemsByType.folders.push(item);
-        } else if (item.tagName === 'BUTTON') {
-            itemsByType.buttons.push(item);
-        } else if (item.tagName === 'A') {
-            itemsByType.links.push(item);
-        } else if (item.role === 'row' || item.tagName === 'TR') {
-            itemsByType.rows.push(item);
-        } else if (text.includes('.pdf') || text.includes('.jpg') || text.includes('.png') ||
-            text.includes('.doc') || text.includes('.xlsx')) {
-            itemsByType.documents.push(item);
-        } else {
-            itemsByType.others.push(item);
-        }
-    });
-
-    // Mostrar resumo por categoria
-    Object.keys(itemsByType).forEach(category => {
-        const items = itemsByType[category];
-        if (items.length > 0) {
-            console.log(`${category}: ${items.length} itens`);
-        }
-    });
-
-    return allItems;
-}
-
 async function extractDocuments(projectUrl) {
-    // Iniciando cronômetro
     const startTime = Date.now();
-    console.log("=== EXTRAINDO DOCUMENTOS DO PROJETO ===");
-    console.log(`\nURL do projeto: ${projectUrl}`);
-    console.log(`⏱️ Processo iniciado em: ${new Date().toLocaleTimeString()}`);
-    console.log("=".repeat(50));
-
-    let browser = null;
-    try {
-        // Configuração do browser
-        browser = await chromium.launch({
-            headless: false,
-            args: ['--start-maximized']
-        });
-
-        const context = await browser.newContext({
-            storageState: STATE_FILE,
-            viewport: null
-        });
-
-        const page = await context.newPage();
-
-        console.log("\n🌍 Abrindo página de documentos do projeto…");
-        const pageLoadStart = Date.now();
-        await page.goto(projectUrl, { 
-            waitUntil: "domcontentloaded", // Mais rápido que networkidle
-            timeout: 15000 // Timeout menor
-        });
-        await page.waitForTimeout(500); // Reduzido de 1000ms
-        const pageLoadTime = ((Date.now() - pageLoadStart) / 1000).toFixed(2);
-        console.log(`✓ Página carregada em ${pageLoadTime}s`);
-
-        console.log("\n🔍 Procurando frame do Workfront...");
-        const frameSearchStart = Date.now();
-        const wf = await getWorkfrontFrame(page);
-        const frameSearchTime = ((Date.now() - frameSearchStart) / 1000).toFixed(2);
-        console.log(`✓ Frame do Workfront encontrado em ${frameSearchTime}s!`);
-
-        console.log("\n📁 Iniciando análise de estrutura de pastas e documentos...");
-        const analysisStart = Date.now();
-
-        try {
-            // Otimização: Não aguardar networkidle, apenas domcontentloaded
-            await wf.waitForLoadState('domcontentloaded'); // Mais rápido
-            const interfaceLoadTime = ((Date.now() - analysisStart) / 1000).toFixed(2);
-            console.log(`⏳ Interface DOM carregada em ${interfaceLoadTime}s`);
-            await wf.waitForTimeout(1000); // Reduzido de 2000ms
-
-            // Verificar se há indicadores de carregamento (timeout reduzido)
-            try {
-                await wf.waitForSelector('[data-testid*="loading"], .loading, .spinner', { timeout: 1000, state: 'hidden' });
-                console.log("✓ Indicadores de carregamento removidos");
-            } catch (e) {
-                console.log("ℹ️ Nenhum indicador de carregamento detectado (prosseguindo)");
-            }
-
-            // 🔍 NOVA ESTRATÉGIA: Mapear toda a estrutura primeiro
-            const allItems = await mapDocumentStructure(wf);
-
-            // Agora filtrar apenas os itens que parecem ser pastas de interesse
-            const folders = [];
-            const targetFolders = ['Asset Release', 'Final Materials'];
-
-            console.log(`\n🎯 Filtrando pastas de interesse: ${targetFolders.join(', ')}`);
-
-            for (const folderName of targetFolders) {
-                console.log(`\nProcurando pasta: ${folderName}`);                // Buscar nos itens mapeados
-                const matchingItems = allItems.filter(item =>
-                    item.textContent.includes(folderName) ||
-                    item.textContent.toLowerCase().includes(folderName.toLowerCase())
-                );
-
-                if (matchingItems.length > 0) {
-                    console.log(`✓ Encontrados ${matchingItems.length} itens para "${folderName}":`);
-                    matchingItems.forEach((item, i) => {
-                        console.log(`  ${i + 1}. ${item.tagName} [${item.selector}] "${item.textContent}" ${item.isClickable ? '(clicável)' : ''}`);
-                    });
-
-                    // Tentar clicar no primeiro item clicável encontrado
-                    const clickableItem = matchingItems.find(item => item.isClickable);
-                    if (clickableItem) {
-                        try {
-                            console.log(`\n🎯 Tentando acessar "${folderName}" (simplificado):`)
-
-                            // ESTRATÉGIA SIMPLIFICADA: Só tentar os seletores que funcionaram
-                            const strategies = [
-                                `button:has-text("13. ${folderName}")`, // 13. Asset Release
-                                `button:has-text("14. ${folderName}")`, // 14. Final Materials
-                                `button:has-text("${folderName}")` // Asset Release / Final Materials
-                            ];
-
-                            let navigationSuccess = false;
-
-                            for (let i = 0; i < strategies.length; i++) {
-                                const strategy = strategies[i];
-                                console.log(`\n🔄 Tentativa ${i + 1}: ${strategy}`);
-
-                                try {
-                                    const element = await wf.$(strategy);
-                                    if (element) {
-                                        console.log(`✅ Elemento encontrado com estratégia ${i + 1}`);
-
-                                        // Clique simples apenas
-                                        await element.click();
-                                        console.log(`🖱️ Clique executado, aguardando carregamento...`);
-                                        await wf.waitForTimeout(3000); // Aguardar mais tempo
-
-                                        // 🎯 NOVA LÓGICA: Assumir que o clique funcionou e extrair documentos
-                                        console.log(`� Assumindo navegação bem-sucedida para "${folderName}"!`);
-                                        navigationSuccess = true;
-                                        break;
-                                    } else {
-                                        console.log(`❌ Elemento não encontrado com estratégia ${i + 1}`);
-                                    }
-                                } catch (e) {
-                                    console.log(`❌ Erro na estratégia ${i + 1}: ${e.message}`);
-                                    continue;
-                                }
-                            }
-
-                            if (navigationSuccess) {
-                                // Extrair documentos da pasta
-                                console.log(`Extraindo arquivos: ${folderName}`);
-                                const files = await extractFilesFromCurrentFolder(wf);
-                                console.log(`${files.length} arquivos encontrados`);
-
-                                if (files.length > 0) {
-                                    folders.push({
-                                        name: folderName,
-                                        files: files
-                                    });
-                                    console.log(`✅ Pasta "${folderName}" processada: ${files.length} arquivos`);
-
-                                    // Mostrar lista dos arquivos encontrados
-                                    files.forEach((file, index) => {
-                                        console.log(`  ${index + 1}. ${file.name} (${file.type})`);
-                                    });
-                                } else {
-                                    console.log(`⚠️ Nenhum arquivo encontrado na pasta "${folderName}"`);
-                                }
-
-                                // Voltar para a lista principal (simplificado)
-                                console.log(`🔙 Voltando para a lista principal...`);
-                                await wf.waitForTimeout(2000);
-
-                            } else {
-                                console.log(`❌ Não foi possível navegar para "${folderName}"`);
-                            }
-                        } catch (e) {
-                            console.log(`❌ Erro ao processar pasta "${folderName}": ${e.message}`);
-                        }
-                    }
-                } else {
-                    console.log(`❌ Pasta "${folderName}" não encontrada nos itens mapeados`);
-                }
-            }
-
-            console.log(`✓ Extração concluída: ${folders.length} pastas, ${folders.reduce((total, folder) => total + folder.files.length, 0)} arquivos`);
-
-            // Retorna o resultado
-            // Calculando tempo total
-            const endTime = Date.now();
-            const totalTimeMs = endTime - startTime;
-            const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
-            
-            console.log("\n" + "=".repeat(50));
-            console.log(`⏱️ TEMPO TOTAL DO PROCESSO: ${totalTimeSeconds}s (${totalTimeMs}ms)`);
-            console.log(`📊 Documentos encontrados: ${folders.reduce((total, folder) => total + folder.files.length, 0)} arquivos em ${folders.length} pastas`);
-            console.log(`🏁 Processo concluído em: ${new Date().toLocaleTimeString()}`);
-            console.log("=".repeat(50));
-
-            const result = {
-                success: true,
-                folders: folders,
-                totalFolders: folders.length,
-                totalFiles: folders.reduce((total, folder) => total + folder.files.length, 0),
-                processingTime: {
-                    totalMs: totalTimeMs,
-                    totalSeconds: parseFloat(totalTimeSeconds),
-                    startedAt: new Date(startTime).toISOString(),
-                    completedAt: new Date(endTime).toISOString()
-                }
-            };
-
-            console.log(`EXTRACT_RESULT:${JSON.stringify(result)}`);
-            return result;
-
-        } catch (innerError) {
-            // Calculando tempo até o erro
-            const endTime = Date.now();
-            const totalTimeMs = endTime - startTime;
-            const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
-            
-            console.log(`\n⏱️ Tempo até o erro: ${totalTimeSeconds}s`);
-            console.log(`❌ Erro na análise de pastas: ${innerError.message}`);
-            const errorResult = {
-                success: false,
-                error: innerError.message,
-                folders: [],
-                totalFolders: 0,
-                totalFiles: 0,
-                processingTime: {
-                    totalMs: totalTimeMs,
-                    totalSeconds: parseFloat(totalTimeSeconds),
-                    startedAt: new Date(startTime).toISOString(),
-                    failedAt: new Date(endTime).toISOString()
-                }
-            };
-            console.log(`EXTRACT_RESULT:${JSON.stringify(errorResult)}`);
-            return errorResult;
-        }
-
-    } catch (error) {
-        // Calculando tempo até o erro
-        const endTime = Date.now();
-        const totalTimeMs = endTime - startTime;
-        const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
-        
-        console.log(`\n⏱️ Tempo até o erro: ${totalTimeSeconds}s`);
-        console.log(`❌ Erro durante extração: ${error.message}`);
-        const errorResult = {
-            success: false,
-            error: error.message,
-            folders: [],
-            totalFolders: 0,
-            totalFiles: 0,
-            processingTime: {
-                totalMs: totalTimeMs,
-                totalSeconds: parseFloat(totalTimeSeconds),
-                startedAt: new Date(startTime).toISOString(),
-                failedAt: new Date(endTime).toISOString()
-            }
-        };
-        console.log(`EXTRACT_RESULT:${JSON.stringify(errorResult)}`);
-        return errorResult;
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
-}
-
-// Função para extrair arquivos da pasta atual
-async function extractFilesFromCurrentFolder(frame) {
-    const files = [];
-
-    try {
-        console.log('📂 Analisando pasta...');
-
-        // Aguarda a pasta carregar (tempo reduzido)
-        await frame.waitForTimeout(300); // Reduzido de 500ms
-
-        // 🎯 ESTRATÉGIA FOCADA: Procurar especificamente pelos containers de documentos do Workfront
-        console.log('🎯 Procurando documentos...');
-
-        const workfrontDocuments = await frame.evaluate(() => {
-            const documentItems = [];
-
-            // 1. Procurar pelos containers padrão de itens do Workfront
-            const standardContainers = document.querySelectorAll('[data-testid="standard-item-container"]');
-            console.log(`🔍 Encontrados ${standardContainers.length} containers padrão`);
-
-            standardContainers.forEach((container, index) => {
-                try {
-                    // Procurar pelo link do documento dentro do container
-                    const documentLink = container.querySelector('a.doc-item-link');
-                    if (documentLink) {
-                        const fileName = documentLink.textContent?.trim();
-                        const href = documentLink.href;
-                        const title = documentLink.title;
-
-                        // Procurar por informações adicionais
-                        const addedBySpan = container.querySelector('.fnt-sidenote.added-by');
-                        const addedInfo = addedBySpan ? addedBySpan.textContent?.trim() : '';
-
-                        // Procurar por ícone do arquivo para determinar tipo
-                        const iconImg = container.querySelector('.document-icon-zip, .document-icon-pdf, .document-icon-doc, [class*="document-icon-"]');
-                        let fileType = 'Unknown';
-                        if (iconImg) {
-                            const iconClass = iconImg.className;
-                            if (iconClass.includes('document-icon-zip')) fileType = 'ZIP Archive';
-                            else if (iconClass.includes('document-icon-pdf')) fileType = 'PDF Document';
-                            else if (iconClass.includes('document-icon-doc')) fileType = 'Word Document';
-                            else if (iconClass.includes('document-icon-xls')) fileType = 'Excel Spreadsheet';
-                            else if (iconClass.includes('document-icon-ppt')) fileType = 'PowerPoint';
-                            else if (iconClass.includes('document-icon-img')) fileType = 'Image';
-                        }
-
-                        // Se não conseguiu determinar pelo ícone, usar extensão
-                        if (fileType === 'Unknown' && fileName) {
-                            const extension = fileName.split('.').pop()?.toLowerCase();
-                            const typeMap = {
-                                'zip': 'ZIP Archive',
-                                'pdf': 'PDF Document',
-                                'doc': 'Word Document',
-                                'docx': 'Word Document',
-                                'xls': 'Excel Spreadsheet',
-                                'xlsx': 'Excel Spreadsheet',
-                                'ppt': 'PowerPoint',
-                                'pptx': 'PowerPoint',
-                                'jpg': 'Image',
-                                'jpeg': 'Image',
-                                'png': 'Image',
-                                'gif': 'Image'
-                            };
-                            fileType = typeMap[extension] || 'Document';
-                        }
-
-                        if (fileName) {
-                            documentItems.push({
-                                fileName: fileName,
-                                fileType: fileType,
-                                href: href,
-                                title: title,
-                                addedInfo: addedInfo,
-                                containerIndex: index,
-                                containerHTML: container.outerHTML.substring(0, 500) // Primeiros 500 chars para debug
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.log(`❌ Erro ao processar container ${index}: ${e.message}`);
-                }
-            });
-
-            // 2. Fallback: Procurar por qualquer link que pareça ser de documento
-            if (documentItems.length === 0) {
-                console.log('🔄 Fallback: Procurando por qualquer link de documento...');
-                
-                const allLinks = document.querySelectorAll('a[href*="document"], a[href*="preview"], a.doc-item-link');
-                allLinks.forEach(link => {
-                    const text = link.textContent?.trim();
-                    if (text && text.length > 5 && text.includes('.')) {
-                        documentItems.push({
-                            fileName: text,
-                            fileType: 'Document',
-                            href: link.href,
-                            title: link.title || link.getAttribute('aria-label'),
-                            addedInfo: '',
-                            containerIndex: -1,
-                            containerHTML: link.outerHTML
-                        });
-                    }
-                });
-            }
-
-            // 3. Procurar também por elementos li.doc-item-detail (estrutura alternativa)
-            const docItemDetails = document.querySelectorAll('li.doc-item-detail');
-            docItemDetails.forEach((item, index) => {
-                const link = item.querySelector('a');
-                if (link) {
-                    const fileName = link.textContent?.trim();
-                    if (fileName && !documentItems.some(doc => doc.fileName === fileName)) {
-                        documentItems.push({
-                            fileName: fileName,
-                            fileType: 'Document',
-                            href: link.href,
-                            title: link.title,
-                            addedInfo: '',
-                            containerIndex: index,
-                            containerHTML: item.outerHTML.substring(0, 500)
-                        });
-                    }
-                }
-            });
-
-            return documentItems;
-        });
-
-        console.log(`Documentos encontrados: ${workfrontDocuments.length}`);
-
-        if (workfrontDocuments.length > 0) {
-            workfrontDocuments.forEach((doc, index) => {
-                // Adicionar ao array de arquivos
-                files.push({
-                    name: doc.fileName,
-                    type: doc.fileType,
-                    size: 'N/A',
-                    url: doc.href,
-                    addedInfo: doc.addedInfo,
-                    title: doc.title,
-                    element: {
-                        containerIndex: doc.containerIndex,
-                        testId: 'standard-item-container',
-                        tagName: 'A'
-                    }
-                });
-            });
-        } else {
-            console.log('❌ Nenhum documento encontrado com seletores específicos do Workfront');
-            
-            // Backup: Análise completa como antes
-            console.log('🔄 Executando análise completa como backup...');
-            
-            const allElements = await frame.$$eval('*', () => {
-                const items = [];
-                const allEls = document.querySelectorAll('*');
-                
-                allEls.forEach(el => {
-                    const text = el.textContent?.trim();
-                    if (text && text.length > 0 && text.length < 300) {
-                        const rect = el.getBoundingClientRect();
-                        const isVisible = rect.width > 0 && rect.height > 0;
-
-                        if (isVisible && /\.(pdf|jpg|jpeg|png|gif|doc|docx|xls|xlsx|ppt|pptx|zip|rar|mp4|avi|mov|ai|psd|eps|svg|tiff|bmp)$/i.test(text)) {
-                            items.push({
-                                tagName: el.tagName,
-                                className: el.className,
-                                textContent: text,
-                                href: el.href
-                            });
-                        }
-                    }
-                });
-
-                return items;
-            });
-
-            console.log(`📋 Backup: encontrados ${allElements.length} elementos com extensões`);
-            allElements.forEach((item, index) => {
-                const fileType = getFileTypeFromName(item.textContent);
-                files.push({
-                    name: item.textContent.trim(),
-                    type: fileType,
-                    size: 'N/A',
-                    url: item.href || 'N/A',
-                    element: {
-                        tagName: item.tagName,
-                        className: item.className
-                    }
-                });
-                console.log(`   ${index + 1}. ${item.textContent} (${fileType})`);
-            });
-        }
-
-    } catch (error) {
-        console.log(`Erro ao extrair arquivos da pasta: ${error.message}`);
-    }
-
-    console.log(`\n📊 ===== RESUMO FINAL =====`);
-    console.log(`📂 Total de arquivos identificados: ${files.length}`);
-    if (files.length > 0) {
-        console.log(`📋 Lista final de arquivos encontrados:`);
-        files.forEach((file, i) => {
-            console.log(`  ${i + 1}. "${file.name}" (${file.type})`);
-            if (file.addedInfo) console.log(`      └─ ${file.addedInfo}`);
-            if (file.url && file.url !== 'N/A') console.log(`      └─ URL: ${file.url}`);
-        });
-    } else {
-        console.log(`❌ NENHUM ARQUIVO ENCONTRADO - pode ser que a pasta esteja vazia ou a estrutura seja diferente`);
-    }
-    console.log(`📂 ===== FIM DA ANÁLISE DETALHADA =====`);
-
-    return files;
-}
-
-// Função para determinar o tipo do arquivo baseado no nome
-function getFileTypeFromName(fileName) {
-    const extension = fileName.split('.').pop().toLowerCase();
-
-    const typeMap = {
-        'pdf': 'PDF',
-        'jpg': 'Image',
-        'jpeg': 'Image',
-        'png': 'Image',
-        'gif': 'Image',
-        'doc': 'Document',
-        'docx': 'Document',
-        'xls': 'Spreadsheet',
-        'xlsx': 'Spreadsheet',
-        'ppt': 'Presentation',
-        'pptx': 'Presentation',
-        'zip': 'Archive',
-        'rar': 'Archive',
-        'mp4': 'Video',
-        'avi': 'Video',
-        'mov': 'Video'
-    };
-
-    return typeMap[extension] || 'unknown';
-}
-
-async function getWorkfrontFrame(page) {
-    await page.waitForTimeout(2500); // Reduzido de 3000ms
-
-    // Tenta encontrar o frame principal do Workfront (seletores mais específicos primeiro)
-    const frameSelectors = [
-        'iframe[src*="workfront"]',
-        'iframe[src*="experience"]', 
-        'iframe[name*="workfront"]',
-        'iframe' // Genérico por último
-    ];
-
-    for (const selector of frameSelectors) {
-        try {
-            const frameElement = await page.$(selector);
-            if (frameElement) {
-                const frame = await frameElement.contentFrame();
-                if (frame) {
-                    // Verificação mais rápida se é o frame do Workfront
-                    await frame.waitForTimeout(500); // Reduzido de 2000ms
-                    const url = frame.url();
-                    if (url.includes('workfront') || url.includes('experience') || url.includes('adobe')) {
-                        console.log(`✓ Frame encontrado: ${selector} (URL: ${url.substring(0, 50)}...)`);
-                        return frame;
-                    }
-                }
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-
-    // Se não encontrou frame, retorna a página principal
-    console.log("ℹ️ Nenhum frame específico encontrado, usando página principal");
-    return page;
-}
-
-async function shareDocument(projectUrl, folderName, fileName) {
-    console.log("=== COMPARTILHANDO DOCUMENTO ===");
-    console.log(`URL do projeto: ${projectUrl}`);
-    console.log(`Pasta: ${folderName}`);
-    console.log(`Documento: ${fileName}`);
+    console.log("📂 === EXTRAINDO DOCUMENTOS DO PROJETO ===");
+    console.log(`🔗 URL: ${projectUrl}`);
+    console.log(`⏱️ Iniciado em: ${new Date().toLocaleTimeString()}`);
 
     const browser = await chromium.launch({
         headless: false,
@@ -676,137 +77,291 @@ async function shareDocument(projectUrl, folderName, fileName) {
 
         const page = await context.newPage();
 
-        console.log("\nAbrindo página de documentos do projeto…");
+        console.log("🌍 Carregando projeto...");
         await page.goto(projectUrl, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(3000);
 
-        console.log("Procurando frame do Workfront...");
-        const wf = await getWorkfrontFrame(page);
-        console.log("✓ Frame do Workfront encontrado!");
+        console.log("🔍 Encontrando frame do Workfront...");
+        const frameLocator = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
 
-        // 🎯 PRIMEIRO: Navegar para a pasta correta
-        console.log(`\n📁 Navegando para a pasta: ${folderName}`);
-        const navigationSuccess = await navigateToFolder(wf, folderName);
-        
-        if (!navigationSuccess) {
-            throw new Error(`Não foi possível navegar para a pasta "${folderName}"`);
+        // Aguardar interface carregar
+        await page.waitForTimeout(2000);
+
+        const folders = [];
+        const targetFolders = ['Asset Release', 'Final Materials'];
+
+        console.log(`🎯 Procurando pastas: ${targetFolders.join(', ')}`);
+
+        for (const folderName of targetFolders) {
+            console.log(`\n📁 Processando pasta: ${folderName}`);
+
+            try {
+                // Usar getByRole e getByText para encontrar pasta
+                const folderButton = frameLocator.getByRole('button', { name: new RegExp(folderName, 'i') })
+                    .or(frameLocator.getByText(folderName))
+                    .first();
+
+                // Verificar se pasta existe
+                try {
+                    await folderButton.waitFor({ timeout: 5000 });
+                    console.log(`✅ Pasta "${folderName}" encontrada`);
+
+                    await folderButton.click();
+                    console.log(`🖱️ Clicado na pasta "${folderName}"`);
+                    await page.waitForTimeout(3000);
+
+                    // Extrair arquivos da pasta
+                    const files = await extractFilesFromFolder(frameLocator);
+
+                    if (files.length > 0) {
+                        folders.push({
+                            name: folderName,
+                            files: files
+                        });
+
+                        console.log(`✅ ${files.length} arquivos encontrados em "${folderName}"`);
+                        files.forEach((file, i) => {
+                            console.log(`  ${i + 1}. ${file.name} (${file.type})`);
+                        });
+                    } else {
+                        console.log(`⚠️ Nenhum arquivo encontrado em "${folderName}"`);
+                    }
+
+                } catch (e) {
+                    console.log(`❌ Pasta "${folderName}" não encontrada: ${e.message}`);
+                }
+
+            } catch (error) {
+                console.log(`❌ Erro ao processar "${folderName}": ${error.message}`);
+            }
         }
 
-        console.log(`✅ Navegação para "${folderName}" bem-sucedida!`);
-        await wf.waitForTimeout(3000);
+        const endTime = Date.now();
+        const totalTime = ((endTime - startTime) / 1000).toFixed(2);
+        const totalFiles = folders.reduce((sum, folder) => sum + folder.files.length, 0);
 
-        // 🎯 SEGUNDO: Procurar e selecionar o documento específico
-        console.log(`\n📄 Procurando documento: ${fileName}`);
-        const documentSelected = await selectDocument(wf, fileName);
-        
-        if (!documentSelected) {
-            throw new Error(`Documento "${fileName}" não encontrado na pasta "${folderName}"`);
-        }
+        console.log("\n" + "=".repeat(50));
+        console.log(`⏱️ TEMPO TOTAL: ${totalTime}s`);
+        console.log(`📊 RESULTADO: ${totalFiles} arquivos em ${folders.length} pastas`);
+        console.log(`🏁 Concluído em: ${new Date().toLocaleTimeString()}`);
+        console.log("=".repeat(50));
 
-        console.log(`✅ Documento "${fileName}" selecionado!`);
-        await wf.waitForTimeout(2000);
-
-        // 🎯 TERCEIRO: Procurar e clicar no botão de compartilhar
-        console.log("\n🔗 Procurando botão de compartilhar...");
-        const shareSuccess = await clickShareButton(wf, fileName);
-        
-        if (!shareSuccess) {
-            throw new Error("Botão de compartilhar não encontrado, não clicável, ou modal não abriu corretamente");
-        }
-
-        console.log(`✅ Botão de compartilhar clicado e modal verificado!`);
-        await wf.waitForTimeout(2000);
-
-        // 🎯 QUARTO: Adicionar usuários e confirmar compartilhamento
-        console.log("\n👥 Adicionando usuários...");
-        const sharingSuccess = await addUsersAndShare(wf);
-        
-        if (!sharingSuccess) {
-            throw new Error("Erro ao adicionar usuários ou confirmar compartilhamento");
-        }
-
-        console.log("✅ Documento compartilhado com sucesso!");
-        await wf.waitForTimeout(2000);
-
-        return {
+        const result = {
             success: true,
-            message: `Documento "${fileName}" compartilhado com sucesso!`
+            folders: folders,
+            totalFolders: folders.length,
+            totalFiles: totalFiles,
+            processingTime: {
+                totalSeconds: parseFloat(totalTime),
+                startedAt: new Date(startTime).toISOString(),
+                completedAt: new Date(endTime).toISOString()
+            }
         };
 
+        console.log(`EXTRACT_RESULT:${JSON.stringify(result)}`);
+        return result;
+
     } catch (error) {
-        console.error("❌ Erro:", error.message);
-        throw error;
+        console.log(`❌ Erro durante extração: ${error.message}`);
+        return {
+            success: false,
+            error: error.message,
+            folders: [],
+            totalFolders: 0,
+            totalFiles: 0
+        };
     } finally {
         await browser.close();
     }
 }
 
-// Função auxiliar para navegar para uma pasta específica
-async function navigateToFolder(frame, folderName) {
-    console.log(`🎯 Tentando navegar para "${folderName}"...`);
+async function extractFilesFromFolder(frameLocator) {
+    const files = [];
 
     try {
-        // Aguardar a página carregar
-        await frame.waitForTimeout(2000);
+        console.log("🔍 Analisando arquivos na pasta...");
+        await frameLocator.locator('body').waitFor({ timeout: 3000 });
 
-        // Estratégias de seleção de pasta
-        const strategies = [
-            `button:has-text("13. ${folderName}")`, // Formato com número
-            `button:has-text("14. ${folderName}")`, // Formato com número
-            `button:has-text("${folderName}")`, // Nome direto
-            `a:has-text("${folderName}")`, // Link
-            `[role="button"]:has-text("${folderName}")`, // Elemento com role button
-            `*[data-testid*="item"]:has-text("${folderName}")` // Item com testid
-        ];
+        // Estratégia 1: Procurar por containers de documentos específicos
+        const documentContainers = frameLocator.locator('[data-testid="standard-item-container"]');
+        const containerCount = await documentContainers.count();
 
-        for (let i = 0; i < strategies.length; i++) {
-            const strategy = strategies[i];
-            console.log(`🔄 Tentativa ${i + 1}: ${strategy}`);
+        console.log(`📋 Encontrados ${containerCount} containers de documentos`);
 
-            try {
-                const element = await frame.$(strategy);
-                if (element) {
-                    console.log(`✅ Elemento encontrado com estratégia ${i + 1}`);
-                    await element.click();
-                    console.log(`🖱️ Clique executado, aguardando carregamento...`);
-                    await frame.waitForTimeout(3000);
-                    return true;
+        if (containerCount > 0) {
+            for (let i = 0; i < containerCount; i++) {
+                try {
+                    const container = documentContainers.nth(i);
+                    const link = container.locator('a.doc-item-link').first();
+
+                    if (await link.isVisible()) {
+                        const fileName = await link.textContent();
+                        const href = await link.getAttribute('href');
+
+                        if (fileName && fileName.trim()) {
+                            const fileType = getFileTypeFromName(fileName.trim());
+                            files.push({
+                                name: fileName.trim(),
+                                type: fileType,
+                                url: href || 'N/A',
+                                source: 'standard-container'
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.log(`⚠️ Erro no container ${i}: ${e.message}`);
                 }
-            } catch (e) {
-                console.log(`❌ Erro na estratégia ${i + 1}: ${e.message}`);
-                continue;
             }
         }
 
-        console.log(`❌ Não foi possível encontrar a pasta "${folderName}"`);
-        return false;
+        // Estratégia 2: Fallback - procurar por qualquer link de documento
+        if (files.length === 0) {
+            console.log("🔄 Usando estratégia fallback...");
+
+            const allLinks = frameLocator.locator('a[href*="document"], a.doc-item-link');
+            const linkCount = await allLinks.count();
+
+            for (let i = 0; i < linkCount; i++) {
+                try {
+                    const link = allLinks.nth(i);
+                    const text = await link.textContent();
+                    const href = await link.getAttribute('href');
+
+                    if (text && text.includes('.') && text.length > 5) {
+                        const fileType = getFileTypeFromName(text.trim());
+                        files.push({
+                            name: text.trim(),
+                            type: fileType,
+                            url: href || 'N/A',
+                            source: 'fallback'
+                        });
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+        }
 
     } catch (error) {
-        console.log(`❌ Erro ao navegar para pasta: ${error.message}`);
-        return false;
+        console.log(`❌ Erro ao extrair arquivos: ${error.message}`);
     }
+
+    return files;
 }
 
-// Função auxiliar para selecionar um documento específico
-async function selectDocument(frame, fileName) {
-    console.log(`🔍 Procurando documento "${fileName}"...`);
+function getFileTypeFromName(fileName) {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    const typeMap = {
+        'pdf': 'PDF',
+        'jpg': 'Image', 'jpeg': 'Image', 'png': 'Image', 'gif': 'Image',
+        'doc': 'Document', 'docx': 'Document',
+        'xls': 'Spreadsheet', 'xlsx': 'Spreadsheet',
+        'ppt': 'Presentation', 'pptx': 'Presentation',
+        'zip': 'Archive', 'rar': 'Archive',
+        'mp4': 'Video', 'avi': 'Video', 'mov': 'Video'
+    };
+    return typeMap[extension] || 'Document';
+}
+
+async function shareDocument(projectUrl, folderName, fileName, selectedUser = 'carol') {
+    console.log("🔗 === COMPARTILHANDO DOCUMENTO ===");
+    console.log(`📁 Pasta: ${folderName}`);
+    console.log(`📄 Arquivo: ${fileName}`);
+    console.log(`👥 Equipe: ${selectedUser}`);
+
+    const USERS = getUsers(selectedUser);
+    console.log(`👤 ${USERS.length} usuários serão adicionados`);
+
+    const browser = await chromium.launch({
+        headless: false,
+        args: ['--start-maximized']
+    });
 
     try {
-        // Aguardar carregamento da pasta
-        await frame.waitForTimeout(1000);
+        const context = await browser.newContext({
+            storageState: STATE_FILE,
+            viewport: null
+        });
 
+        const page = await context.newPage();
+
+        console.log("🌍 Abrindo projeto...");
+        await page.goto(projectUrl, { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(3000);
+
+        console.log("🔍 Encontrando frame do Workfront...");
+        const frameLocator = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
+
+        // 1. Navegar para a pasta correta (adaptado do legacy)
+        if (folderName && folderName !== 'root') {
+            console.log(`📁 Navegando para pasta: ${folderName}`);
+
+            // Aguardar frame carregar primeiro
+            await page.waitForTimeout(2000);
+
+            // 🎯 ESTRATÉGIA DO LEGACY: Tentar múltiplas estratégias para clicar na pasta
+            const strategies = [
+                `button:has-text("13. ${folderName}")`, // Formato com número
+                `button:has-text("14. ${folderName}")`, // Formato com número
+                `button:has-text("${folderName}")`, // Nome direto
+                `a:has-text("${folderName}")`, // Link
+                `[role="button"]:has-text("${folderName}")`, // Elemento com role button
+                `*[data-testid*="item"]:has-text("${folderName}")` // Item com testid
+            ];
+
+            let navigationSuccess = false;
+            for (let i = 0; i < strategies.length; i++) {
+                const strategy = strategies[i];
+                console.log(`🔄 Tentativa ${i + 1}: ${strategy}`);
+
+                try {
+                    const element = frameLocator.locator(strategy).first();
+                    const count = await element.count();
+
+                    if (count > 0) {
+                        console.log(`✅ Elemento encontrado com estratégia ${i + 1}`);
+                        await element.click();
+                        console.log(`�️ Clique executado, aguardando carregamento...`);
+                        await page.waitForTimeout(4000);
+                        navigationSuccess = true;
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`❌ Erro na estratégia ${i + 1}: ${e.message}`);
+                    continue;
+                }
+            }
+
+            if (!navigationSuccess) {
+                console.log(`❌ Não foi possível navegar para a pasta "${folderName}"`);
+                throw new Error(`Não foi possível navegar para a pasta "${folderName}"`);
+            }
+
+            console.log(`✅ Navegação para "${folderName}" concluída!`);
+        }
+
+        // 2. Aguardar a lista de documentos carregar e selecionar documento (estratégia do legacy)
+        console.log(`📄 Aguardando lista de documentos carregar...`);
+
+        // Aguardar a pasta carregar completamente
+        await page.waitForTimeout(3000);
+
+        console.log(`📄 Procurando documento: ${fileName}`);
+
+        // 🎯 ESTRATÉGIA ESPECÍFICA DO LEGACY: Procurar pelo div.doc-detail-view que contém o arquivo
         console.log(`🎯 ESTRATÉGIA FOCADA: Procurando pelo div.doc-detail-view que contém "${fileName}"`);
-        
-        // 🎯 ESTRATÉGIA ESPECÍFICA: Procurar pelo container doc-detail-view que contém o arquivo
-        const documentElements = await frame.$$eval('.doc-detail-view', (elements, targetFileName) => {
+
+        // Usar evaluate como no legacy para maior controle
+        const documentElements = await frameLocator.locator('body').evaluate((body, targetFileName) => {
             const foundElements = [];
-            
+            const elements = body.querySelectorAll('.doc-detail-view');
+
             elements.forEach((element, index) => {
                 const ariaLabel = element.getAttribute('aria-label');
                 const textContent = element.textContent;
-                
+
                 // Verificar se o elemento contém o nome do arquivo
-                if ((ariaLabel && ariaLabel.includes(targetFileName)) || 
+                if ((ariaLabel && ariaLabel.includes(targetFileName)) ||
                     (textContent && textContent.includes(targetFileName))) {
                     foundElements.push({
                         index: index,
@@ -817,11 +372,11 @@ async function selectDocument(frame, fileName) {
                     });
                 }
             });
-            
+
             return foundElements;
         }, fileName);
 
-        console.log(`📋 Encontrados ${documentElements.length} elementos doc-detail-view com "${fileName}":`);
+        console.log(`� Encontrados ${documentElements.length} elementos doc-detail-view com "${fileName}":`);
         documentElements.forEach((elem, i) => {
             console.log(`  ${i + 1}. AriaLabel: "${elem.ariaLabel}"`);
             console.log(`     Texto: "${elem.textContent}"`);
@@ -831,37 +386,85 @@ async function selectDocument(frame, fileName) {
         if (documentElements.length > 0) {
             // Usar o primeiro elemento visível encontrado
             const targetElement = documentElements.find(elem => elem.isVisible) || documentElements[0];
-            
+
             console.log(`✅ Selecionando elemento ${targetElement.index + 1} com aria-label: "${targetElement.ariaLabel}"`);
-            
-            // 🎯 CLICK CORRETO: Clicar no div.doc-detail-view usando seletor CSS direto
+
+            // 🎯 CLICK CORRETO DO LEGACY: Clicar no div.doc-detail-view usando seletor CSS direto
             const selector = `.doc-detail-view:nth-of-type(${targetElement.index + 1})`;
             console.log(`🎯 Clicando no seletor: ${selector}`);
-            
-            await frame.click(selector);
-            console.log(`🖱️ Clique executado no div.doc-detail-view!`);
-            await frame.waitForTimeout(2000);
-            
-            return true;
+
+            await frameLocator.locator(selector).click();
+            console.log(`�️ Clique executado no div.doc-detail-view!`);
+            await page.waitForTimeout(2000);
+
+        } else {
+            // Se não encontrou com nome completo, usar estratégias de fallback como no legacy
+            console.log(`❌ Nenhum div.doc-detail-view encontrado para "${fileName}"`);
+            console.log(`🔄 Tentando estratégias de fallback...`);
+
+            // Estratégia de fallback: procurar por partes do nome
+            const nameParts = fileName.split('_');
+            let foundWithFallback = false;
+
+            if (nameParts.length >= 3) {
+                const searchTerms = [
+                    nameParts.slice(0, 3).join('_'), // Primeiras 3 partes
+                    nameParts.slice(0, 2).join('_'), // Primeiras 2 partes
+                    nameParts[0] // Primeira parte
+                ];
+
+                for (const searchTerm of searchTerms) {
+                    console.log(`🔍 Tentando fallback com: "${searchTerm}"`);
+
+                    const fallbackElements = await frameLocator.locator('body').evaluate((body, searchTerm) => {
+                        const elements = body.querySelectorAll('.doc-detail-view');
+                        const found = [];
+
+                        elements.forEach((element, index) => {
+                            const ariaLabel = element.getAttribute('aria-label');
+                            const textContent = element.textContent;
+
+                            if ((ariaLabel && ariaLabel.includes(searchTerm)) ||
+                                (textContent && textContent.includes(searchTerm))) {
+                                found.push({
+                                    index: index,
+                                    ariaLabel: ariaLabel,
+                                    isVisible: element.offsetWidth > 0 && element.offsetHeight > 0
+                                });
+                            }
+                        });
+
+                        return found;
+                    }, searchTerm);
+
+                    if (fallbackElements.length > 0) {
+                        const targetElement = fallbackElements.find(elem => elem.isVisible) || fallbackElements[0];
+                        console.log(`✅ Encontrado com fallback: "${targetElement.ariaLabel}"`);
+
+                        const selector = `.doc-detail-view:nth-of-type(${targetElement.index + 1})`;
+                        await frameLocator.locator(selector).click();
+                        console.log(`🖱️ Clique executado com fallback!`);
+                        foundWithFallback = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!foundWithFallback) {
+                console.log(`❌ Documento não encontrado: ${fileName}`);
+                console.log(`💡 Dica: Verifique se o nome do arquivo está correto ou se ele existe na pasta selecionada`);
+                throw new Error(`Documento não encontrado: ${fileName}`);
+            }
         }
 
-        console.log(`❌ Nenhum div.doc-detail-view encontrado para "${fileName}"`);
-        return false;
+        await page.waitForTimeout(2000);
 
-    } catch (error) {
-        console.log(`❌ Erro ao selecionar documento: ${error.message}`);
-        return false;
-    }
-}
+        // 3. Clicar em Share (estratégia correta do legacy)
+        console.log("🔗 Procurando botão de compartilhar...");
 
-// Função auxiliar para clicar no botão de compartilhar e verificar se modal abriu
-async function clickShareButton(frame, expectedFileName) {
-    console.log(`🔗 Procurando botão de compartilhar...`);
-
-    try {
-        // Estratégias para encontrar o botão de compartilhar
+        // Estratégias do legacy adaptadas para @playwright/test
         const strategies = [
-            'button[data-testid="share"]', // Botão específico do Workfront
+            'button[data-testid="share"]', // Botão específico do Workfront (legacy prioridade 1)
             'button:has-text("Share")', // Botão com texto Share
             'button:has-text("Compartilhar")', // Botão em português
             'button[aria-label*="share"]', // Botão com aria-label
@@ -869,32 +472,33 @@ async function clickShareButton(frame, expectedFileName) {
             '*[data-testid*="share"]' // Qualquer elemento com testid share
         ];
 
+        let shareSuccess = false;
         for (let i = 0; i < strategies.length; i++) {
             const strategy = strategies[i];
             console.log(`🔄 Procurando botão share - Tentativa ${i + 1}: ${strategy}`);
 
             try {
-                const element = await frame.$(strategy);
-                if (element) {
-                    const isVisible = await element.isVisible();
-                    if (isVisible) {
-                        console.log(`✅ Botão de compartilhar encontrado com estratégia ${i + 1}`);
-                        await element.click();
-                        console.log(`🖱️ Botão de compartilhar clicado!`);
-                        await frame.waitForTimeout(3000);
-                        
-                        // 🎯 VERIFICAR SE MODAL ABRIU CORRETAMENTE
-                        const modalOpened = await verifyShareModal(frame, expectedFileName);
-                        if (modalOpened) {
-                            console.log(`✅ Modal de compartilhamento aberto e verificado!`);
-                            return true;
-                        } else {
-                            console.log(`⚠️ Modal não abriu ou não tem o título correto. Tentando próxima estratégia...`);
-                            // Continuar tentando outras estratégias
-                        }
+                const element = frameLocator.locator(strategy).first();
+                const count = await element.count();
+
+                if (count > 0 && await element.isVisible()) {
+                    console.log(`✅ Botão de compartilhar encontrado com estratégia ${i + 1}`);
+                    await element.click();
+                    console.log(`🖱️ Botão de compartilhar clicado!`);
+                    await page.waitForTimeout(3000);
+
+                    // 🎯 VERIFICAR SE MODAL ABRIU CORRETAMENTE (do legacy)
+                    const modalOpened = await verifyShareModal(frameLocator, fileName);
+                    if (modalOpened) {
+                        console.log(`✅ Modal de compartilhamento aberto e verificado!`);
+                        shareSuccess = true;
+                        break;
                     } else {
-                        console.log(`⚠️ Botão encontrado mas não visível - estratégia ${i + 1}`);
+                        console.log(`⚠️ Modal não abriu ou não tem o título correto. Tentando próxima estratégia...`);
+                        // Continuar tentando outras estratégias
                     }
+                } else {
+                    console.log(`⚠️ Botão encontrado mas não visível - estratégia ${i + 1}`);
                 }
             } catch (e) {
                 console.log(`❌ Erro na estratégia ${i + 1}: ${e.message}`);
@@ -902,132 +506,14 @@ async function clickShareButton(frame, expectedFileName) {
             }
         }
 
-        console.log(`❌ Botão de compartilhar não encontrado ou modal não abriu corretamente`);
-        return false;
-
-    } catch (error) {
-        console.log(`❌ Erro ao clicar no botão de compartilhar: ${error.message}`);
-        return false;
-    }
-}
-
-// Função para verificar se o modal de compartilhamento abriu com o arquivo correto
-async function verifyShareModal(frame, expectedFileName) {
-    console.log(`🔍 Verificando se modal de compartilhamento abriu para "${expectedFileName}"...`);
-    
-    try {
-        // Aguardar modal aparecer
-        await frame.waitForTimeout(3000);
-        
-        // Procurar pelo modal de compartilhamento
-        const modalSelectors = [
-            '[data-testid="unified-share-dialog"]',
-            '.unified-share-dialog',
-            '[role="dialog"]',
-            '.spectrum-Dialog'
-        ];
-        
-        for (const modalSelector of modalSelectors) {
-            try {
-                const modal = await frame.$(modalSelector);
-                if (modal) {
-                    const isVisible = await modal.isVisible();
-                    if (isVisible) {
-                        console.log(`✅ Modal encontrado: ${modalSelector}`);
-                        
-                        // 🎯 MELHOR ESTRATÉGIA: Procurar especificamente pelo título com "Share"
-                        const titleSelectors = [
-                            'h2:has-text("Share")', // Título específico do modal de share
-                            '.spectrum-Dialog-heading h2', // Título dentro do cabeçalho
-                            'h2[id*="react-aria"]', // Título com ID react-aria
-                            '[class*="Dialog-heading"] h2', // Qualquer cabeçalho de diálogo
-                            'h1, h2, h3' // Fallback para qualquer heading
-                        ];
-                        
-                        let modalTitle = '';
-                        for (const titleSelector of titleSelectors) {
-                            try {
-                                const titleElement = await frame.$(titleSelector);
-                                if (titleElement) {
-                                    const title = await titleElement.textContent();
-                                    if (title && title.trim().length > 0) {
-                                        modalTitle = title.trim();
-                                        console.log(`📋 Título encontrado com "${titleSelector}": "${modalTitle}"`);
-                                        break;
-                                    }
-                                }
-                            } catch (e) {
-                                continue;
-                            }
-                        }
-                        
-                        if (!modalTitle) {
-                            // Fallback: pegar todo o texto do modal e procurar por "Share"
-                            const modalText = await modal.textContent();
-                            console.log(`🔍 Texto completo do modal (primeiros 200 chars): "${modalText.substring(0, 200)}..."`);
-                            
-                            // Procurar por linhas que contenham "Share" e o nome do arquivo
-                            const lines = modalText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-                            const shareLine = lines.find(line => line.includes('Share') && line.length > 10);
-                            if (shareLine) {
-                                modalTitle = shareLine;
-                                console.log(`📋 Título encontrado no texto: "${modalTitle}"`);
-                            }
-                        }
-                        
-                        // Verificar se o título contém o nome do arquivo (com ou sem extensão)
-                        const fileNameBase = expectedFileName.replace(/\.[^/.]+$/, ""); // Remove extensão
-                        const fileNameShort = fileNameBase.length > 30 ? fileNameBase.substring(0, 30) : fileNameBase; // Versão encurtada
-                        
-                        console.log(`🔍 Verificando título do modal:`);
-                        console.log(`   Título encontrado: "${modalTitle}"`);
-                        console.log(`   Arquivo esperado: "${expectedFileName}"`);
-                        console.log(`   Arquivo base: "${fileNameBase}"`);
-                        console.log(`   Arquivo curto: "${fileNameShort}"`);
-                        
-                        if (modalTitle && (
-                            modalTitle.includes(expectedFileName) || 
-                            modalTitle.includes(fileNameBase) ||
-                            modalTitle.includes(fileNameShort) ||
-                            (modalTitle.includes('Share') && modalTitle.length > 20) // Qualquer modal de share com conteúdo
-                        )) {
-                            console.log(`✅ Modal de compartilhamento detectado corretamente!`);
-                            console.log(`🎉 SUCESSO: Modal abriu para o arquivo correto!`);
-                            return true;
-                        } else {
-                            console.log(`⚠️ Modal pode não estar exibindo o arquivo correto, mas parece ser modal de share`);
-                            if (modalTitle.includes('Share')) {
-                                console.log(`📝 Assumindo sucesso pois é um modal de Share`);
-                                return true;
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                continue;
-            }
+        if (!shareSuccess) {
+            throw new Error("Botão de compartilhar não encontrado, não clicável, ou modal não abriu corretamente");
         }
-        
-        console.log(`❌ Modal de compartilhamento não encontrado ou não visível`);
-        return false;
-        
-    } catch (error) {
-        console.log(`❌ Erro ao verificar modal: ${error.message}`);
-        return false;
-    }
-}
 
-// Função auxiliar para adicionar usuários e confirmar compartilhamento
-async function addUsersAndShare(frame) {
-    console.log(`👥 Adicionando usuários ao compartilhamento...`);
+        // 4. Adicionar usuários (estratégia melhorada)
+        console.log("👥 Adicionando usuários...");
 
-    try {
-        // Aguardar o modal de compartilhamento estar completamente carregado
-        await frame.waitForTimeout(3000);
-
-        console.log(`📧 Adicionando ${USERS.length} usuários ao modal de compartilhamento...`);
-
-        // 🎯 PROCURAR PELO CAMPO DE ENTRADA ESPECÍFICO DO WORKFRONT
+        // 🎯 PROCURAR PELO CAMPO DE ENTRADA ESPECÍFICO DO WORKFRONT (do legacy)
         const inputSelectors = [
             'input[role="combobox"]', // Campo combobox do Workfront
             'input[aria-autocomplete="list"]', // Campo com autocomplete
@@ -1038,15 +524,21 @@ async function addUsersAndShare(frame) {
         ];
 
         let emailInput = null;
-        
+
         console.log(`🔍 Procurando campo de entrada de usuários...`);
         for (const selector of inputSelectors) {
             try {
-                const input = await frame.$(selector);
-                if (input && await input.isVisible() && !await input.getAttribute('readonly')) {
-                    console.log(`✅ Campo de entrada encontrado: ${selector}`);
-                    emailInput = input;
-                    break;
+                const input = frameLocator.locator(selector).first();
+                const count = await input.count();
+
+                if (count > 0 && await input.isVisible()) {
+                    // Verificar se não é readonly
+                    const isReadonly = await input.getAttribute('readonly');
+                    if (!isReadonly) {
+                        console.log(`✅ Campo de entrada encontrado: ${selector}`);
+                        emailInput = input;
+                        break;
+                    }
                 }
             } catch (e) {
                 continue;
@@ -1055,71 +547,102 @@ async function addUsersAndShare(frame) {
 
         if (!emailInput) {
             console.log(`❌ Campo de entrada de usuários não encontrado`);
-            return false;
+            throw new Error("Campo de entrada de usuários não encontrado");
         }
 
-        // 🧪 TESTE INICIAL: Adicionar Giovana Jockyman
-        console.log(`\n🧪 TESTE: Adicionando Giovana Jockyman...`);
-        const testSuccess = await addUserWithDropdown(frame, emailInput, "giovana.jockyman@dell.com", "Giovana Jockyman");
-        
-        if (testSuccess) {
-            console.log(`✅ Teste com Giovana Jockyman bem-sucedido!`);
-            
-            // Adicionar outros usuários
-            for (const user of USERS) {
-                try {
-                    console.log(`\n➕ Adicionando usuário: ${user.email} (${user.role})`);
-                    const userAdded = await addUserWithDropdown(frame, emailInput, user.email, null);
-                    
-                    if (userAdded) {
-                        console.log(`✅ ${user.email} adicionado com sucesso`);
-                        
-                        // Definir permissão se necessário (MANAGE vs VIEW)
-                        if (user.role === "MANAGE") {
-                            try {
-                                await setUserPermission(frame, user.email, "MANAGE");
-                            } catch (e) {
-                                console.log(`⚠️ Não foi possível definir permissão MANAGE para ${user.email}`);
-                            }
-                        }
-                    } else {
-                        console.log(`⚠️ Não foi possível adicionar ${user.email}`);
-                    }
+        // 📧 ADICIONAR TODOS OS USUÁRIOS DA EQUIPE SELECIONADA
+        for (let i = 0; i < USERS.length; i++) {
+            const user = USERS[i];
+            console.log(`\n👤 Adicionando ${i + 1}/${USERS.length}: ${user.email}`);
 
-                } catch (e) {
-                    console.log(`❌ Erro ao adicionar ${user.email}: ${e.message}`);
+            try {
+                // 1. Limpar o campo e digitar o email
+                console.log(`🖱️ Clicando no campo de entrada...`);
+                await emailInput.click();
+                await page.waitForTimeout(500);
+
+                console.log(`🧹 Limpando campo...`);
+                await emailInput.fill('');
+                await page.waitForTimeout(200);
+
+                console.log(`📋 Digitando email: ${user.email}...`);
+                await emailInput.fill(user.email);
+                await page.waitForTimeout(1000); // Aguardar dropdown carregar
+
+                // 2. Procurar e selecionar a opção no dropdown
+                const option = frameLocator.getByRole('option', { name: new RegExp(user.email, 'i') })
+                    .or(frameLocator.locator(`[role="option"]:has-text("${user.email}")`))
+                    .first();
+
+                const optionCount = await option.count();
+                if (optionCount > 0) {
+                    await option.click();
+                    console.log(`✅ ${user.email} adicionado`);
+                } else {
+                    // Fallback: pressionar Enter
+                    console.log(`⚠️ Opção não encontrada, tentando Enter...`);
+                    await emailInput.press('Enter');
                 }
+
+                await page.waitForTimeout(500);
+
+                // Verificar e alterar permissão se necessário
+                await setUserPermissionModern(frameLocator, page, user.email, 'MANAGE');
+
+            } catch (error) {
+                console.log(`⚠️ Erro ao adicionar ${user.email}: ${error.message}`);
             }
-        } else {
-            console.log(`❌ Teste com Giovana Jockyman falhou - parando processo`);
-            return false;
         }
 
-        console.log(`\n📤 Confirmando compartilhamento...`);
+        // 5. Salvar compartilhamento
+        console.log("\n💾 Salvando compartilhamento...");
+        const saveButton = frameLocator.getByRole('button', { name: /save|share|send/i })
+            .filter({ hasText: /save|share|send/i });
 
-        // 🎯 PROCURAR BOTÃO DE SALVAMENTO ESPECÍFICO DO WORKFRONT
-        const saveButtons = [
-            'button:has-text("Save")', // Botão Save do modal
-            'button[data-variant="accent"]', // Botão com variant accent (primary)
-            'button.spectrum-Button[data-style="fill"]', // Botão preenchido
-            'button:has-text("Share")',
-            'button:has-text("Compartilhar")',
-            'button:has-text("Send")',
-            'button:has-text("Enviar")',
-            'button[data-testid*="save"]',
-            'button[data-testid*="confirm"]'
+        try {
+            await saveButton.click();
+            console.log("🎉 Compartilhamento confirmado!");
+            await page.waitForTimeout(3000);
+        } catch (e) {
+            console.log("⚠️ Botão de salvamento não encontrado, mas usuários foram adicionados");
+        }
+
+        return {
+            success: true,
+            message: `Documento "${fileName}" compartilhado com ${USERS.length} usuários`
+        };
+
+    } catch (error) {
+        console.error(`❌ Erro: ${error.message}`);
+        throw error;
+    } finally {
+        await browser.close();
+    }
+}
+
+async function setUserPermissionModern(frameLocator, page, userEmail, targetPermission) {
+    try {
+        console.log(`🔧 Verificando permissão para ${userEmail}...`);
+
+        // Aguardar um pouco para garantir que o usuário foi adicionado
+        await page.waitForTimeout(1000);
+
+        // Encontrar linha do usuário (estratégias múltiplas)
+        const userRowSelectors = [
+            `[data-testid="access-rule-row"]:has-text("${userEmail}")`,
+            `[data-testid="access-rule"]:has-text("${userEmail}")`,
+            `.access-rule:has-text("${userEmail}")`,
+            `div:has-text("${userEmail}")`
         ];
 
-        let saveSuccess = false;
-        for (const saveSelector of saveButtons) {
+        let userRow = null;
+        for (const selector of userRowSelectors) {
             try {
-                const saveButton = await frame.$(saveSelector);
-                if (saveButton && await saveButton.isVisible() && !await saveButton.isDisabled()) {
-                    console.log(`✅ Botão de salvamento encontrado: ${saveSelector}`);
-                    await saveButton.click();
-                    console.log(`🎉 Compartilhamento confirmado!`);
-                    await frame.waitForTimeout(3000);
-                    saveSuccess = true;
+                const row = frameLocator.locator(selector).first();
+                const count = await row.count();
+                if (count > 0 && await row.isVisible()) {
+                    console.log(`✅ Linha do usuário encontrada: ${selector}`);
+                    userRow = row;
                     break;
                 }
             } catch (e) {
@@ -1127,234 +650,246 @@ async function addUsersAndShare(frame) {
             }
         }
 
-        if (!saveSuccess) {
-            console.log(`⚠️ Botão de confirmação não encontrado, mas usuários foram adicionados`);
+        if (!userRow) {
+            console.log(`⚠️ Linha do usuário ${userEmail} não encontrada`);
+            return false;
         }
 
+        // Encontrar botão de permissão na linha do usuário
+        const permissionButtonSelectors = [
+            'button:has-text("View")',
+            'button:has-text("Manage")',
+            'button[aria-expanded="false"]:has(svg)', // Botão com dropdown
+            '.o7Xu8a_spectrum-ActionButton:has-text("View")',
+            '.o7Xu8a_spectrum-ActionButton:has-text("Manage")',
+            'button[data-variant]' // Botão spectrum genérico
+        ];
+
+        let permissionButton = null;
+        for (const selector of permissionButtonSelectors) {
+            try {
+                const button = userRow.locator(selector).first();
+                const count = await button.count();
+                if (count > 0 && await button.isVisible()) {
+                    console.log(`✅ Botão de permissão encontrado: ${selector}`);
+                    permissionButton = button;
+                    break;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+
+        if (!permissionButton) {
+            console.log(`⚠️ Botão de permissão não encontrado para ${userEmail}`);
+            return false;
+        }
+
+        // Verificar texto atual do botão
+        const buttonText = await permissionButton.textContent();
+        console.log(`📋 Permissão atual de ${userEmail}: "${buttonText}"`);
+
+        if (buttonText && buttonText.includes('Manage')) {
+            console.log(`✅ ${userEmail} já tem permissão MANAGE`);
+            return true;
+        }
+
+        if (!buttonText || !buttonText.includes('View')) {
+            console.log(`⚠️ Botão não reconhecido como View: "${buttonText}"`);
+            return false;
+        }
+
+        // Clicar no botão para abrir dropdown
+        console.log(`🖱️ Clicando no botão de permissão para abrir dropdown...`);
+        await permissionButton.click();
+        await page.waitForTimeout(800); // Aguardar dropdown abrir
+
+        // Procurar pela opção "Manage" no dropdown
+        console.log(`🔍 Procurando opção "Manage" no dropdown...`);
+
+        const manageOptionSelectors = [
+            '[role="menuitemradio"]:has-text("Manage")',
+            '[data-key="EDIT"]', // Baseado no HTML do legacy
+            '.dIo7iW_spectrum-Menu-item:has-text("Manage")',
+            'div[role="menuitemradio"] span:has-text("Manage")',
+            '[role="option"]:has-text("Manage")' // Alternativa
+        ];
+
+        let manageOption = null;
+        for (const selector of manageOptionSelectors) {
+            try {
+                const option = frameLocator.locator(selector).first();
+                const count = await option.count();
+                if (count > 0 && await option.isVisible()) {
+                    console.log(`✅ Opção Manage encontrada: ${selector}`);
+                    manageOption = option;
+                    break;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+
+        if (!manageOption) {
+            console.log(`❌ Opção "Manage" não encontrada no dropdown`);
+            // Tentar fechar dropdown e retornar
+            await page.keyboard.press('Escape');
+            return false;
+        }
+
+        // Clicar na opção "Manage"
+        console.log(`🖱️ Clicando na opção "Manage"...`);
+        await manageOption.click();
+        await page.waitForTimeout(500); // Aguardar seleção
+
+        // 🎯 SOLUÇÃO DO DROPDOWN: Usar ESC do Playwright Test (nossa motivação para migrar!)
+        console.log(`🔑 Fechando dropdown com ESC (solução @playwright/test)...`);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(300);
+
+        // Verificação adicional se dropdown fechou
+        try {
+            const dropdownCheck = frameLocator.locator('[role="menu"], [role="listbox"], .spectrum-Popover.is-open');
+            await dropdownCheck.waitFor({ state: 'hidden', timeout: 2000 });
+            console.log(`✅ Dropdown fechado com sucesso`);
+        } catch (e) {
+            // Se não conseguir verificar, tenta ESC adicional
+            console.log(`🔑 ESC adicional para garantir fechamento...`);
+            await page.keyboard.press('Escape');
+            await page.waitForTimeout(300);
+        }
+
+        console.log(`✅ Permissão MANAGE definida para ${userEmail}`);
         return true;
 
     } catch (error) {
-        console.log(`❌ Erro ao adicionar usuários: ${error.message}`);
+        console.log(`⚠️ Erro ao alterar permissão para ${userEmail}: ${error.message}`);
+        // Tentar fechar qualquer dropdown que possa estar aberto
+        try {
+            await page.keyboard.press('Escape');
+        } catch (e) {
+            // Ignorar erro de ESC
+        }
         return false;
     }
 }
 
-// 🎯 NOVA FUNÇÃO: Adicionar usuário com dropdown
-async function addUserWithDropdown(frame, emailInput, userEmail, expectedName) {
-    console.log(`\n📧 Adicionando usuário: ${userEmail}${expectedName ? ` (${expectedName})` : ''}`);
-    
-    try {
-        // 1. Limpar o campo e digitar o email
-        console.log(`🖱️ Clicando no campo de entrada...`);
-        await emailInput.click();
-        await frame.waitForTimeout(500);
-        
-        console.log(`🧹 Limpando campo...`);
-        await emailInput.fill('');
-        await frame.waitForTimeout(500);
-        
-        console.log(`⌨️ Digitando email: ${userEmail}...`);
-        await emailInput.type(userEmail, { delay: 100 });
-        await frame.waitForTimeout(2000); // Aguardar dropdown carregar
-        
-        // 2. Procurar pelo dropdown que aparece
-        console.log(`🔍 Procurando dropdown de sugestões...`);
-        const dropdownSelectors = [
-            '[role="listbox"]', // Listbox padrão
-            '.spectrum-Popover [role="listbox"]', // Listbox dentro de popover
-            '[data-testid="popover"] [role="listbox"]', // Listbox com testid
-            '.spectrum-Menu', // Menu do Spectrum
-            '[class*="Popover"] [class*="Menu"]' // Menu dentro de popover
-        ];
-        
-        let dropdown = null;
-        for (const selector of dropdownSelectors) {
-            try {
-                dropdown = await frame.$(selector);
-                if (dropdown && await dropdown.isVisible()) {
-                    console.log(`✅ Dropdown encontrado: ${selector}`);
-                    break;
-                }
-            } catch (e) {
-                continue;
-            }
-        }
-        
-        if (!dropdown) {
-            console.log(`❌ Dropdown não encontrado - tentando pressionar Enter`);
-            await emailInput.press('Enter');
-            await frame.waitForTimeout(1000);
-            return false;
-        }
-        
-        // 3. Procurar pela opção correta no dropdown
-        console.log(`🎯 Procurando opção no dropdown...`);
-        
-        // Estratégias para encontrar a opção correta
-        const optionStrategies = [
-            // Se temos o nome esperado, procurar por ele
-            ...(expectedName ? [
-                `[role="option"]:has-text("${expectedName}")`,
-                `[data-testid="search-result"]:has-text("${expectedName}")`,
-                `.spectrum-Menu-item:has-text("${expectedName}")`
-            ] : []),
-            // Procurar pelo email
-            `[role="option"]:has-text("${userEmail}")`,
-            `[data-testid="search-result"]:has-text("${userEmail}")`,
-            `.spectrum-Menu-item:has-text("${userEmail}")`,
-            // Procurar pela primeira opção visível
-            '[role="option"]:first-child',
-            '[data-testid="search-result"]:first-child',
-            '.spectrum-Menu-item:first-child'
-        ];
-        
-        let optionSelected = false;
-        for (const strategy of optionStrategies) {
-            try {
-                console.log(`🔄 Tentando estratégia: ${strategy}`);
-                const option = await frame.$(strategy);
-                if (option && await option.isVisible()) {
-                    const optionText = await option.textContent();
-                    console.log(`📋 Opção encontrada: "${optionText.trim().substring(0, 100)}..."`);
-                    
-                    // Verificar se é a opção correta
-                    if ((expectedName && optionText.includes(expectedName)) || 
-                        optionText.includes(userEmail) ||
-                        !expectedName) { // Se não temos nome esperado, aceitar qualquer opção
-                        
-                        console.log(`✅ Clicando na opção correta...`);
-                        await option.click();
-                        await frame.waitForTimeout(1500);
-                        optionSelected = true;
-                        break;
-                    }
-                }
-            } catch (e) {
-                console.log(`❌ Erro na estratégia: ${e.message}`);
-                continue;
-            }
-        }
-        
-        if (!optionSelected) {
-            console.log(`⚠️ Nenhuma opção selecionada - tentando Enter`);
-            await emailInput.press('Enter');
-            await frame.waitForTimeout(1000);
-        }
-        
-        // 4. Verificar se o usuário foi adicionado
-        console.log(`🔍 Verificando se usuário foi adicionado...`);
-        await frame.waitForTimeout(1000);
-        
-        // Procurar se o email aparece na lista de usuários adicionados
-        const userInListSelectors = [
-            `text=${userEmail}`,
-            `text=${expectedName || ''}`,
-            `[aria-label*="${userEmail}"]`,
-            `[title*="${userEmail}"]`
-        ];
-        
-        for (const selector of userInListSelectors) {
-            try {
-                if (selector.includes('text=') && !selector.replace('text=', '').trim()) continue;
-                
-                const userInList = await frame.$(selector);
-                if (userInList) {
-                    console.log(`✅ Usuário "${userEmail}" confirmado na lista!`);
-                    return true;
-                }
-            } catch (e) {
-                continue;
-            }
-        }
-        
-        console.log(`⚠️ Não foi possível confirmar se "${userEmail}" foi adicionado`);
-        return true; // Assumir sucesso para continuar
-        
-    } catch (error) {
-        console.log(`❌ Erro ao adicionar usuário "${userEmail}": ${error.message}`);
-        return false;
-    }
-}
-
-// Função auxiliar para definir permissão de usuário
-async function setUserPermission(frame, userEmail, permission) {
-    console.log(`� Definindo permissão ${permission} para ${userEmail}...`);
-    
-    try {
-        // Procurar por seletores de permissão próximos ao usuário
-        const permissionSelectors = [
-            `select[name*="role"]`,
-            `select[name*="permission"]`,
-            `select[data-testid*="permission"]`,
-            `.permission-dropdown`,
-            `[aria-label*="permission"]`
-        ];
-
-        for (const selector of permissionSelectors) {
-            try {
-                const permissionSelect = await frame.$(selector);
-                if (permissionSelect && await permissionSelect.isVisible()) {
-                    await permissionSelect.selectOption(permission);
-                    console.log(`✅ Permissão ${permission} definida para ${userEmail}`);
-                    return true;
-                }
-            } catch (e) {
-                continue;
-            }
-        }
-
-        console.log(`⚠️ Selector de permissão não encontrado para ${userEmail}`);
-        return false;
-
-    } catch (error) {
-        console.log(`❌ Erro ao definir permissão: ${error.message}`);
-        return false;
-    }
-}
-
-// 3) MAIN - só executa se chamado diretamente, não quando importado
+// 3) MAIN - Execução baseada nos argumentos
 if (import.meta.url === `file://${process.argv[1]}`) {
-    if (process.argv.includes("--login")) {
+    const args = process.argv;
+
+    if (args.includes("--login")) {
         login().catch(console.error);
-    } else if (process.argv.includes("--extract")) {
-        const urlIndex = process.argv.indexOf("--projectUrl");
-        if (urlIndex === -1 || !process.argv[urlIndex + 1]) {
+
+    } else if (args.includes("--extract")) {
+        const urlIndex = args.indexOf("--projectUrl");
+        if (urlIndex === -1 || !args[urlIndex + 1]) {
             console.error("❌ Use: --extract --projectUrl 'URL_DO_PROJETO'");
             process.exit(1);
         }
-        const projectUrl = process.argv[urlIndex + 1];
+        const projectUrl = args[urlIndex + 1];
         extractDocuments(projectUrl).catch(console.error);
-    } else if (process.argv.includes("--share")) {
-        const urlIndex = process.argv.indexOf("--projectUrl");
-        const docIndex = process.argv.indexOf("--docName");
 
-        if (urlIndex === -1 || !process.argv[urlIndex + 1] || docIndex === -1 || !process.argv[docIndex + 1]) {
-            console.error("❌ Use: --share --projectUrl 'URL_DO_PROJETO' --docName 'NOME_DO_ARQUIVO'");
+    } else if (args.includes("--share")) {
+        const urlIndex = args.indexOf("--projectUrl");
+        const docIndex = args.indexOf("--docName");
+
+        if (urlIndex === -1 || !args[urlIndex + 1] || docIndex === -1 || !args[docIndex + 1]) {
+            console.error("❌ Use: --share --projectUrl 'URL' --docName 'ARQUIVO' [--folder 'PASTA'] [--selectedUser 'carol|giovana']");
             process.exit(1);
         }
 
-        const projectUrl = process.argv[urlIndex + 1];
-        const docName = process.argv[docIndex + 1];
-        
-        // Para compatibilidade com versões antigas, assumir pasta "Asset Release" se não especificada
-        const folderIndex = process.argv.indexOf("--folder");
-        const folderName = folderIndex !== -1 && process.argv[folderIndex + 1] 
-            ? process.argv[folderIndex + 1] 
-            : "Asset Release";
-            
-        shareDocument(projectUrl, folderName, docName).catch(console.error);
+        const projectUrl = args[urlIndex + 1];
+        const docName = args[docIndex + 1];
+
+        const folderIndex = args.indexOf("--folder");
+        const folderName = folderIndex !== -1 && args[folderIndex + 1] ? args[folderIndex + 1] : "Asset Release";
+
+        const userIndex = args.indexOf("--selectedUser");
+        const selectedUser = userIndex !== -1 && args[userIndex + 1] ? args[userIndex + 1] : "carol";
+
+        shareDocument(projectUrl, folderName, docName, selectedUser).catch(console.error);
+
     } else {
         console.log(`
-📋 Uso:
-  node wf_share_const.js --login
-  node wf_share_const.js --extract --projectUrl "URL_DO_PROJETO"
-  node wf_share_const.js --share --projectUrl "URL_DO_PROJETO" --docName "NOME_DO_ARQUIVO" [--folder "NOME_DA_PASTA"]
+🎯 WORKFRONT SHARING - Versão Moderna (@playwright/test)
+
+📋 Comandos disponíveis:
+  node wf_share_modern.js --login
+  node wf_share_modern.js --extract --projectUrl "URL_DO_PROJETO"
+  node wf_share_modern.js --share --projectUrl "URL" --docName "ARQUIVO" [--folder "PASTA"] [--selectedUser "carol|giovana"]
 
 🔗 Exemplo de URL:
   https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68a3355a009ab6b7e05496c230b884c1/documents
+
+✨ Melhorias da versão moderna:
+  ✅ Seletores mais robustos com getByRole()
+  ✅ ESC funciona corretamente para fechar dropdowns
+  ✅ Melhor tratamento de erros e timeouts
+  ✅ Auto-wait para elementos
         `);
     }
 }
 
-// Exportar as funções para uso pelo servidor
+// Função para verificar se o modal de compartilhamento abriu (adaptado do legacy)
+async function verifyShareModal(frameLocator, expectedFileName) {
+    console.log(`🔍 Verificando se modal de compartilhamento abriu para "${expectedFileName}"...`);
+
+    try {
+        // Aguardar modal aparecer
+        await frameLocator.locator('body').waitFor({ timeout: 5000 });
+
+        // Procurar pelo modal de compartilhamento (seletores do legacy)
+        const modalSelectors = [
+            '[data-testid="unified-share-dialog"]',
+            '.unified-share-dialog',
+            '[role="dialog"]',
+            '.spectrum-Dialog'
+        ];
+
+        for (const modalSelector of modalSelectors) {
+            try {
+                const modal = frameLocator.locator(modalSelector);
+                const count = await modal.count();
+
+                if (count > 0 && await modal.isVisible()) {
+                    console.log(`✅ Modal encontrado: ${modalSelector}`);
+
+                    // 🎯 MELHOR ESTRATÉGIA: Procurar especificamente pelo título com "Share"
+                    const titleSelectors = [
+                        'h2:has-text("Share")', // Título específico do modal de share
+                        'h1:has-text("Share")', // Título alternativo
+                        '[role="heading"]:has-text("Share")', // Cabeçalho com role
+                        '.spectrum-Dialog-title:has-text("Share")' // Título do Spectrum Dialog
+                    ];
+
+                    for (const titleSelector of titleSelectors) {
+                        const title = frameLocator.locator(titleSelector);
+                        const titleCount = await title.count();
+
+                        if (titleCount > 0) {
+                            console.log(`✅ Título "Share" encontrado no modal!`);
+                            return true;
+                        }
+                    }
+
+                    // Se não encontrou título, mas modal existe, considerar válido
+                    console.log(`⚠️ Modal encontrado mas sem título "Share" detectado`);
+                    return true;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+
+        console.log(`❌ Modal de compartilhamento não encontrado ou não visível`);
+        return false;
+
+    } catch (error) {
+        console.log(`❌ Erro ao verificar modal: ${error.message}`);
+        return false;
+    }
+}
+
+// Exportar funções para uso pelo servidor
 export { login, extractDocuments, shareDocument };

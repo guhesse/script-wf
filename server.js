@@ -115,7 +115,7 @@ app.post('/api/extract-documents', async (req, res) => {
 // API para compartilhar documentos selecionados
 app.post('/api/share-documents', async (req, res) => {
     try {
-        const { projectUrl, selections, users } = req.body;
+        const { projectUrl, selections, users, selectedUser = 'carol' } = req.body;
         
         if (!projectUrl || !selections || !users) {
             return res.status(400).json({
@@ -128,6 +128,7 @@ app.post('/api/share-documents', async (req, res) => {
         console.log('URL:', projectUrl);
         console.log('Seleções:', selections);
         console.log('Usuários:', users.length);
+        console.log('Equipe selecionada:', selectedUser);
 
         const results = [];
         let successCount = 0;
@@ -138,8 +139,8 @@ app.post('/api/share-documents', async (req, res) => {
             try {
                 console.log(`\n📋 Compartilhando: ${selection.folder}/${selection.fileName}`);
                 
-                // Usar a função shareDocument importada com folder e fileName
-                await shareDocument(projectUrl, selection.folder, selection.fileName);
+                // Usar a função shareDocument importada com folder, fileName e selectedUser
+                await shareDocument(projectUrl, selection.folder, selection.fileName, selectedUser);
                 
                 results.push({
                     folder: selection.folder,

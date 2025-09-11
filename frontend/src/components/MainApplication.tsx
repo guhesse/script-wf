@@ -27,6 +27,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [shareResults, setShareResults] = useState<ShareResult[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana'>('carol');
 
   const { extractDocuments, shareDocuments, clearCache } = useWorkfrontApi();
 
@@ -104,7 +105,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
     });
 
     try {
-      const response = await shareDocuments(projectUrl, selections);
+      const response = await shareDocuments(projectUrl, selections, selectedUser);
       setShareResults(response.results);
       setShowResults(true);
     } catch (error) {
@@ -211,33 +212,70 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center mr-3 text-sm font-bold">
                   2
                 </div>
-                Selecionar Arquivos para Compartilhar
+                Selecionar Arquivos e Equipe
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-4">
-                Marque os arquivos que deseja compartilhar com os usuários configurados.
-              </p>
-              
-              {folders.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <FolderOpen className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <p>Adicione uma URL do projeto para ver os documentos disponíveis</p>
+              <div className="space-y-6">
+                {/* Seleção de Equipe */}
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3">Selecionar Equipe para Compartilhamento:</h4>
+                  <div className="flex gap-4">
+                    <Button
+                      variant={selectedUser === 'carol' ? 'default' : 'outline'}
+                      onClick={() => setSelectedUser('carol')}
+                      className="flex-1 justify-start"
+                    >
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      Equipe Completa (Carolina)
+                      <Badge variant="secondary" className="ml-2">7 pessoas</Badge>
+                    </Button>
+                    <Button
+                      variant={selectedUser === 'giovana' ? 'default' : 'outline'}
+                      onClick={() => setSelectedUser('giovana')}
+                      className="flex-1 justify-start"
+                    >
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      Equipe Reduzida (Giovana)
+                      <Badge variant="secondary" className="ml-2">3 pessoas</Badge>
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    {selectedUser === 'carol' 
+                      ? 'Inclui: Yasmin, Gabriela, Eduarda, Evili, Giovanna, Natascha e Carolina'
+                      : 'Inclui: Luiza, Gislaine e Giovana'
+                    }
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {folders.map((folder) => (
-                    <FolderSection
-                      key={folder.name}
-                      folder={folder}
-                      selectedFiles={selectedFiles}
-                      onFileToggle={handleFileToggle}
-                      onSelectAll={handleSelectAll}
-                      onDeselectAll={handleDeselectAll}
-                    />
-                  ))}
+
+                {/* Seleção de Arquivos */}
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3">Selecionar Arquivos:</h4>
+                  <p className="text-gray-600 mb-4">
+                    Marque os arquivos que deseja compartilhar com a equipe selecionada.
+                  </p>
+                  
+                  {folders.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <FolderOpen className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                      <p>Adicione uma URL do projeto para ver os documentos disponíveis</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {folders.map((folder) => (
+                        <FolderSection
+                          key={folder.name}
+                          folder={folder}
+                          selectedFiles={selectedFiles}
+                          onFileToggle={handleFileToggle}
+                          onSelectAll={handleSelectAll}
+                          onDeselectAll={handleDeselectAll}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
 
@@ -261,11 +299,22 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                   {summary.totalFiles === 0 ? (
                     <span className="text-gray-500">Nenhum arquivo selecionado</span>
                   ) : (
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span className="text-green-700 font-medium">
-                        {summary.totalFiles} arquivo(s) selecionado(s) em {summary.totalFolders} pasta(s)
-                      </span>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <span className="text-green-700 font-medium">
+                          {summary.totalFiles} arquivo(s) selecionado(s) em {summary.totalFolders} pasta(s)
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <UserCheck className="h-4 w-4 text-blue-500" />
+                        <span className="text-blue-700 text-sm">
+                          Equipe: {selectedUser === 'carol' ? 'Completa (Carolina)' : 'Reduzida (Giovana)'}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {selectedUser === 'carol' ? '7 pessoas' : '3 pessoas'}
+                        </Badge>
+                      </div>
                     </div>
                   )}
                 </div>

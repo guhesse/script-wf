@@ -5,6 +5,7 @@
   "description": "Interface visual para compartilhamento de documentos no Workfront",
   "main": "server.js",
   "dependencies": {
+    "@playwright/test": "^1.55.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "playwright": "^1.55.0"

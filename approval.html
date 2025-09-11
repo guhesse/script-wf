@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workfront Comments Generator</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    .mention {
+      background-color: var(--bs-blue-100, #cfe2ff);
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: var(--bs-blue-700, #084298);
+      font-weight: 500;
+    }
+
+    .mention:hover {
+      background-color: var(--bs-blue-200, #9ec5fe);
+      color: var(--bs-blue-800, #052c65);
+    }
+
+    .copyable-content {
+      border: 2px dashed var(--bs-border-color, #dee2e6);
+      padding: 20px;
+      margin: 15px 0;
+      background-color: var(--bs-light, #f8f9fa);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .copyable-content::after {
+      content: "👆 Clique para copiar";
+      position: absolute;
+      top: -8px;
+      right: 10px;
+      background: var(--bs-primary, #0d6efd);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      opacity: 0;
+      transform: translateY(-5px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+    }
+
+    .copyable-content:hover {
+      border-color: var(--bs-primary, #0d6efd);
+      background-color: #e7f3ff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    }
+
+    .copyable-content:hover::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .copyable-content:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 6px rgba(13, 110, 253, 0.25);
+    }
+
+    /* Cores específicas para cada passo */
+    .step-1 {
+      border-color: #6f42c1;
+      background-color: #f8f6ff;
+    }
+
+    .step-1:hover {
+      border-color: #6f42c1;
+      background-color: #ede7ff;
+      box-shadow: 0 4px 12px rgba(111, 66, 193, 0.15);
+    }
+
+    .step-1::after {
+      background: #6f42c1;
+    }
+
+    .step-2 {
+      border-color: #fd7e14;
+      background-color: #fff8f3;
+    }
+
+    .step-2:hover {
+      border-color: #fd7e14;
+      background-color: #ffebdb;
+      box-shadow: 0 4px 12px rgba(253, 126, 20, 0.15);
+    }
+
+    .step-2::after {
+      background: #fd7e14;
+    }
+
+    .step-3 {
+      border-color: #198754;
+      background-color: #f8fff9;
+    }
+
+    .step-3:hover {
+      border-color: #198754;
+      background-color: #e7f7ea;
+      box-shadow: 0 4px 12px rgba(25, 135, 84, 0.15);
+    }
+
+    .step-3::after {
+      background: #198754;
+    }
+
+    .card {
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      transition: box-shadow 0.15s ease-in-out;
+    }
+
+    .card:hover {
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .section-title {
+      color: var(--bs-primary, #0d6efd);
+      margin-bottom: 20px;
+      margin-top: 30px;
+    }
+
+    .selector-buttons {
+      margin-bottom: 20px;
+    }
+
+    .btn-selector {
+      border: 2px solid #dee2e6;
+      background: #f8f9fa;
+      color: #6c757d;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-selector.active {
+      background: linear-gradient(45deg, #0d6efd, #0056b3);
+      border-color: #0d6efd;
+      color: white;
+      box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+    }
+
+    .btn-selector:hover:not(.active) {
+      border-color: #0d6efd;
+      color: #0d6efd;
+    }
+
+    /* Toast Styles */
+    .toast-container {
+      z-index: 1055;
+    }
+
+    .toast {
+      min-width: 300px;
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .toast-success {
+      border-left: 4px solid #198754;
+    }
+
+    .toast-success .toast-header {
+      background-color: #d1e7dd;
+      color: #0a3622;
+    }
+
+    .toast-error {
+      border-left: 4px solid #dc3545;
+    }
+
+    .toast-error .toast-header {
+      background-color: #f8d7da;
+      color: #58151c;
+    }
+
+    @media (max-width: 768px) {
+      .copyable-content {
+        padding: 15px;
+      }
+
+      .copyable-content::after {
+        content: "👆 Toque para copiar";
+        font-size: 0.7rem;
+      }
+
+      .toast {
+        min-width: 250px;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-light">
+  <div class="container-fluid py-4">
+    <div class="row justify-content-center">
+      <div class="col-12">
+        <h1 class="text-center mb-4 text-primary">
+          Workfront Comments Generator
+        </h1>
+      </div>
+    </div>
+
+    <div class="row justify-content-center">
+      <!-- COLUNA ÚNICA -->
+      <div class="col-lg-8 col-md-10">
+        <div class="card">
+
+          <div class="card-body">
+
+            <!-- Seletor Global -->
+            <div class="selector-buttons mb-4">
+              <label class="form-label fw-bold">Selecione o(a) Responsável</label>
+              <div class="btn-group w-100" role="group" aria-label="Seletor de Responsável">
+                <button type="button" class="btn btn-selector active" id="btnCarol" onclick="selectUser('carol')">
+                  <i class="bi bi-person-fill"></i> Carolina Lipinski
+                </button>
+                <button type="button" class="btn btn-selector" id="btnGiovana" onclick="selectUser('giovana')">
+                  <i class="bi bi-person-fill"></i> Giovana Jockyman
+                </button>
+              </div>
+
+            </div>
+
+            <hr class="my-4">
+
+            <!-- 1. Aprovação SM -->
+            <h5 class="section-title" style="color: #6f42c1; border-bottom-color: #6f42c1;">
+              <i class="bi bi-person-check"></i> 1. Aprovação SM
+            </h5>
+
+            <div class="copyable-content step-1" id="content1">
+              <p class="mb-0">
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6404f185031cb4594c66a99fa57c36e5"
+                  class="mention" data-mention="USER_6404f185031cb4594c66a99fa57c36e5" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Carolina Lipinski</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66abd595000d58f156ae2cce417fd0a4"
+                  class="mention" data-mention="USER_66abd595000d58f156ae2cce417fd0a4" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Avidesh Bind</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66ab9d50000ead1d50a66758735c020b"
+                  class="mention" data-mention="USER_66ab9d50000ead1d50a66758735c020b" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Saish Kadam</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66a7e9b200333682efc3e680ca25bde8"
+                  class="mention" data-mention="USER_66a7e9b200333682efc3e680ca25bde8" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Jogeshkumar Vishwakarma</a>,
+                for your approval.
+              </p>
+            </div>
+
+            <!-- 2. Asset Release -->
+            <h5 class="section-title" style="color: #fd7e14; border-bottom-color: #fd7e14;">
+              <i class="bi bi-people"></i> 2. Asset Release - Equipe Completa
+            </h5>
+
+            <div class="copyable-content step-2" id="content2">
+              <p class="mb-0">
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04f003a037009d7bb6434c90f1bc"
+                  class="mention" data-mention="USER_682e04f003a037009d7bb6434c90f1bc" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Yasmin Lahm</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682cca1400bed8ae9149fedfdc5b0170"
+                  class="mention" data-mention="USER_682cca1400bed8ae9149fedfdc5b0170" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Gabriela Vargas</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66f6ab9b050fd317df75ed2a4de184e7"
+                  class="mention" data-mention="USER_66f6ab9b050fd317df75ed2a4de184e7" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Eduarda Ulrich</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6610596c008d57c44df182ec8183336d"
+                  class="mention" data-mention="USER_6610596c008d57c44df182ec8183336d" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Evili Borges</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04e403a004b47dad0ce00a992d84"
+                  class="mention" data-mention="USER_682e04e403a004b47dad0ce00a992d84" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Giovanna Deparis</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6867f5d90093ad0c57fbe5a22851a7d0"
+                  class="mention" data-mention="USER_6867f5d90093ad0c57fbe5a22851a7d0" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Natascha Batista</a>
+                <span> </span>
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6404f185031cb4594c66a99fa57c36e5"
+                  class="mention" data-mention="USER_6404f185031cb4594c66a99fa57c36e5" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Carolina Lipinski</a>, segue a pasta com os assets finais
+                da tarefa.
+              </p>
+            </div>
+
+
+            <!-- 3. Final Materials -->
+            <h5 class="section-title" style="color: #198754; border-bottom-color: #198754;">
+              <i class="bi bi-file-earmark-check"></i> 3. Final Materials
+            </h5>
+
+            <div class="copyable-content step-3" id="content3">
+              <p class="mb-0">
+                <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6404f185031cb4594c66a99fa57c36e5"
+                  class="mention" data-mention="USER_6404f185031cb4594c66a99fa57c36e5" data-lexical-mention="true"
+                  target="_blank" rel="noopener noreferrer">@Carolina Lipinski</a>, segue os materiais finais da tarefa.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Dados dos usuários
+    const users = {
+      carol: {
+        name: '@Carolina Lipinski',
+        id: 'USER_6404f185031cb4594c66a99fa57c36e5',
+        url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6404f185031cb4594c66a99fa57c36e5'
+      },
+      giovana: {
+        name: '@Giovana Jockyman',
+        id: 'USER_6414745101140908a941c911fbe572b4',
+        url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6414745101140908a941c911fbe572b4'
+      }
+    };
+
+    // Função para selecionar usuário com botões de estado
+    function selectUser(userType) {
+      // Remove classe active de todos os botões
+      document.getElementById('btnCarol').classList.remove('active');
+      document.getElementById('btnGiovana').classList.remove('active');
+
+      // Adiciona classe active ao botão selecionado
+      if (userType === 'carol') {
+        document.getElementById('btnCarol').classList.add('active');
+      } else {
+        document.getElementById('btnGiovana').classList.add('active');
+      }
+
+      // Atualiza todas as seções (1, 2, 3)
+      updateApprovalContent(userType);
+      updateAssetReleaseContent(userType);
+      updateFinalMaterialsContent(userType);
+    }
+
+    // Função para atualizar aprovação
+    function updateApprovalContent(userType = 'carol') {
+      const selectedUser = users[userType];
+      const content = document.getElementById('content1');
+
+      content.innerHTML = `
+        <p class="mb-0">
+          <a href="${selectedUser.url}"
+            class="mention" data-mention="${selectedUser.id}" data-lexical-mention="true" target="_blank"
+            rel="noopener noreferrer">${selectedUser.name}</a>
+          <span> </span>
+          <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66abd595000d58f156ae2cce417fd0a4"
+            class="mention" data-mention="USER_66abd595000d58f156ae2cce417fd0a4" data-lexical-mention="true" target="_blank"
+            rel="noopener noreferrer">@Avidesh Bind</a>
+          <span> </span>
+          <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66ab9d50000ead1d50a66758735c020b"
+            class="mention" data-mention="USER_66ab9d50000ead1d50a66758735c020b" data-lexical-mention="true" target="_blank"
+            rel="noopener noreferrer">@Saish Kadam</a>
+          <span> </span>
+          <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66a7e9b200333682efc3e680ca25bde8"
+            class="mention" data-mention="USER_66a7e9b200333682efc3e680ca25bde8" data-lexical-mention="true" target="_blank"
+            rel="noopener noreferrer">@Jogeshkumar Vishwakarma</a>,
+          for your approval.
+        </p>
+      `;
+    }
+
+    // Função para atualizar Asset Release
+    function updateAssetReleaseContent(userType = 'carol') {
+      const selectedUser = users[userType];
+      const content = document.getElementById('content2');
+
+      if (userType === 'carol') {
+        // Versão Carol: equipe completa
+        content.innerHTML = `
+          <p class="mb-0">
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04f003a037009d7bb6434c90f1bc"
+              class="mention" data-mention="USER_682e04f003a037009d7bb6434c90f1bc" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Yasmin Lahm</a>
+            <span> </span>
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682cca1400bed8ae9149fedfdc5b0170"
+              class="mention" data-mention="USER_682cca1400bed8ae9149fedfdc5b0170" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Gabriela Vargas</a>
+            <span> </span>
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66f6ab9b050fd317df75ed2a4de184e7"
+              class="mention" data-mention="USER_66f6ab9b050fd317df75ed2a4de184e7" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Eduarda Ulrich</a>
+            <span> </span>
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6610596c008d57c44df182ec8183336d"
+              class="mention" data-mention="USER_6610596c008d57c44df182ec8183336d" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Evili Borges</a>
+            <span> </span>
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04e403a004b47dad0ce00a992d84"
+              class="mention" data-mention="USER_682e04e403a004b47dad0ce00a992d84" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Giovanna Deparis</a>
+            <span> </span>
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6867f5d90093ad0c57fbe5a22851a7d0"
+              class="mention" data-mention="USER_6867f5d90093ad0c57fbe5a22851a7d0" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Natascha Batista</a>
+            <span> </span>
+            <a href="${selectedUser.url}"
+              class="mention" data-mention="${selectedUser.id}" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">${selectedUser.name}</a>, segue a pasta com os assets finais da tarefa.
+          </p>
+        `;
+      } else {
+        // Versão Giovana: apenas Luiza, Gislaine e Giovana
+        content.innerHTML = `
+          <p class="mb-0">
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66bcb320058d74ff5c0d17dd973e2de4"
+              class="mention" data-mention="USER_66bcb320058d74ff5c0d17dd973e2de4" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Luiza Schmidt</a>
+            <span> </span>
+            <a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66548d5f197c3da898c4645c95589111"
+              class="mention" data-mention="USER_66548d5f197c3da898c4645c95589111" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">@Gislaine Orico Paz</a>
+            <span> </span>
+            <a href="${selectedUser.url}"
+              class="mention" data-mention="${selectedUser.id}" data-lexical-mention="true" target="_blank"
+              rel="noopener noreferrer">${selectedUser.name}</a>, segue a pasta com os assets finais da tarefa.
+          </p>
+        `;
+      }
+    }
+
+    // Função para atualizar Final Materials
+    function updateFinalMaterialsContent(userType = 'carol') {
+      const selectedUser = users[userType];
+      const content = document.getElementById('content3');
+
+      content.innerHTML = `
+        <p class="mb-0">
+          <a href="${selectedUser.url}"
+            class="mention" data-mention="${selectedUser.id}" data-lexical-mention="true" target="_blank"
+            rel="noopener noreferrer">${selectedUser.name}</a>, segue os materiais finais da tarefa.
+        </p>
+      `;
+    }
+
+    // Função unificada para copiar conteúdo preservando os links
+    async function copyWithLinks(contentNum, event) {
+      const content = document.getElementById(`content${contentNum}`);
+
+      try {
+        // Cria um range de seleção
+        const range = document.createRange();
+        range.selectNodeContents(content);
+
+        // Seleciona o conteúdo
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Copia usando a Clipboard API moderna
+        if (navigator.clipboard && navigator.clipboard.write) {
+          const htmlContent = content.innerHTML;
+          const textContent = content.textContent;
+
+          const clipboardItems = [
+            new ClipboardItem({
+              'text/html': new Blob([htmlContent], { type: 'text/html' }),
+              'text/plain': new Blob([textContent], { type: 'text/plain' })
+            })
+          ];
+
+          await navigator.clipboard.write(clipboardItems);
+
+          let message;
+          switch (contentNum) {
+            case 1: message = '✅ Aprovação copiada com sucesso!'; break;
+            case 2: message = '✅ Asset Release copiado com sucesso!'; break;
+            case 3: message = '✅ Final Materials copiado com sucesso!'; break;
+            case 4: message = '✅ Notificação Final copiada com sucesso!'; break;
+            default: message = '✅ Conteúdo copiado com sucesso!';
+          }
+
+          showStatus(contentNum, message, 'success');
+        } else {
+          // Fallback para navegadores mais antigos
+          document.execCommand('copy');
+          showStatus(contentNum, '✅ Conteúdo copiado (modo compatibilidade)!', 'success');
+        }
+
+        // Remove a seleção
+        selection.removeAllRanges();
+
+        // Adiciona animação ao botão se o event estiver disponível
+        if (event && event.target) {
+          const button = event.target;
+          const originalClass = button.className;
+          const originalContent = button.innerHTML;
+
+          button.className = button.className.replace(/btn-(primary|warning|success|info)/, 'btn-success');
+          button.innerHTML = '<i class="bi bi-check-circle"></i> Copiado!';
+
+          setTimeout(() => {
+            button.className = originalClass;
+            button.innerHTML = originalContent;
+          }, 2000);
+        }
+
+      } catch (err) {
+        console.error('Erro ao copiar:', err);
+        showStatus(contentNum, '❌ Erro ao copiar conteúdo. Tente novamente.', 'error');
+      }
+    }
+
+    // Função para mostrar toast com animação
+    function showStatus(contentNum, message, type) {
+      showToast(message, type);
+    }
+
+    // Função para criar e mostrar toast
+    function showToast(message, type) {
+      const toastContainer = document.getElementById('toast-container');
+      const toastId = 'toast-' + Date.now();
+
+      const toastElement = document.createElement('div');
+      toastElement.className = `toast toast-${type}`;
+      toastElement.id = toastId;
+      toastElement.setAttribute('role', 'alert');
+      toastElement.setAttribute('aria-live', 'assertive');
+      toastElement.setAttribute('aria-atomic', 'true');
+
+      const icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle';
+      const title = type === 'success' ? 'Sucesso' : 'Erro';
+
+      toastElement.innerHTML = `
+        <div class="toast-header">
+          <i class="bi ${icon} me-2"></i>
+          <strong class="me-auto">${title}</strong>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+          ${message}
+        </div>
+      `;
+
+      toastContainer.appendChild(toastElement);
+
+      // Inicializa o toast do Bootstrap
+      const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: 4000
+      });
+
+      // Remove o elemento do DOM após fechar
+      toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+      });
+
+      toast.show();
+    }
+
+    // Event listener para melhorar a experiência de cópia manual
+    document.addEventListener('copy', function (e) {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const fragment = range.cloneContents();
+
+        // Cria um elemento temporário para manter a formatação
+        const div = document.createElement('div');
+        div.appendChild(fragment);
+
+        // Adiciona HTML e texto à área de transferência
+        e.clipboardData.setData('text/html', div.innerHTML);
+        e.clipboardData.setData('text/plain', div.textContent);
+      }
+    });
+
+    // Adiciona funcionalidade de copiar ao pressionar Ctrl+C
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const selection = window.getSelection();
+        if (selection.toString()) {
+          const closestContent = selection.anchorNode.closest('[id^="content"]');
+          if (closestContent) {
+            const contentNum = closestContent.id.replace('content', '');
+            showStatus(contentNum, '📋 Conteúdo copiado via teclado!', 'success');
+          }
+        }
+      }
+    });
+
+    // Adiciona efeitos visuais aos cards e funcionalidade de clique
+    document.addEventListener('DOMContentLoaded', function () {
+      const cards = document.querySelectorAll('.copyable-content');
+
+      cards.forEach((card, index) => {
+        const contentNum = index + 1; // content1, content2, content3
+
+        // Efeitos visuais existentes
+        card.addEventListener('mouseenter', function () {
+          this.style.transform = 'scale(1.02)';
+          this.style.transition = 'transform 0.2s ease';
+        });
+
+        card.addEventListener('mouseleave', function () {
+          this.style.transform = 'scale(1)';
+        });
+
+        // Nova funcionalidade de clique para copiar
+        card.addEventListener('click', function (event) {
+          event.preventDefault();
+          copyWithLinks(contentNum, event);
+        });
+
+        // Feedback visual no clique
+        card.addEventListener('mousedown', function () {
+          this.style.transform = 'scale(0.98)';
+        });
+
+        card.addEventListener('mouseup', function () {
+          this.style.transform = 'scale(1.02)';
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>

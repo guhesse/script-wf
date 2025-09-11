@@ -1,0 +1,49 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e7]:
+  - generic [ref=e8]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - img [ref=e14]
+        - heading "Experience Cloud" [level=2] [ref=e16]
+      - generic [ref=e18]: Sign in to access the Experience Cloud for your organization.
+    - generic [ref=e19]:
+      - main [ref=e23]:
+        - generic [ref=e25]:
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e30]:
+                - img "Information"
+              - generic [ref=e31]: Do you usually sign in with Facebook, Google or Apple? Enter your email below and we'll help you sign in.
+            - button "Close" [ref=e33] [cursor=pointer]: ×
+          - generic [ref=e35]:
+            - heading "Sign in" [level=1] [ref=e37]
+            - generic [ref=e39]:
+              - generic [ref=e40]:
+                - paragraph [ref=e41]:
+                  - text: New user?
+                  - link "Create an account" [ref=e42] [cursor=pointer]
+                - generic [ref=e43]:
+                  - generic [ref=e45]: Email address
+                  - textbox "Email address" [active] [ref=e49]
+              - button "Continue" [ref=e53] [cursor=pointer]
+            - list [ref=e55]:
+              - listitem [ref=e56]:
+                - link "Get help signing in" [ref=e57] [cursor=pointer]
+      - button "Contact us" [ref=e58] [cursor=pointer]
+  - complementary:
+    - link "Behance Paloma Rincón" [ref=e59] [cursor=pointer]:
+      - /url: https://www.behance.net/palomarincon
+      - generic [ref=e60] [cursor=pointer]:
+        - img "Behance" [ref=e62] [cursor=pointer]
+        - generic [ref=e63] [cursor=pointer]: Paloma Rincón
+  - generic [ref=e64]:
+    - generic [ref=e65]: Copyright © 2025 Adobe. All rights reserved.
+    - link "Terms of Use" [ref=e66] [cursor=pointer]
+    - generic [ref=e67] [cursor=pointer]: Cookie preferences
+    - link "Privacy" [ref=e68] [cursor=pointer]:
+      - /url: https://www.adobe.com/go/privacy_policy_linkfree_en
+    - link "Do not sell or share my personal information" [ref=e69] [cursor=pointer]:
+      - /url: https://www.adobe.com/privacy/us-rights-linkfree.html
+```

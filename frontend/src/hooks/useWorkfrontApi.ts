@@ -99,7 +99,8 @@ export const useWorkfrontApi = () => {
 
   const shareDocuments = useCallback(async (
     projectUrl: string, 
-    selections: ShareSelection[]
+    selections: ShareSelection[],
+    selectedUser: 'carol' | 'giovana' = 'carol'
   ): Promise<ShareResponse> => {
     if (selections.length === 0) {
       toast.warning('Selecione pelo menos um arquivo para compartilhar');
@@ -107,8 +108,9 @@ export const useWorkfrontApi = () => {
     }
 
     const totalFiles = selections.length;
+    const teamName = selectedUser === 'carol' ? 'Equipe Completa (Carolina)' : 'Equipe Reduzida (Giovana)';
     setIsLoading(true);
-    setLoadingMessage(`Compartilhando ${totalFiles} arquivo(s)...\nEste processo pode demorar alguns minutos.`);
+    setLoadingMessage(`Compartilhando ${totalFiles} arquivo(s) com ${teamName}...\nEste processo pode demorar alguns minutos.`);
     
     try {
       const response = await fetch('/api/share-documents', {
@@ -119,7 +121,8 @@ export const useWorkfrontApi = () => {
         body: JSON.stringify({
           projectUrl,
           selections,
-          users: [] // Será usado pelos usuários configurados no backend
+          users: [], // Será usado pelos usuários configurados no backend
+          selectedUser
         })
       });
       
