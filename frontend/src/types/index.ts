@@ -51,4 +51,28 @@ export interface ShareResponse {
   };
 }
 
+export interface WorkfrontProject {
+  id: string;
+  url: string;
+  title: string;
+  projectId?: string;
+  dsid?: string;
+  status: 'ACTIVE' | 'ARCHIVED' | 'COMPLETED';
+  createdAt: string;
+  updatedAt: string;
+  lastAccessedAt?: string;
+  accessCount: number;
+}
+
+export interface ProjectHistoryResponse {
+  success: boolean;
+  projects: WorkfrontProject[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export type ToastType = 'success' | 'error' | 'warning' | 'info';

@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DBLINK")
+}
+
+// Modelo para armazenar o histórico de links/projetos do Workfront
+model WorkfrontProject {
+  id          String     @id @default(cuid())
+  url         String     @unique
+  title       String?
+  description String?
+  projectId   String? // ID do projeto no Workfront
+  dsid        String? // DSID extraído do nome do projeto
+  status      LinkStatus @default(ACTIVE)
+  accessedAt  DateTime   @default(now())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relacionamento com sessões de acesso
+  accessSessions AccessSession[]
+
+  @@map("workfront_projects")
+}
+
+// Modelo para rastrear sessões de acesso aos projetos
+model AccessSession {
+  id         String   @id @default(cuid())
+  projectId  String
+  userAgent  String?
+  ipAddress  String?
+  accessedAt DateTime @default(now())
+
+  // Relacionamento com o projeto
+  project WorkfrontProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("access_sessions")
+}
+
+// Enum para status dos projetos
+enum LinkStatus {
+  ACTIVE
+  ARCHIVED
+  EXPIRED
+  ERROR
+}

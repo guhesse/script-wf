@@ -1,5 +1,17 @@
-// server.js
-import app from './src/app.js';
+// ser// Verificar conexão com banco de dados
+async function checkDatabaseConnection() {
+  try {
+    // Tentar conectar sem validar o schema primeiro
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('✅ Conectado ao banco de dados PostgreSQL');
+  } catch (error) {
+    console.error('❌ Erro ao conectar com o banco de dados:', error.message);
+    console.log('💡 Verifique se o DATABASE_URL está configurado corretamente');
+    console.log('💡 Para desenvolvimento, a URL pode estar hardcoded no schema.prisma');
+    // Não encerrar o processo, permitir que rode mesmo sem banco para desenvolvimento
+    console.log('⚠️ Continuando sem conexão com banco...');
+  }
+}rt app from './src/app.js';
 import prisma from './src/database/prisma.js';
 
 const PORT = process.env.PORT || 3000;
@@ -7,13 +19,13 @@ const PORT = process.env.PORT || 3000;
 // Verificar conexão com banco de dados
 async function checkDatabaseConnection() {
   try {
-    // Tentar uma query simples para testar conexão
-    await prisma.$queryRaw`SELECT 1`;
+    await prisma.$connect();
     console.log('✅ Conectado ao banco de dados PostgreSQL');
   } catch (error) {
     console.error('❌ Erro ao conectar com o banco de dados:', error.message);
-    console.log('💡 Para desenvolvimento, a URL pode estar hardcoded no schema.prisma');
-    console.log('⚠️ Continuando sem conexão com banco...');
+    console.log('💡 Verifique se o DATABASE_URL está configurado corretamente no .env');
+    console.log('� Para desenvolvimento local, execute: npx prisma dev');
+    process.exit(1);
   }
 }
 
@@ -28,8 +40,8 @@ async function startServer() {
       console.log('🚀 ===============================================');
       console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
       console.log(`📱 Acesse a interface web em seu navegador`);
-      console.log(`🗄️ Banco de dados: PostgreSQL (Prisma)`);
-      console.log(`🔧 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`�️  Banco de dados: PostgreSQL (Prisma)`);
+      console.log(`� Ambiente: ${process.env.NODE_ENV || 'development'}`);
       console.log('🚀 ===============================================');
       
       if (process.env.NODE_ENV === 'development') {
