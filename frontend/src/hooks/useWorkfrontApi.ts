@@ -5,7 +5,9 @@ import type {
   LoginStatusResponse,
   DocumentsResponse,
   ShareSelection,
-  ShareResponse
+  ShareResponse,
+  ProjectHistoryResponse,
+  WorkfrontProject
 } from '@/types';
 
 export const useWorkfrontApi = () => {
@@ -235,6 +237,95 @@ export const useWorkfrontApi = () => {
     }
   }, []);
 
+  const getProjectHistory = useCallback(async (page = 1, limit = 10): Promise<ProjectHistoryResponse> => {
+    try {
+      const response = await fetch(`/api/projects/history?page=${page}&limit=${limit}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Erro ao buscar histórico:', error);
+      throw new Error('Erro ao buscar histórico de projetos');
+    }
+  }, []);
+
+  const getProjectByUrl = useCallback(async (url: string): Promise<WorkfrontProject | null> => {
+    try {
+      const encodedUrl = encodeURIComponent(url);
+      const response = await fetch(`/api/projects/by-url?url=${encodedUrl}`);
+      const data = await response.json();
+      return data.success ? data.project : null;
+    } catch (error) {
+      console.error('Erro ao buscar projeto por URL:', error);
+      return null;
+    }
+  }, []);
+
+  const addComment = useCallback(async (params: {
+    projectUrl: string;
+    folderName?: string;
+    fileName: string;
+    commentType?: 'assetRelease' | 'finalMaterials' | 'approval';
+    selectedUser?: 'carol' | 'giovana' | 'test';
+    headless?: boolean;
+  }): Promise<{ success: boolean; message: string; commentText?: string }> => {
+    setIsLoading(true);
+    setLoadingMessage('Adicionando comentário no documento...');
+
+    try {
+      const response = await fetch('/api/add-comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          projectUrl: params.projectUrl,
+          folderName: params.folderName,
+          fileName: params.fileName,
+          commentType: params.commentType || 'assetRelease',
+          selectedUser: params.selectedUser || 'test',
+          headless: params.headless !== false
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Comentário adicionado com sucesso!\n${data.message}`);
+        return data;
+      } else {
+        toast.error(data.error || 'Erro ao adicionar comentário');
+        throw new Error(data.error || 'Erro ao adicionar comentário');
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error);
+      toast.error('Erro de conexão ao adicionar comentário');
+      throw error;
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, []);
+
+  const getCommentPreview = useCallback(async (params: {
+    commentType: 'assetRelease' | 'finalMaterials' | 'approval';
+    selectedUser: 'carol' | 'giovana' | 'test';
+  }): Promise<{ success: boolean; commentText: string; users: Array<{ name: string; email: string }> }> => {
+    try {
+      const response = await fetch('/api/comment/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao obter preview do comentário:', error);
+      throw new Error('Erro ao obter preview do comentário');
+    }
+  }, []);
+
   return {
     isLoading,
     loadingMessage,
@@ -243,6 +334,10 @@ export const useWorkfrontApi = () => {
     extractDocuments,
     extractDocumentsWithProgress,
     shareDocuments,
-    clearCache
+    clearCache,
+    getProjectHistory,
+    getProjectByUrl,
+    addComment,
+    getCommentPreview
   };
 };

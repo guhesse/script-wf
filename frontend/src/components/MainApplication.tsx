@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Share,
   LogOut,
@@ -11,10 +12,17 @@ import {
   FolderOpen,
   CheckCircle,
   UserCheck,
-  Workflow
+  Workflow,
+  FileText,
+  MessageSquare,
+  History,
+  FolderDown
 } from 'lucide-react';
 import { FolderSection } from './FolderSection';
 import { ProgressIndicator } from './ProgressIndicator';
+import { ProjectHistory } from './ProjectHistory';
+import { CommentSection } from './CommentSection';
+import BulkDownload from './BulkDownload';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import type { WorkfrontFolder, ShareSelection, ShareResult } from '@/types';
 
@@ -29,6 +37,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [shareResults, setShareResults] = useState<ShareResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana'>('carol');
+  const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
 
   // Estados para progresso
   const [showProgress, setShowProgress] = useState(false);
@@ -47,7 +56,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
     data?: unknown;
   }>>([]);
 
-  const { extractDocumentsWithProgress, shareDocuments, clearCache } = useWorkfrontApi();
+  const { extractDocumentsWithProgress, shareDocuments, clearCache, getProjectByUrl } = useWorkfrontApi();
 
   const handleLogoutWithCacheClearing = async () => {
     try {
@@ -60,12 +69,42 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
     }
   };
 
+  const extractDSID = (title: string): string | null => {
+    // Extrair DSID do formato: 2601G0179_0057_5297982 (Esses números são o DSID)
+    const match = title.match(/(\d{7})/);
+    return match ? match[1] : null;
+  };
+
+  const handleLoadProjectFromHistory = async (projectUrl: string) => {
+    setProjectUrl(projectUrl);
+    
+    // Buscar informações do projeto no backend
+    try {
+      const project = await getProjectByUrl(projectUrl);
+      if (project) {
+        console.log('Projeto carregado do histórico:', project);
+        setCurrentProject({
+          title: project.title || 'Projeto Workfront',
+          dsid: project.dsid || extractDSID(project.title || '') || undefined
+        });
+        // Extrair automaticamente os documentos
+        await handleExtractDocuments(projectUrl);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar projeto do histórico:', error);
+      // Mesmo com erro, tentamos extrair
+      await handleExtractDocuments(projectUrl);
+    }
+  };
+
   const isValidUrl = (url: string) => {
     return url && url.includes('workfront') && url.includes('documents');
   };
 
-  const handleExtractDocuments = async () => {
-    if (!isValidUrl(projectUrl)) {
+  const handleExtractDocuments = async (urlToUse?: string) => {
+    const urlToExtract = urlToUse || projectUrl;
+    
+    if (!isValidUrl(urlToExtract)) {
       return;
     }
 
@@ -91,7 +130,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
       };
 
       // Usar a extração com progresso
-      const extractedFolders = await extractDocumentsWithProgress(projectUrl, handleProgress);
+      const extractedFolders = await extractDocumentsWithProgress(urlToExtract, handleProgress);
 
       setFolders(extractedFolders);
       setSelectedFiles(new Set());
@@ -215,6 +254,30 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
             steps={progressSteps}
           />
 
+          {/* Main Content Tabs */}
+          <Tabs defaultValue="extract" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="extract" className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Extrair & Compartilhar
+              </TabsTrigger>
+              <TabsTrigger value="comment" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Comentários
+              </TabsTrigger>
+              <TabsTrigger value="bulk-download" className="flex items-center gap-2">
+                <FolderDown className="h-4 w-4" />
+                Download em Massa
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Histórico
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tab Content: Extract & Share */}
+            <TabsContent value="extract" className="space-y-6">
+
           {/* Step 1: Project URL */}
           <Card className="border-l-4 border-l-purple-500">
             <CardHeader>
@@ -229,6 +292,33 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
               <p className="text-gray-600 mb-4">
                 Cole a URL da página de documentos do projeto Workfront para extrair a lista de arquivos.
               </p>
+              
+              {/* Informações do Projeto Atual */}
+              {currentProject && (
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <h4 className="font-medium text-purple-800 mb-2 flex items-center">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Projeto Atual
+                  </h4>
+                  <div className="space-y-1">
+                    <p className="text-sm text-purple-700">
+                      <strong>Título:</strong> {currentProject.title}
+                    </p>
+                    {currentProject.dsid && (
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm text-purple-700">DSID:</strong>
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-purple-100 text-purple-800 border-purple-200"
+                        >
+                          {currentProject.dsid}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex gap-3">
                 <Input
                   type="url"
@@ -238,7 +328,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                   className="flex-1"
                 />
                 <Button
-                  onClick={handleExtractDocuments}
+                  onClick={() => handleExtractDocuments()}
                   disabled={!isValidUrl(projectUrl)}
                   className="px-6"
                 >
@@ -412,6 +502,31 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
               )}
             </CardContent>
           </Card>
+            </TabsContent>
+
+            {/* Tab Content: Comments */}
+            <TabsContent value="comment" className="space-y-6">
+              <CommentSection
+                projectUrl={projectUrl}
+                folders={folders}
+                selectedUser={selectedUser}
+                currentProject={currentProject}
+              />
+            </TabsContent>
+
+            {/* Tab Content: Bulk Download */}
+            <TabsContent value="bulk-download" className="space-y-6">
+              <BulkDownload />
+            </TabsContent>
+
+            {/* Tab Content: History */}
+            <TabsContent value="history" className="space-y-6">
+              <ProjectHistory 
+                onLoadProject={handleLoadProjectFromHistory}
+                className="border-l-4 border-l-indigo-500"
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
