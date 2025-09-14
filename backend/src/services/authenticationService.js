@@ -12,19 +12,19 @@ export class AuthenticationService {
     async login() {
         try {
             console.log('🔑 Iniciando processo de login no Workfront...');
-            
+
             // Implementar login diretamente com Playwright
             await this.performWorkfrontLogin();
-            
+
             console.log('✅ Login concluído com sucesso');
-            
+
             // Verificar se o arquivo de estado foi criado
             const isLoggedIn = await this.checkLoginStatus();
-            
+
             if (!isLoggedIn.loggedIn) {
                 throw new Error('Login aparentemente falhou - arquivo de estado não encontrado');
             }
-            
+
             return {
                 success: true,
                 message: 'Login realizado com sucesso! Sessão salva.',
@@ -42,7 +42,7 @@ export class AuthenticationService {
      * Realizar login no Workfront usando Playwright
      */
     async performWorkfrontLogin() {
-        console.log("🔐 === FAZENDO LOGIN NO WORKFRONT ===");
+        console.log('🔐 === FAZENDO LOGIN NO WORKFRONT ===');
 
         const browser = await chromium.launch({
             headless: false, // Login sempre visível para autenticação manual
@@ -56,10 +56,10 @@ export class AuthenticationService {
 
             const page = await context.newPage();
 
-            console.log("🌍 Abrindo Experience Cloud...");
-            await page.goto("https://experience.adobe.com/", { waitUntil: "domcontentloaded" });
+            console.log('🌍 Abrindo Experience Cloud...');
+            await page.goto('https://experience.adobe.com/', { waitUntil: 'domcontentloaded' });
 
-            console.log("👤 Complete o login SSO/MFA nos próximos 90 segundos...");
+            console.log('👤 Complete o login SSO/MFA nos próximos 90 segundos...');
             await page.waitForTimeout(90000);
 
             // Salvar estado da sessão
@@ -78,7 +78,7 @@ export class AuthenticationService {
         try {
             // Verificar se arquivo de sessão existe
             await fs.access(STATE_FILE);
-            
+
             // Obter informações do arquivo
             const stats = await fs.stat(STATE_FILE);
             const now = new Date();
@@ -119,7 +119,7 @@ export class AuthenticationService {
     async getSessionInfo() {
         try {
             const status = await this.checkLoginStatus();
-            
+
             if (!status.loggedIn) {
                 return {
                     hasSession: false,
@@ -156,9 +156,9 @@ export class AuthenticationService {
     async clearSession() {
         try {
             console.log('🧹 Limpando sessão do Workfront...');
-            
+
             await fs.unlink(STATE_FILE);
-            
+
             console.log('✅ Sessão limpa com sucesso');
             return {
                 success: true,
@@ -188,7 +188,7 @@ export class AuthenticationService {
     async validateSession() {
         try {
             const status = await this.checkLoginStatus();
-            
+
             if (!status.loggedIn) {
                 return {
                     valid: false,
@@ -233,7 +233,7 @@ export class AuthenticationService {
                     .map(cookie => cookie.domain)
                     .filter(domain => domain)
                     .filter((domain, index, arr) => arr.indexOf(domain) === index); // unique
-                
+
                 return domains.join(', ');
             }
             return 'Desconhecido';
@@ -248,7 +248,7 @@ export class AuthenticationService {
     async getSessionStats() {
         try {
             const status = await this.checkLoginStatus();
-            
+
             if (!status.loggedIn) {
                 return {
                     hasStats: false,

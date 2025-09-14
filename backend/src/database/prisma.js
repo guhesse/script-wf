@@ -4,16 +4,16 @@ import { PrismaClient } from '@prisma/client';
 const globalForPrisma = globalThis;
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'],
+    log: ['query', 'info', 'warn', 'error']
 });
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+    globalForPrisma.prisma = prisma;
 }
 
 // Graceful shutdown
 process.on('beforeExit', async () => {
-  await prisma.$disconnect();
+    await prisma.$disconnect();
 });
 
 export default prisma;

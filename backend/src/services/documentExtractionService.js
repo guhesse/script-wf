@@ -65,7 +65,7 @@ export class DocumentExtractionService {
      */
     async performDocumentExtraction(projectUrl, headless = true, onProgress = null) {
         const startTime = Date.now();
-        console.log("📂 === EXTRAINDO DOCUMENTOS DO PROJETO ===");
+        console.log('📂 === EXTRAINDO DOCUMENTOS DO PROJETO ===');
         console.log(`🔗 URL: ${projectUrl}`);
         console.log(`⏱️ Iniciado em: ${new Date().toLocaleTimeString()}`);
         console.log(`👁️ Modo: ${headless ? 'Headless (invisível)' : 'Visível'}`);
@@ -83,15 +83,15 @@ export class DocumentExtractionService {
 
             const page = await context.newPage();
 
-            console.log("🌍 Carregando projeto...");
-            await page.goto(projectUrl, { waitUntil: "domcontentloaded" });
+            console.log('🌍 Carregando projeto...');
+            await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
             await page.waitForTimeout(3000);
 
             if (onProgress) {
                 onProgress('loading', 'Carregando interface do Workfront...', 30);
             }
 
-            console.log("🔍 Encontrando frame do Workfront...");
+            console.log('🔍 Encontrando frame do Workfront...');
             const frameLocator = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
 
             // Aguardar interface carregar
@@ -154,11 +154,11 @@ export class DocumentExtractionService {
             const totalTime = ((endTime - startTime) / 1000).toFixed(2);
             const totalFiles = folders.reduce((sum, folder) => sum + folder.files.length, 0);
 
-            console.log("\n" + "=".repeat(50));
+            console.log('\n' + '='.repeat(50));
             console.log(`⏱️ TEMPO TOTAL: ${totalTime}s`);
             console.log(`📊 RESULTADO: ${totalFiles} arquivos em ${folders.length} pastas`);
             console.log(`🏁 Concluído em: ${new Date().toLocaleTimeString()}`);
-            console.log("=".repeat(50));
+            console.log('='.repeat(50));
 
             const result = {
                 success: true,
@@ -196,7 +196,7 @@ export class DocumentExtractionService {
         const files = [];
 
         try {
-            console.log("🔍 Analisando arquivos na pasta...");
+            console.log('🔍 Analisando arquivos na pasta...');
             await frameLocator.locator('body').waitFor({ timeout: 3000 });
 
             // Estratégia 1: Procurar por containers de documentos específicos
@@ -233,7 +233,7 @@ export class DocumentExtractionService {
 
             // Estratégia 2: Fallback - procurar por qualquer link de documento
             if (files.length === 0) {
-                console.log("🔄 Usando estratégia fallback...");
+                console.log('🔄 Usando estratégia fallback...');
 
                 const allLinks = frameLocator.locator('a[href*="document"], a.doc-item-link');
                 const linkCount = await allLinks.count();
@@ -358,7 +358,7 @@ export class DocumentExtractionService {
         try {
             const validPatterns = [
                 /experience\.adobe\.com.*workfront.*project/i,
-                /workfront\.com.*project/i,
+                /workfront\.com.*project/i
             ];
 
             return validPatterns.some(pattern => pattern.test(url));

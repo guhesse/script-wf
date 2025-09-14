@@ -7,8 +7,11 @@
   "dependencies": {
     "@playwright/test": "^1.55.0",
     "@prisma/client": "^6.16.1",
+    "canvas": "^3.2.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.4.149",
     "playwright": "^1.55.0",
     "prisma": "^6.16.1",
     "swagger-jsdoc": "^6.2.8",
@@ -17,6 +20,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "lint": "eslint src/**/*.js server.js",
+    "lint:fix": "eslint src/**/*.js server.js --fix",
     "login": "node wf_share_const.js --login",
     "share": "node wf_share_const.js --share",
     "frontend:dev": "cd frontend && npm run dev",
@@ -34,8 +39,11 @@
     "db:reset": "dotenv -e .env.prisma -- prisma migrate reset --force"
   },
   "devDependencies": {
+    "@eslint/config-array": "^0.21.0",
+    "@eslint/js": "^9.35.0",
     "concurrently": "^8.2.2",
     "dotenv-cli": "^10.0.0",
+    "eslint": "^9.35.0",
     "nodemon": "^3.0.1"
   }
 }
