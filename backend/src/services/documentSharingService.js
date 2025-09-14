@@ -5,19 +5,19 @@ const STATE_FILE = 'wf_state.json';
 
 // Configuração de equipes
 const CAROL_TEAM = [
-    { email: "yasmin.lahm@dell.com", role: "MANAGE" },
-    { email: "gabriela.vargas1@dell.com", role: "MANAGE" },
-    { email: "eduarda.ulrich@dell.com", role: "MANAGE" },
-    { email: "evili.borges@dell.com", role: "MANAGE" },
-    { email: "giovanna.deparis@dell.com", role: "MANAGE" },
-    { email: "natascha.batista@dell.com", role: "MANAGE" },
-    { email: "carolina.lipinski@dell.com", role: "MANAGE" }
+    { email: 'yasmin.lahm@dell.com', role: 'MANAGE' },
+    { email: 'gabriela.vargas1@dell.com', role: 'MANAGE' },
+    { email: 'eduarda.ulrich@dell.com', role: 'MANAGE' },
+    { email: 'evili.borges@dell.com', role: 'MANAGE' },
+    { email: 'giovanna.deparis@dell.com', role: 'MANAGE' },
+    { email: 'natascha.batista@dell.com', role: 'MANAGE' },
+    { email: 'carolina.lipinski@dell.com', role: 'MANAGE' }
 ];
 
 const GIOVANA_TEAM = [
-    { email: "luiza.schmidt@dell.com", role: "MANAGE" },
-    { email: "gislaine.orico@dell.com", role: "MANAGE" },
-    { email: "giovana.jockyman@dell.com", role: "MANAGE" }
+    { email: 'luiza.schmidt@dell.com', role: 'MANAGE' },
+    { email: 'gislaine.orico@dell.com', role: 'MANAGE' },
+    { email: 'giovana.jockyman@dell.com', role: 'MANAGE' }
 ];
 
 export class DocumentSharingService {
@@ -177,7 +177,7 @@ export class DocumentSharingService {
         // Validar URL do Workfront
         const validPatterns = [
             /experience\.adobe\.com.*workfront.*project/i,
-            /workfront\.com.*project/i,
+            /workfront\.com.*project/i
         ];
 
         const isValidUrl = validPatterns.some(pattern => pattern.test(projectUrl));
@@ -276,7 +276,7 @@ export class DocumentSharingService {
      * Realizar compartilhamento de documento usando Playwright
      */
     async performDocumentShare(projectUrl, folderName, fileName, selectedUser = 'carol', headless = true) {
-        console.log("🔗 === COMPARTILHANDO DOCUMENTO ===");
+        console.log('🔗 === COMPARTILHANDO DOCUMENTO ===');
         console.log(`📁 Pasta: ${folderName}`);
         console.log(`📄 Arquivo: ${fileName}`);
         console.log(`👥 Equipe: ${selectedUser}`);
@@ -298,11 +298,11 @@ export class DocumentSharingService {
 
             const page = await context.newPage();
 
-            console.log("🌍 Abrindo projeto...");
-            await page.goto(projectUrl, { waitUntil: "domcontentloaded" });
+            console.log('🌍 Abrindo projeto...');
+            await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
             await page.waitForTimeout(3000);
 
-            console.log("🔍 Encontrando frame do Workfront...");
+            console.log('🔍 Encontrando frame do Workfront...');
             const frameLocator = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
 
             // 1. Navegar para a pasta correta
@@ -331,7 +331,7 @@ export class DocumentSharingService {
                         if (count > 0) {
                             console.log(`✅ Elemento encontrado com estratégia ${i + 1}`);
                             await element.click();
-                            console.log(`🖱️ Clique executado, aguardando carregamento...`);
+                            console.log('🖱️ Clique executado, aguardando carregamento...');
                             await page.waitForTimeout(4000);
                             navigationSuccess = true;
                             break;
@@ -351,7 +351,7 @@ export class DocumentSharingService {
             }
 
             // 2. Aguardar e selecionar documento
-            console.log(`📄 Aguardando lista de documentos carregar...`);
+            console.log('📄 Aguardando lista de documentos carregar...');
             await page.waitForTimeout(3000);
 
             console.log(`📄 Procurando documento: ${fileName}`);
@@ -388,7 +388,7 @@ export class DocumentSharingService {
 
                 const selector = `.doc-detail-view:nth-of-type(${targetElement.index + 1})`;
                 await frameLocator.locator(selector).click();
-                console.log(`🖱️ Clique executado no div.doc-detail-view!`);
+                console.log('🖱️ Clique executado no div.doc-detail-view!');
                 await page.waitForTimeout(2000);
             } else {
                 console.log(`❌ Documento não encontrado: ${fileName}`);
@@ -396,7 +396,7 @@ export class DocumentSharingService {
             }
 
             // 3. Clicar em Share
-            console.log("🔗 Procurando botão de compartilhar...");
+            console.log('🔗 Procurando botão de compartilhar...');
 
             const shareStrategies = [
                 'button[data-testid="share"]',
@@ -419,12 +419,12 @@ export class DocumentSharingService {
                     if (count > 0 && await element.isVisible()) {
                         console.log(`✅ Botão de compartilhar encontrado com estratégia ${i + 1}`);
                         await element.click();
-                        console.log(`🖱️ Botão de compartilhar clicado!`);
+                        console.log('🖱️ Botão de compartilhar clicado!');
                         await page.waitForTimeout(3000);
 
                         const modalOpened = await this.verifyShareModal(frameLocator, fileName);
                         if (modalOpened) {
-                            console.log(`✅ Modal de compartilhamento aberto e verificado!`);
+                            console.log('✅ Modal de compartilhamento aberto e verificado!');
                             shareSuccess = true;
                             break;
                         }
@@ -436,11 +436,11 @@ export class DocumentSharingService {
             }
 
             if (!shareSuccess) {
-                throw new Error("Botão de compartilhar não encontrado, não clicável, ou modal não abriu corretamente");
+                throw new Error('Botão de compartilhar não encontrado, não clicável, ou modal não abriu corretamente');
             }
 
             // 4. Adicionar usuários
-            console.log("👥 Adicionando usuários...");
+            console.log('👥 Adicionando usuários...');
 
             const inputSelectors = [
                 'input[role="combobox"]',
@@ -471,7 +471,7 @@ export class DocumentSharingService {
             }
 
             if (!emailInput) {
-                throw new Error("Campo de entrada de usuários não encontrado");
+                throw new Error('Campo de entrada de usuários não encontrado');
             }
 
             // Adicionar todos os usuários da equipe
@@ -512,16 +512,16 @@ export class DocumentSharingService {
             }
 
             // 5. Salvar compartilhamento
-            console.log("\n💾 Salvando compartilhamento...");
+            console.log('\n💾 Salvando compartilhamento...');
             const saveButton = frameLocator.getByRole('button', { name: /save|share|send/i })
                 .filter({ hasText: /save|share|send/i });
 
             try {
                 await saveButton.click();
-                console.log("🎉 Compartilhamento confirmado!");
+                console.log('🎉 Compartilhamento confirmado!');
                 await page.waitForTimeout(3000);
             } catch (e) {
-                console.log("⚠️ Botão de salvamento não encontrado, mas usuários foram adicionados");
+                console.log('⚠️ Botão de salvamento não encontrado, mas usuários foram adicionados');
             }
 
             return {
@@ -573,12 +573,12 @@ export class DocumentSharingService {
                             const titleCount = await title.count();
 
                             if (titleCount > 0) {
-                                console.log(`✅ Título "Share" encontrado no modal!`);
+                                console.log('✅ Título "Share" encontrado no modal!');
                                 return true;
                             }
                         }
 
-                        console.log(`⚠️ Modal encontrado mas sem título "Share" detectado`);
+                        console.log('⚠️ Modal encontrado mas sem título "Share" detectado');
                         return true;
                     }
                 } catch (e) {
@@ -586,7 +586,7 @@ export class DocumentSharingService {
                 }
             }
 
-            console.log(`❌ Modal de compartilhamento não encontrado ou não visível`);
+            console.log('❌ Modal de compartilhamento não encontrado ou não visível');
             return false;
 
         } catch (error) {

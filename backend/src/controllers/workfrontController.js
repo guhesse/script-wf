@@ -26,7 +26,7 @@ export class WorkfrontController {
             console.error('❌ Erro no login:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -42,7 +42,7 @@ export class WorkfrontController {
             console.error('❌ Erro ao verificar status do login:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -58,7 +58,7 @@ export class WorkfrontController {
             if (!url) {
                 return res.status(400).json({
                     success: false,
-                    message: 'URL do projeto é obrigatória',
+                    message: 'URL do projeto é obrigatória'
                 });
             }
 
@@ -68,7 +68,7 @@ export class WorkfrontController {
             if (!documentExtractionService.isValidWorkfrontUrl(projectUrl)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'URL do projeto inválida. Use uma URL do Workfront.',
+                    message: 'URL do projeto inválida. Use uma URL do Workfront.'
                 });
             }
 
@@ -111,7 +111,7 @@ export class WorkfrontController {
                 const project = await workfrontProjectService.saveProjectFromUrl(projectUrl, {
                     title: result.projectTitle,
                     userAgent: req.get('User-Agent'),
-                    ipAddress: req.ip || req.connection.remoteAddress,
+                    ipAddress: req.ip || req.connection.remoteAddress
                 });
 
                 sendEvent('completed', 'Extração concluída com sucesso', 100, {
@@ -121,7 +121,7 @@ export class WorkfrontController {
                     project: {
                         id: project.id,
                         url: project.url,
-                        title: project.title,
+                        title: project.title
                     }
                 });
 
@@ -136,7 +136,7 @@ export class WorkfrontController {
             console.error('❌ Erro no streaming:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -147,7 +147,7 @@ export class WorkfrontController {
             if (!projectUrl) {
                 return res.status(400).json({
                     success: false,
-                    message: 'URL do projeto é obrigatória',
+                    message: 'URL do projeto é obrigatória'
                 });
             }
 
@@ -155,7 +155,7 @@ export class WorkfrontController {
             if (!workfrontProjectService.isValidWorkfrontUrl(projectUrl)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'URL do projeto inválida. Use uma URL do Workfront.',
+                    message: 'URL do projeto inválida. Use uma URL do Workfront.'
                 });
             }
 
@@ -164,7 +164,7 @@ export class WorkfrontController {
             const result = await workfrontProjectService.extractAndSaveDocuments(projectUrl, {
                 userAgent: req.get('User-Agent'),
                 ipAddress: req.ip || req.connection.remoteAddress,
-                headless: true,
+                headless: true
             });
 
             console.log('✅ Documentos extraídos e salvos com sucesso');
@@ -175,14 +175,14 @@ export class WorkfrontController {
                 project: {
                     id: result.project.id,
                     url: result.project.url,
-                    title: result.project.title,
-                },
+                    title: result.project.title
+                }
             });
         } catch (error) {
             console.error('❌ Erro na extração:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -197,7 +197,7 @@ export class WorkfrontController {
             if (!projectUrl || !selections || !users) {
                 return res.status(400).json({
                     success: false,
-                    message: 'URL do projeto, seleções e usuários são obrigatórios',
+                    message: 'URL do projeto, seleções e usuários são obrigatórios'
                 });
             }
 
@@ -207,7 +207,7 @@ export class WorkfrontController {
                 if (!documentExtractionService.isValidWorkfrontUrl(projectUrl)) {
                     return res.status(400).json({
                         success: false,
-                        message: 'URL do projeto inválida. Use uma URL do Workfront.',
+                        message: 'URL do projeto inválida. Use uma URL do Workfront.'
                     });
                 }
             }
@@ -225,7 +225,7 @@ export class WorkfrontController {
                     selectedUser,
                     userAgent: req.get('User-Agent'),
                     ipAddress: req.ip || req.connection.remoteAddress,
-                    headless: false, // Visível para permitir interação se necessário
+                    headless: false // Visível para permitir interação se necessário
                 }
             );
 
@@ -234,7 +234,7 @@ export class WorkfrontController {
                 await workfrontProjectService.saveProjectFromUrl(projectUrl, {
                     title: 'Compartilhamento realizado',
                     userAgent: req.get('User-Agent'),
-                    ipAddress: req.ip || req.connection.remoteAddress,
+                    ipAddress: req.ip || req.connection.remoteAddress
                 });
             } catch (projectError) {
                 console.warn('⚠️ Erro ao registrar acesso ao projeto:', projectError.message);
@@ -248,7 +248,7 @@ export class WorkfrontController {
             res.status(500).json({
                 success: false,
                 message: 'Erro interno durante compartilhamento',
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -263,20 +263,20 @@ export class WorkfrontController {
             const options = {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                status,
+                status
             };
 
             const result = await workfrontProjectService.getProjectHistory(options);
 
             res.json({
                 success: true,
-                ...result,
+                ...result
             });
         } catch (error) {
             console.error('❌ Erro ao buscar histórico:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -293,19 +293,19 @@ export class WorkfrontController {
             if (!project) {
                 return res.status(404).json({
                     success: false,
-                    message: 'Projeto não encontrado',
+                    message: 'Projeto não encontrado'
                 });
             }
 
             res.json({
                 success: true,
-                project,
+                project
             });
         } catch (error) {
             console.error('❌ Erro ao buscar projeto:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -320,7 +320,7 @@ export class WorkfrontController {
             if (!url) {
                 return res.status(400).json({
                     success: false,
-                    message: 'URL é obrigatória',
+                    message: 'URL é obrigatória'
                 });
             }
 
@@ -328,13 +328,13 @@ export class WorkfrontController {
 
             res.json({
                 success: true,
-                project,
+                project
             });
         } catch (error) {
             console.error('❌ Erro ao buscar projeto por URL:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -351,13 +351,13 @@ export class WorkfrontController {
             res.json({
                 success: true,
                 message: 'Projeto arquivado com sucesso',
-                project,
+                project
             });
         } catch (error) {
             console.error('❌ Erro ao arquivar projeto:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -373,13 +373,13 @@ export class WorkfrontController {
 
             res.json({
                 success: true,
-                message: 'Projeto deletado com sucesso',
+                message: 'Projeto deletado com sucesso'
             });
         } catch (error) {
             console.error('❌ Erro ao deletar projeto:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -393,13 +393,13 @@ export class WorkfrontController {
 
             res.json({
                 success: true,
-                stats,
+                stats
             });
         } catch (error) {
             console.error('❌ Erro ao buscar estatísticas:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -416,7 +416,7 @@ export class WorkfrontController {
             res.status(500).json({
                 success: false,
                 message: 'Erro ao limpar cache',
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -474,7 +474,7 @@ export class WorkfrontController {
             console.error('❌ Erro ao adicionar comentário:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -508,7 +508,7 @@ export class WorkfrontController {
             console.error('❌ Erro ao gerar preview:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -562,7 +562,7 @@ export class WorkfrontController {
                     await workfrontProjectService.saveProjectFromUrl(projectUrl, {
                         title: 'Download em massa realizado',
                         userAgent: req.get('User-Agent'),
-                        ipAddress: req.ip || req.connection.remoteAddress,
+                        ipAddress: req.ip || req.connection.remoteAddress
                     });
                 }
             } catch (projectError) {
@@ -583,7 +583,7 @@ export class WorkfrontController {
             console.error('❌ Erro no download em massa:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
             });
         }
     }
@@ -613,7 +613,126 @@ export class WorkfrontController {
             console.error('❌ Erro ao gerar preview do download:', error.message);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Extrair texto e comentários de arquivos PDF
+     */
+    async extractPdfContent(req, res) {
+        try {
+            console.log('📄 Requisição para extração de PDF recebida');
+
+            const { pdfFilePath } = req.body;
+
+            if (!pdfFilePath) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Caminho do arquivo PDF é obrigatório'
+                });
+            }
+
+            console.log(`📄 Extraindo conteúdo do PDF: ${pdfFilePath}`);
+
+            const result = await documentBulkDownloadService.extractPdfContent(pdfFilePath);
+
+            console.log('✅ Extração de PDF concluída');
+            res.json({
+                success: true,
+                message: 'Conteúdo extraído com sucesso',
+                ...result
+            });
+
+        } catch (error) {
+            console.error('❌ Erro na extração de PDF:', error.message);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Processar todos os PDFs em uma pasta de projeto
+     */
+    async processPdfsInProject(req, res) {
+        try {
+            console.log('📁 Requisição para processar PDFs de projeto recebida');
+
+            const { projectPath, projectName } = req.body;
+
+            if (!projectPath) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Caminho do projeto é obrigatório'
+                });
+            }
+
+            console.log(`📁 Processando PDFs do projeto: ${projectName || 'Projeto sem nome'}`);
+
+            const results = await documentBulkDownloadService.processPdfsInProject(
+                projectPath,
+                projectName || 'projeto'
+            );
+
+            const summary = {
+                totalPdfs: results.length,
+                successful: results.filter(r => r.hasContent).length,
+                failed: results.filter(r => r.error).length,
+                totalCharacters: results.reduce((sum, r) => sum + (r.textLength || 0), 0)
+            };
+
+            console.log('✅ Processamento de PDFs concluído');
+            console.log(`📊 Resumo: ${summary.successful}/${summary.totalPdfs} PDFs processados com sucesso`);
+
+            res.json({
+                success: true,
+                message: 'Processamento de PDFs concluído',
+                summary,
+                results
+            });
+
+        } catch (error) {
+            console.error('❌ Erro no processamento de PDFs:', error.message);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Buscar dados estruturados de PDFs processados
+     */
+    async getStructuredData(req, res) {
+        try {
+            console.log('📄 Requisição para buscar dados estruturados recebida');
+
+            const { projectPath } = req.query;
+
+            if (!projectPath) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Caminho do projeto é obrigatório'
+                });
+            }
+
+            const structuredDataList = await documentBulkDownloadService.getStructuredDataFromProject(projectPath);
+
+            console.log(`✅ Encontrados ${structuredDataList.length} arquivos com dados estruturados`);
+
+            res.json({
+                success: true,
+                data: structuredDataList
+            });
+
+        } catch (error) {
+            console.error('❌ Erro ao buscar dados estruturados:', error.message);
+            res.status(500).json({
+                success: false,
+                error: error.message
             });
         }
     }

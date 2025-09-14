@@ -301,7 +301,7 @@ router.post('/comment/preview', workfrontController.getCommentPreview.bind(workf
  *                 items:
  *                   type: string
  *                 description: Lista de URLs dos projetos Workfront
- *                 example: 
+ *                 example:
  *                   - "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/project1/documents"
  *                   - "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/project2/documents"
  *               downloadPath:
@@ -568,5 +568,174 @@ router.delete('/projects/:id', workfrontController.deleteProject.bind(workfrontC
  *                   type: object
  */
 router.get('/dashboard/stats', workfrontController.getDashboardStats.bind(workfrontController));
+
+/**
+ * @swagger
+ * /api/extract-pdf:
+ *   post:
+ *     summary: Extrair texto e comentários de um arquivo PDF
+ *     tags: [Extração de PDF]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pdfFilePath
+ *             properties:
+ *               pdfFilePath:
+ *                 type: string
+ *                 description: Caminho absoluto para o arquivo PDF
+ *                 example: "C:/Downloads/5372936/brief/documento.pdf"
+ *     responses:
+ *       200:
+ *         description: Conteúdo extraído com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 fileName:
+ *                   type: string
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     title:
+ *                       type: string
+ *                     author:
+ *                       type: string
+ *                     pages:
+ *                       type: number
+ *                 text:
+ *                   type: string
+ *                   description: Texto extraído do PDF
+ *                 textLength:
+ *                   type: number
+ *                 hasContent:
+ *                   type: boolean
+ *       400:
+ *         description: Caminho do arquivo é obrigatório
+ *       500:
+ *         description: Erro na extração
+ */
+router.post('/extract-pdf', workfrontController.extractPdfContent.bind(workfrontController));
+
+/**
+ * @swagger
+ * /api/process-pdfs:
+ *   post:
+ *     summary: Processar todos os PDFs em uma pasta de projeto
+ *     tags: [Extração de PDF]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - projectPath
+ *             properties:
+ *               projectPath:
+ *                 type: string
+ *                 description: Caminho para a pasta do projeto
+ *                 example: "C:/Downloads/5372936"
+ *               projectName:
+ *                 type: string
+ *                 description: Nome do projeto (opcional)
+ *                 example: "5372936"
+ *     responses:
+ *       200:
+ *         description: PDFs processados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalPdfs:
+ *                       type: number
+ *                     successful:
+ *                       type: number
+ *                     failed:
+ *                       type: number
+ *                     totalCharacters:
+ *                       type: number
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       fileName:
+ *                         type: string
+ *                       hasContent:
+ *                         type: boolean
+ *                       textLength:
+ *                         type: number
+ */
+router.post('/process-pdfs', workfrontController.processPdfsInProject.bind(workfrontController));
+
+/**
+ * @swagger
+ * /api/structured-data:
+ *   get:
+ *     summary: Buscar dados estruturados de PDFs processados
+ *     tags: [Extração de PDF]
+ *     parameters:
+ *       - in: query
+ *         name: projectPath
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Caminho para a pasta do projeto
+ *         example: "C:/Downloads/5372936"
+ *     responses:
+ *       200:
+ *         description: Dados estruturados encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       fileName:
+ *                         type: string
+ *                       fields:
+ *                         type: object
+ *                         properties:
+ *                           liveDate:
+ *                             type: string
+ *                           vf:
+ *                             type: string
+ *                           headlineCopy:
+ *                             type: string
+ *                           copy:
+ *                             type: string
+ *                           description:
+ *                             type: string
+ *                           cta:
+ *                             type: string
+ *                       links:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *       400:
+ *         description: Caminho do projeto é obrigatório
+ *       500:
+ *         description: Erro na busca
+ */
+router.get('/structured-data', workfrontController.getStructuredData.bind(workfrontController));
 
 export default router;

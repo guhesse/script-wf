@@ -19,23 +19,23 @@ app.use(requestLogger);
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Workfront Sharing API',
-  customfavIcon: '/favicon.ico'
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Workfront Sharing API',
+    customfavIcon: '/favicon.ico'
 }));
 
 // Rota para servir o JSON do Swagger
 app.get('/api-docs.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
 });
 
 // Servir arquivos estáticos do frontend
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
+    app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
 } else {
-  // Em desenvolvimento, servir a versão antiga
-  app.use(express.static(path.join(__dirname, '..', 'public')));
+    // Em desenvolvimento, servir a versão antiga
+    app.use(express.static(path.join(__dirname, '..', 'public')));
 }
 
 // Rotas da API
@@ -43,20 +43,20 @@ app.use('/api', workfrontRoutes);
 
 // Rota para servir o frontend (SPA)
 app.get('/', (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    res.sendFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
-  } else {
-    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-  }
+    if (process.env.NODE_ENV === 'production') {
+        res.sendFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
+    } else {
+        res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+    }
 });
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-  });
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
 });
 
 // Middleware de tratamento de erros (deve ser o último)

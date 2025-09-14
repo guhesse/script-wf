@@ -8,77 +8,77 @@ const STATE_FILE = 'wf_state.json';
 const USERS_CONFIG = {
     // Carolina's team
     carol: [
-        { 
-            name: "Yasmin Lahm", 
-            email: "yasmin.lahm@dell.com", 
-            id: "USER_682e04f003a037009d7bb6434c90f1bc",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04f003a037009d7bb6434c90f1bc"
+        {
+            name: 'Yasmin Lahm',
+            email: 'yasmin.lahm@dell.com',
+            id: 'USER_682e04f003a037009d7bb6434c90f1bc',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04f003a037009d7bb6434c90f1bc'
         },
-        { 
-            name: "Gabriela Vargas", 
-            email: "gabriela.vargas1@dell.com", 
-            id: "USER_682cca1400bed8ae9149fedfdc5b0170",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682cca1400bed8ae9149fedfdc5b0170"
+        {
+            name: 'Gabriela Vargas',
+            email: 'gabriela.vargas1@dell.com',
+            id: 'USER_682cca1400bed8ae9149fedfdc5b0170',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682cca1400bed8ae9149fedfdc5b0170'
         },
-        { 
-            name: "Eduarda Ulrich", 
-            email: "eduarda.ulrich@dell.com", 
-            id: "USER_66f6ab9b050fd317df75ed2a4de184e7",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66f6ab9b050fd317df75ed2a4de184e7"
+        {
+            name: 'Eduarda Ulrich',
+            email: 'eduarda.ulrich@dell.com',
+            id: 'USER_66f6ab9b050fd317df75ed2a4de184e7',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66f6ab9b050fd317df75ed2a4de184e7'
         },
-        { 
-            name: "Evili Borges", 
-            email: "evili.borges@dell.com", 
-            id: "USER_6610596c008d57c44df182ec8183336d",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6610596c008d57c44df182ec8183336d"
+        {
+            name: 'Evili Borges',
+            email: 'evili.borges@dell.com',
+            id: 'USER_6610596c008d57c44df182ec8183336d',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6610596c008d57c44df182ec8183336d'
         },
-        { 
-            name: "Giovanna Deparis", 
-            email: "giovanna.deparis@dell.com", 
-            id: "USER_682e04e403a004b47dad0ce00a992d84",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04e403a004b47dad0ce00a992d84"
+        {
+            name: 'Giovanna Deparis',
+            email: 'giovanna.deparis@dell.com',
+            id: 'USER_682e04e403a004b47dad0ce00a992d84',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/682e04e403a004b47dad0ce00a992d84'
         },
-        { 
-            name: "Natascha Batista", 
-            email: "natascha.batista@dell.com", 
-            id: "USER_6867f5d90093ad0c57fbe5a22851a7d0",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6867f5d90093ad0c57fbe5a22851a7d0"
+        {
+            name: 'Natascha Batista',
+            email: 'natascha.batista@dell.com',
+            id: 'USER_6867f5d90093ad0c57fbe5a22851a7d0',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6867f5d90093ad0c57fbe5a22851a7d0'
         },
-        { 
-            name: "Carolina Lipinski", 
-            email: "carolina.lipinski@dell.com", 
-            id: "USER_6404f185031cb4594c66a99fa57c36e5",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6404f185031cb4594c66a99fa57c36e5"
+        {
+            name: 'Carolina Lipinski',
+            email: 'carolina.lipinski@dell.com',
+            id: 'USER_6404f185031cb4594c66a99fa57c36e5',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6404f185031cb4594c66a99fa57c36e5'
         }
     ],
     // Giovana's team
     giovana: [
-        { 
-            name: "Luiza Schmidt", 
-            email: "luiza.schmidt@dell.com", 
-            id: "USER_66bcb320058d74ff5c0d17dd973e2de4",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66bcb320058d74ff5c0d17dd973e2de4"
+        {
+            name: 'Luiza Schmidt',
+            email: 'luiza.schmidt@dell.com',
+            id: 'USER_66bcb320058d74ff5c0d17dd973e2de4',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66bcb320058d74ff5c0d17dd973e2de4'
         },
-        { 
-            name: "Gislaine Orico Paz", 
-            email: "gislaine.orico@dell.com", 
-            id: "USER_66548d5f197c3da898c4645c95589111",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66548d5f197c3da898c4645c95589111"
+        {
+            name: 'Gislaine Orico Paz',
+            email: 'gislaine.orico@dell.com',
+            id: 'USER_66548d5f197c3da898c4645c95589111',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66548d5f197c3da898c4645c95589111'
         },
-        { 
-            name: "Giovana Jockyman", 
-            email: "giovana.jockyman@dell.com", 
-            id: "USER_6414745101140908a941c911fbe572b4",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6414745101140908a941c911fbe572b4"
+        {
+            name: 'Giovana Jockyman',
+            email: 'giovana.jockyman@dell.com',
+            id: 'USER_6414745101140908a941c911fbe572b4',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6414745101140908a941c911fbe572b4'
         }
     ],
     // Para testes
     test: [
-        { 
-            name: "Gustavo Hesse", 
-            email: "gustavo.hesse@dell.com", 
-            id: "USER_6601d747001b2091cb952da29f7285e5",
-            url: "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6601d747001b2091cb952da29f7285e5"
+        {
+            name: 'Gustavo Hesse',
+            email: 'gustavo.hesse@dell.com',
+            id: 'USER_6601d747001b2091cb952da29f7285e5',
+            url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6601d747001b2091cb952da29f7285e5'
         }
     ]
 };
@@ -91,14 +91,14 @@ const COMMENT_TEMPLATES = {
         test: (users) => `${users.map(u => `@${u.name}`).join(' ')}, teste de approval.`
     },
     finalMaterials: {
-        carol: (users) => `@Carolina Lipinski, segue os materiais finais da tarefa.`,
-        giovana: (users) => `@Giovana Jockyman, segue os materiais finais da tarefa.`,
-        test: (users) => `@Gustavo Hesse, teste de materiais finais.`
+        carol: (users) => '@Carolina Lipinski, segue os materiais finais da tarefa.',
+        giovana: (users) => '@Giovana Jockyman, segue os materiais finais da tarefa.',
+        test: (users) => '@Gustavo Hesse, teste de materiais finais.'
     },
     approval: {
-        carol: (users) => `@Carolina Lipinski @Avidesh Bind @Saish Kadam @Jogeshkumar Vishwakarma, for your approval.`,
-        giovana: (users) => `@Giovana Jockyman @Avidesh Bind @Saish Kadam @Jogeshkumar Vishwakarma, for your approval.`,
-        test: (users) => `@Gustavo Hesse, teste de approval.`
+        carol: (users) => '@Carolina Lipinski @Avidesh Bind @Saish Kadam @Jogeshkumar Vishwakarma, for your approval.',
+        giovana: (users) => '@Giovana Jockyman @Avidesh Bind @Saish Kadam @Jogeshkumar Vishwakarma, for your approval.',
+        test: (users) => '@Gustavo Hesse, teste de approval.'
     }
 };
 
@@ -126,10 +126,10 @@ export class DocumentCommentService {
 
             // Executar comentário usando Playwright
             const result = await this.performDocumentComment(
-                projectUrl, 
-                folderName, 
-                fileName, 
-                commentText, 
+                projectUrl,
+                folderName,
+                fileName,
+                commentText,
                 users,
                 options.headless !== false
             );
@@ -189,7 +189,7 @@ export class DocumentCommentService {
      */
     async performDocumentComment(projectUrl, folderName, fileName, commentText, users, headless = true) {
         console.log('🎭 Iniciando automação com Playwright...');
-        
+
         const browser = await chromium.launch({
             headless: headless,
             args: headless ? [] : ['--start-maximized']
@@ -212,7 +212,7 @@ export class DocumentCommentService {
             const page = await context.newPage();
 
             console.log('🌍 Carregando projeto...');
-            await page.goto(projectUrl, { waitUntil: "domcontentloaded" });
+            await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
             await page.waitForTimeout(5000); // Aumentado para aguardar carregamento
 
             console.log('🔍 Encontrando frame do Workfront...');
@@ -237,7 +237,7 @@ export class DocumentCommentService {
             await this.submitComment(frameLocator, page);
 
             console.log('✅ Comentário adicionado com sucesso!');
-            
+
             return {
                 success: true,
                 message: `Comentário adicionado no documento "${fileName}"`,
@@ -280,7 +280,7 @@ export class DocumentCommentService {
                 if (count > 0) {
                     console.log(`✅ Elemento encontrado com estratégia ${i + 1}`);
                     await element.click();
-                    console.log(`🖱️ Clique executado, aguardando carregamento...`);
+                    console.log('🖱️ Clique executado, aguardando carregamento...');
                     await page.waitForTimeout(5000); // Aumentado para aguardar carregamento da pasta
                     navigationSuccess = true;
                     break;
@@ -348,17 +348,17 @@ export class DocumentCommentService {
 
             // 🎯 SOLUÇÃO CORRETA: Usar aria-label exato para evitar strict mode violation
             console.log(`🎯 Clicando no elemento com aria-label exato: "${targetElement.ariaLabel}"`);
-            
+
             // Usar o aria-label exato para selecionar o elemento específico
             const exactSelector = `[aria-label="${targetElement.ariaLabel}"]`;
             await frameLocator.locator(exactSelector).first().click();
-            console.log(`🖱️ Documento selecionado com sucesso!`);
+            console.log('🖱️ Documento selecionado com sucesso!');
             await page.waitForTimeout(2000);
 
         } else {
             // Se não encontrou com nome completo, usar estratégias de fallback
             console.log(`❌ Nenhum div.doc-detail-view encontrado para "${fileName}"`);
-            console.log(`🔄 Tentando estratégias de fallback...`);
+            console.log('🔄 Tentando estratégias de fallback...');
 
             // Estratégia de fallback: procurar por partes do nome
             const nameParts = fileName.split('_');
@@ -402,7 +402,7 @@ export class DocumentCommentService {
                         // Usar aria-label exato também no fallback
                         const fallbackSelector = `[aria-label="${targetElement.ariaLabel}"]`;
                         await frameLocator.locator(fallbackSelector).first().click();
-                        console.log(`🖱️ Clique executado com fallback!`);
+                        console.log('🖱️ Clique executado com fallback!');
                         foundWithFallback = true;
                         break;
                     }
@@ -411,7 +411,7 @@ export class DocumentCommentService {
 
             if (!foundWithFallback) {
                 console.log(`❌ Documento não encontrado: ${fileName}`);
-                console.log(`💡 Dica: Verifique se o nome do arquivo está correto ou se ele existe na pasta selecionada`);
+                console.log('💡 Dica: Verifique se o nome do arquivo está correto ou se ele existe na pasta selecionada');
                 throw new Error(`Documento não encontrado: ${fileName}`);
             }
         }
@@ -437,7 +437,7 @@ export class DocumentCommentService {
             try {
                 const panel = frameLocator.locator(selector).first();
                 const count = await panel.count();
-                
+
                 if (count > 0 && await panel.isVisible()) {
                     console.log(`✅ Painel do summary detectado: ${selector}`);
                     summaryAlreadyOpen = true;
@@ -451,7 +451,7 @@ export class DocumentCommentService {
         if (summaryAlreadyOpen) {
             console.log('✅ Summary já está aberto, verificando se há campo de comentário...');
             await page.waitForTimeout(1000);
-            
+
             // Verificar se o campo de comentário está disponível
             const commentFieldVisible = await this.checkCommentFieldAvailable(frameLocator);
             if (commentFieldVisible) {
@@ -465,7 +465,7 @@ export class DocumentCommentService {
         // Tentar abrir/reabrir o summary
         console.log('� Tentando abrir summary...');
         const summaryButton = frameLocator.locator('button[data-testid="open-summary"]').first();
-        
+
         try {
             const buttonCount = await summaryButton.count();
             if (buttonCount > 0) {
@@ -478,7 +478,7 @@ export class DocumentCommentService {
                     console.log('✅ Clique normal executado');
                 } catch (interceptError) {
                     console.log('⚠️ Clique interceptado, tentando estratégias alternativas...');
-                    
+
                     // Estratégia 1: Clique forçado
                     try {
                         await summaryButton.click({ force: true });
@@ -490,7 +490,7 @@ export class DocumentCommentService {
                         console.log('✅ Clique via JavaScript executado');
                     }
                 }
-                
+
                 console.log('🖱️ Summary processado!');
                 await page.waitForTimeout(3000);
             } else {
@@ -526,7 +526,7 @@ export class DocumentCommentService {
             try {
                 const field = frameLocator.locator(selector).first();
                 const count = await field.count();
-                
+
                 if (count > 0 && await field.isVisible()) {
                     console.log(`✅ Campo de comentário disponível: ${selector}`);
                     return true;
@@ -535,7 +535,7 @@ export class DocumentCommentService {
                 continue;
             }
         }
-        
+
         return false;
     }
 
@@ -554,27 +554,27 @@ export class DocumentCommentService {
             'input[data-omega-element="add-comment-input"]',
             'input[aria-label="Add comment"]',
             'input[name="comment"]',
-            
+
             // Seletores por estrutura
             'label:has-text("New comment") + div input',
             'label:has-text("Add comment") + div input',
-            
+
             // Seletores por classes CSS
             '.zo2IKa_spectrum-Textfield-input',
             '.react-spectrum-RichTextEditor-input[contenteditable="true"]',
             'div[contenteditable="true"][data-lexical-editor="true"]',
-            
+
             // Seletores por atributos
             '[aria-label="New comment"]',
             '[aria-label*="comment" i]',
             '[placeholder*="comment" i]',
             'textarea[placeholder*="comment" i]',
             'input[placeholder*="comment" i]',
-            
+
             // Seletores genéricos de comentário
             'input[type="text"][aria-label*="comment" i]',
             'textarea[aria-label*="comment" i]',
-            
+
             // Seletores de fallback
             '#page-sidebar input[type="text"]',
             '#page-sidebar textarea',
@@ -583,14 +583,14 @@ export class DocumentCommentService {
         ];
 
         console.log('🔍 Procurando campo de comentário...');
-        
+
         let commentField = null;
         let usedSelector = '';
-        
+
         for (let i = 0; i < commentFieldSelectors.length; i++) {
             const selector = commentFieldSelectors[i];
             console.log(`🔄 Tentativa ${i + 1}: ${selector}`);
-            
+
             try {
                 const field = frameLocator.locator(selector).first();
                 const count = await field.count();
@@ -598,7 +598,7 @@ export class DocumentCommentService {
                 if (count > 0) {
                     const isVisible = await field.isVisible();
                     console.log(`   📊 Encontrados: ${count}, Visível: ${isVisible}`);
-                    
+
                     if (isVisible) {
                         console.log(`✅ Campo de comentário encontrado: ${selector}`);
                         commentField = field;
@@ -615,11 +615,11 @@ export class DocumentCommentService {
         if (!commentField) {
             // Debug: listar todos os inputs e textareas disponíveis
             console.log('🔍 DEBUG: Listando todos os campos disponíveis...');
-            
+
             try {
                 const allInputs = await frameLocator.locator('input, textarea, [contenteditable="true"]').all();
                 console.log(`📊 Total de campos encontrados: ${allInputs.length}`);
-                
+
                 for (let i = 0; i < Math.min(allInputs.length, 10); i++) {
                     try {
                         const input = allInputs[i];
@@ -629,7 +629,7 @@ export class DocumentCommentService {
                         const placeholder = await input.getAttribute('placeholder');
                         const dataOmega = await input.getAttribute('data-omega-element');
                         const isVisible = await input.isVisible();
-                        
+
                         console.log(`   ${i + 1}. ${tagName}[type="${type}"] aria-label="${ariaLabel}" placeholder="${placeholder}" data-omega="${dataOmega}" visible=${isVisible}`);
                     } catch (e) {
                         console.log(`   ${i + 1}. Erro ao inspecionar elemento`);
@@ -638,14 +638,14 @@ export class DocumentCommentService {
             } catch (e) {
                 console.log('❌ Erro ao listar campos disponíveis');
             }
-            
+
             throw new Error('Campo de comentário não encontrado após busca extensiva');
         }
 
         // Verificar se é um input ou div contenteditable
         const tagName = await commentField.evaluate(el => el.tagName.toLowerCase());
         const isContentEditable = await commentField.evaluate(el => el.contentEditable === 'true');
-        
+
         console.log(`📝 Tipo de campo: ${tagName}, ContentEditable: ${isContentEditable}`);
 
         // Clicar no campo para focar
@@ -655,17 +655,17 @@ export class DocumentCommentService {
         if (tagName === 'input') {
             // Para campos input simples
             console.log('📝 Usando estratégia para INPUT');
-            
+
             // Limpar e digitar texto simples (sem @mentions)
             await commentField.fill('');
             await page.waitForTimeout(200);
             await commentField.fill(commentText);
             console.log(`✅ Texto digitado: ${commentText}`);
-            
+
         } else if (isContentEditable) {
             // Para campos ricos com contenteditable
             console.log('📝 Usando estratégia para CONTENTEDITABLE');
-            
+
             // Limpar o campo
             await commentField.fill('');
             await page.waitForTimeout(200);

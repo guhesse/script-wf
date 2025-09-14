@@ -2,8 +2,26 @@
 import { chromium } from '@playwright/test';
 import fs from 'fs/promises';
 import path from 'path';
+import { createRequire } from 'module';
 
+const require = createRequire(import.meta.url);
 const STATE_FILE = 'wf_state.json';
+
+// Import da biblioteca pdf-parse usando require (compatibilidade CommonJS)
+let pdfParse = null;
+
+async function initPdfParse() {
+    if (!pdfParse) {
+        try {
+            pdfParse = require('pdf-parse');
+            console.log('✅ Biblioteca pdf-parse carregada com sucesso');
+        } catch (error) {
+            console.error('❌ Erro ao carregar pdf-parse:', error.message);
+            throw new Error('Biblioteca pdf-parse não disponível. Execute: npm install pdf-parse');
+        }
+    }
+    return pdfParse;
+}
 
 export class DocumentBulkDownloadService {
     constructor() {
@@ -137,6 +155,23 @@ export class DocumentBulkDownloadService {
                     results.summary.totalFiles += projectResult.filesDownloaded;
                     results.summary.totalSize += projectResult.totalSize || 0;
 
+                    // Adicionar informações sobre PDFs processados
+                    if (projectResult.pdfProcessing) {
+                        if (!results.summary.pdfProcessing) {
+                            results.summary.pdfProcessing = {
+                                totalPdfs: 0,
+                                successfulExtractions: 0,
+                                totalCharactersExtracted: 0
+                            };
+                        }
+
+                        results.summary.pdfProcessing.totalPdfs += projectResult.pdfProcessing.processed || 0;
+                        results.summary.pdfProcessing.successfulExtractions +=
+                            (projectResult.pdfProcessing.results || []).filter(pdf => pdf.hasContent).length;
+                        results.summary.pdfProcessing.totalCharactersExtracted +=
+                            (projectResult.pdfProcessing.results || []).reduce((sum, pdf) => sum + (pdf.textLength || 0), 0);
+                    }
+
                     console.log(`✅ Projeto ${i + 1} concluído com sucesso`);
 
                 } catch (error) {
@@ -177,7 +212,7 @@ export class DocumentBulkDownloadService {
             // Navegar para o projeto
             console.log(`🌍 Acessando URL: ${projectUrl}`);
             await page.goto(projectUrl, {
-                waitUntil: "domcontentloaded",
+                waitUntil: 'domcontentloaded',
                 timeout: 30000
             });
             await page.waitForTimeout(5000);
@@ -212,11 +247,27 @@ export class DocumentBulkDownloadService {
                 projectName
             );
 
+            // Processar PDFs baixados e extrair conteúdo
+            console.log('🔍 Iniciando processamento de PDFs...');
+            let pdfResults = [];
+            try {
+                // Usar o briefPath retornado pelo downloadAllFilesInFolder
+                pdfResults = await this.processPdfsInProject(downloadResult.briefPath, projectName);
+                console.log(`✅ Processamento de PDFs concluído: ${pdfResults.length} arquivos processados`);
+            } catch (pdfError) {
+                console.warn(`⚠️ Erro no processamento de PDFs: ${pdfError.message}`);
+            }
+
             return {
                 projectName: projectName,
                 filesDownloaded: downloadResult.count,
                 totalSize: downloadResult.totalSize,
-                files: downloadResult.files
+                files: downloadResult.files,
+                pdfProcessing: {
+                    processed: pdfResults.length,
+                    results: pdfResults,
+                    hasTextExtraction: pdfResults.some(pdf => pdf.hasContent)
+                }
             };
 
         } catch (error) {
@@ -357,7 +408,7 @@ export class DocumentBulkDownloadService {
                 const count = await element.count();
 
                 if (count > 0) {
-                    console.log(`📋 Elemento encontrado, verificando visibilidade...`);
+                    console.log('📋 Elemento encontrado, verificando visibilidade...');
 
                     try {
                         await element.waitFor({ state: 'visible', timeout: 2000 });
@@ -452,7 +503,8 @@ export class DocumentBulkDownloadService {
         return {
             count: downloadedFiles.length,
             totalSize: downloadedFiles.reduce((sum, file) => sum + (file.size || 0), 0),
-            files: downloadedFiles
+            files: downloadedFiles,
+            briefPath: projectDownloadPath
         };
     }
 
@@ -478,7 +530,7 @@ export class DocumentBulkDownloadService {
         // Retornar o caminho da pasta brief (onde os PDFs serão salvos)
         const briefPath = path.join(projectDownloadPath, 'brief');
         console.log(`✅ Estrutura de pastas criada para DSID: ${mainFolderName}`);
-        console.log(`📂 Arquivos da pasta Briefing serão salvos em: brief/`);
+        console.log('📂 Arquivos da pasta Briefing serão salvos em: brief/');
 
         return briefPath;
     }
@@ -492,28 +544,28 @@ export class DocumentBulkDownloadService {
 
         // Classificação por extensão
         if (['pdf', 'ppt', 'pptx', 'pps', 'ppsx'].includes(extension)) {
-            console.log(`📄 Arquivo classificado como PDF → pasta: brief/`);
+            console.log('📄 Arquivo classificado como PDF → pasta: brief/');
             return 'brief';
         } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'tiff', 'psd', 'ai', 'eps', 'mp4', 'mov', 'avi', 'mkv', 'webm'].includes(extension)) {
-            console.log(`🎨 Arquivo classificado como Creative → pasta: creatives/`);
+            console.log('🎨 Arquivo classificado como Creative → pasta: creatives/');
             return 'creatives';
         }
 
         // Classificação por nome do arquivo
         const lowerFileName = fileName.toLowerCase();
         if (lowerFileName.includes('brief') || lowerFileName.includes('briefing')) {
-            console.log(`📄 Arquivo classificado por nome (brief) → pasta: brief/`);
+            console.log('📄 Arquivo classificado por nome (brief) → pasta: brief/');
             return 'brief';
         } else if (lowerFileName.includes('ppt') || lowerFileName.includes('presentation') || lowerFileName.includes('slide')) {
-            console.log(`📊 Arquivo classificado por nome (presentation) → pasta: ppt/`);
+            console.log('📊 Arquivo classificado por nome (presentation) → pasta: ppt/');
             return 'ppt';
         } else if (lowerFileName.includes('creative') || lowerFileName.includes('design') || lowerFileName.includes('art')) {
-            console.log(`🎨 Arquivo classificado por nome (creative) → pasta: creatives/`);
+            console.log('🎨 Arquivo classificado por nome (creative) → pasta: creatives/');
             return 'creatives';
         }
 
         // Default: brief (já que estamos na pasta Briefing)
-        console.log(`📄 Arquivo classificado como padrão → pasta: brief/`);
+        console.log('📄 Arquivo classificado como padrão → pasta: brief/');
         return 'brief';
     }
 
@@ -962,6 +1014,655 @@ export class DocumentBulkDownloadService {
                 throw new Error(`Arquivo de sessão não encontrado: ${STATE_FILE}. Execute o login primeiro.`);
             }
             throw new Error(`Erro na validação da sessão: ${error.message}`);
+        }
+    }
+
+    /**
+     * Carregar e inicializar pdfjs-dist (configurado para Node.js)
+     */
+    async loadPdfJsLib() {
+        try {
+            // Configurar ambiente Node.js para pdfjs-dist
+            const { createCanvas, createImageData } = await import('canvas');
+            
+            // Configurar globals necessários para pdfjs-dist no Node.js
+            if (typeof globalThis.DOMMatrix === 'undefined') {
+                // Mock das APIs DOM necessárias
+                globalThis.DOMMatrix = class DOMMatrix {
+                    constructor() {
+                        this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0;
+                    }
+                };
+                
+                globalThis.Path2D = class Path2D {};
+                globalThis.CanvasGradient = class CanvasGradient {};
+                globalThis.CanvasPattern = class CanvasPattern {};
+            }
+            
+            // Usar build legacy para Node.js
+            const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+            console.log('✅ pdfjs-dist carregado com sucesso (configurado para Node.js)');
+            return pdfjsLib;
+        } catch (error) {
+            console.error('❌ Erro detalhado ao carregar pdfjs-dist:', error);
+            throw new Error(`Erro ao carregar pdfjs-dist: ${error.message}`);
+        }
+    }
+
+    /**
+     * Extrair comentários/anotações de um PDF usando pdfjs-dist
+     */
+    async extractPdfComments(pdfBuffer) {
+        try {
+            console.log('🔍 Iniciando extração de anotações com pdfjs-dist...');
+
+            const pdfjsLib = await this.loadPdfJsLib();
+
+            // Converter Buffer para Uint8Array
+            const uint8Array = new Uint8Array(pdfBuffer);
+            console.log(`📊 Buffer convertido: ${uint8Array.length} bytes`);
+
+            const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
+            const pdf = await loadingTask.promise;
+
+            console.log(`📄 PDF carregado: ${pdf.numPages} páginas`);
+
+            const comments = [];
+
+            // Iterar por todas as páginas
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                console.log(`📖 Processando página ${pageNum}/${pdf.numPages}...`);
+                const page = await pdf.getPage(pageNum);
+
+                // Obter anotações da página com diferentes intents
+                const displayAnnotations = await page.getAnnotations({ intent: 'display' });
+                const printAnnotations = await page.getAnnotations({ intent: 'print' });
+
+                // Combinar todas as anotações
+                const allAnnotations = [...displayAnnotations, ...printAnnotations];
+
+                console.log(`📝 Encontradas ${allAnnotations.length} anotações na página ${pageNum}`);
+
+                for (const annotation of allAnnotations) {
+                    console.log(`🔎 Processando anotação: ${annotation.subtype || 'Unknown'} - ${annotation.title || 'Sem autor'}`);
+
+                    // Extrair informações relevantes da anotação
+                    // Tentar múltiplas propriedades para o autor
+                    let author = null;
+                    if (annotation.titleObj && annotation.titleObj.str) author = annotation.titleObj.str;
+                    else if (annotation.title && annotation.title !== 'Unknown') author = annotation.title;
+                    else if (annotation.author) author = annotation.author;
+                    else if (annotation.T) author = annotation.T;
+                    else if (annotation.contents && annotation.contents.includes('Author:')) {
+                        const authorMatch = annotation.contents.match(/Author:\s*([^\n]+)/);
+                        if (authorMatch) author = authorMatch[1].trim();
+                    }
+
+                    const comment = {
+                        page: pageNum,
+                        id: annotation.id || null,
+                        subtype: annotation.subtype || null,
+                        author: author,
+                        contents: annotation.contents || annotation.Contents || null,
+                        richText: this.extractRichTextContent(annotation.richText || annotation.RC),
+                        modificationDate: annotation.modificationDate || annotation.modDate || annotation.M || null,
+                        creationDate: annotation.creationDate || annotation.creationDateString || annotation.CreationDate || null,
+                        subject: annotation.subject || annotation.Subj || null,
+                        rect: annotation.rect || null,
+                        color: annotation.color || null,
+                        type: 'pdf-annotation',
+                        extracted: new Date().toISOString(),
+                        annotationType: this.getAnnotationType(annotation.subtype)
+                    };
+
+                    // Registrar informações detalhadas para debug
+                    console.log('   📋 Detalhes:');
+                    console.log(`      - Tipo: ${comment.subtype}`);
+                    console.log(`      - Autor: ${comment.author || 'N/A'}`);
+                    console.log(`      - Conteúdo: ${comment.contents || 'N/A'}`);
+                    console.log(`      - Assunto: ${comment.subject || 'N/A'}`);
+
+                    // Adicionar mesmo que não tenha conteúdo (para debug e capturar sticky notes vazias)
+                    comments.push(comment);
+                }
+            }
+
+            console.log(`✅ Extração concluída: ${comments.length} anotações encontradas`);
+            return comments;
+
+        } catch (error) {
+            console.error(`❌ Erro ao extrair anotações com pdfjs-dist: ${error.message}`);
+            console.error('Stack trace:', error.stack);
+            return [];
+        }
+    }
+
+    /**
+     * Extrair conteúdo de rich text de anotações
+     */
+    extractRichTextContent(richText) {
+        if (!richText) return null;
+
+        try {
+            // Se for string, retornar diretamente
+            if (typeof richText === 'string') {
+                return richText;
+            }
+
+            // Se for objeto, tentar extrair texto
+            if (typeof richText === 'object') {
+                // Verificar propriedades comuns de rich text
+                if (richText.str) return richText.str;
+                if (richText.text) return richText.text;
+                if (richText.content) return richText.content;
+
+                // Se for array, juntar os elementos
+                if (Array.isArray(richText)) {
+                    return richText.map(item => {
+                        if (typeof item === 'string') return item;
+                        if (item && item.str) return item.str;
+                        if (item && item.text) return item.text;
+                        return '';
+                    }).join(' ').trim();
+                }
+
+                // Tentar JSON.stringify como fallback
+                try {
+                    const jsonStr = JSON.stringify(richText);
+                    // Se não for apenas um objeto vazio
+                    if (jsonStr !== '{}' && jsonStr !== '[]') {
+                        return jsonStr;
+                    }
+                } catch {
+                    // Ignorar erro de JSON
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.warn(`⚠️ Erro ao extrair rich text: ${error.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Determinar tipo de anotação
+     */
+    getAnnotationType(subtype) {
+        const types = {
+            'Text': 'Sticky Note',
+            'Note': 'Nota',
+            'Highlight': 'Destaque',
+            'Underline': 'Sublinhado',
+            'StrikeOut': 'Riscado',
+            'Squiggly': 'Rabisco',
+            'FreeText': 'Texto Livre',
+            'Stamp': 'Carimbo',
+            'Ink': 'Tinta',
+            'Line': 'Linha',
+            'Square': 'Quadrado',
+            'Circle': 'Círculo',
+            'Polygon': 'Polígono',
+            'PolyLine': 'Linha Poligonal',
+            'Link': 'Link',
+            'Popup': 'Popup'
+        };
+        return types[subtype] || subtype || 'Desconhecido';
+    }
+
+    /**
+     * Processar e deduplicar comentários
+     */
+    processAndDeduplicateComments(comments) {
+        const textMap = new Map(); // Para rastrear textos únicos
+        const extractedLinks = new Set(); // Para coletar links completos únicos
+        const commentsByAuthor = new Map(); // Para agrupar por autor
+        const structuredData = { // Dados estruturados para a aplicação web
+            liveDate: null,
+            vf: null,
+            headlineCopy: null,
+            copy: null,
+            description: null,
+            cta: null,
+            background: null,
+            colorCopy: null,
+            postcopy: null,
+            urn: null,
+            allocadia: null,
+            po: null
+        };
+
+        for (const comment of comments) {
+            // Extrair texto do comentário (priorizar richText se disponível)
+            let text = comment.richText || comment.contents || '';
+            text = text.trim();
+
+            // Pular comentários vazios
+            if (!text) continue;
+
+            // Extrair URLs completas do texto
+            const urlRegex = /https?:\/\/[^\s\n]+/g;
+            const urls = text.match(urlRegex);
+            if (urls) {
+                urls.forEach(url => extractedLinks.add(url.trim()));
+            }
+
+            // Verificar se já temos este texto (evitar duplicados Sticky Note vs Popup)
+            if (textMap.has(text)) {
+                continue; // Pular duplicado
+            }
+
+            // Marcar este texto como processado
+            textMap.set(text, true);
+
+            // Extrair dados estruturados para campos específicos
+            this.extractStructuredFields(text, structuredData);
+
+            // Agrupar por autor APENAS se o comentário NÃO contém links
+            if (!urls || urls.length === 0) {
+                const author = comment.author || 'Não informado';
+                if (!commentsByAuthor.has(author)) {
+                    commentsByAuthor.set(author, []);
+                }
+                commentsByAuthor.get(author).push(text);
+            }
+        }
+
+        return {
+            commentsByAuthor: commentsByAuthor,
+            links: Array.from(extractedLinks).sort(),
+            structuredData: structuredData
+        };
+    }
+
+    /**
+     * Extrair campos estruturados dos comentários
+     */
+    extractStructuredFields(text, structuredData) {
+        const lowerText = text.toLowerCase();
+
+        // Live Date
+        const liveDateMatch = text.match(/live\s+dates?:\s*([^\n]+)/i);
+        if (liveDateMatch && !structuredData.liveDate) {
+            structuredData.liveDate = liveDateMatch[1].trim();
+        }
+
+        // VF (Visual Framework)
+        const vfMatch = text.match(/(?:vf|visual framework|microsoft jma):\s*([^\n]+)/i);
+        if (vfMatch && !structuredData.vf) {
+            structuredData.vf = vfMatch[1].trim();
+        }
+
+        // Headline Copy
+        const headlineMatch = text.match(/headline\s*(?:copy)?:\s*([^\n]+)/i);
+        if (headlineMatch && !structuredData.headlineCopy) {
+            structuredData.headlineCopy = headlineMatch[1].trim();
+        }
+
+        // Copy principal
+        const copyMatch = text.match(/(?:^|\n)copy:\s*([^\n]+)/i);
+        if (copyMatch && !structuredData.copy) {
+            structuredData.copy = copyMatch[1].trim();
+        }
+
+        // Description
+        const descMatch = text.match(/description:\s*([^\n]+)/i);
+        if (descMatch && !structuredData.description) {
+            structuredData.description = descMatch[1].trim();
+        }
+
+        // CTA
+        const ctaMatch = text.match(/cta:\s*([^\n]+)/i);
+        if (ctaMatch && !structuredData.cta) {
+            structuredData.cta = ctaMatch[1].trim();
+        }
+
+        // Background
+        const bgMatch = text.match(/background:\s*([^\n]+)/i);
+        if (bgMatch && !structuredData.background) {
+            structuredData.background = bgMatch[1].trim();
+        }
+
+        // Color Copy
+        const colorMatch = text.match(/color\s*copy:\s*([^\n]+)/i);
+        if (colorMatch && !structuredData.colorCopy) {
+            structuredData.colorCopy = colorMatch[1].trim();
+        }
+
+        // Postcopy
+        if (lowerText.includes('postcopy') && !structuredData.postcopy) {
+            structuredData.postcopy = 'POSTCOPY';
+        }
+
+        // URN
+        const urnMatch = text.match(/urn:\s*([^\n]+)/i);
+        if (urnMatch && !structuredData.urn) {
+            structuredData.urn = urnMatch[1].trim();
+        }
+
+        // Allocadia
+        const allocadiaMatch = text.match(/allocadia\s*([0-9]+)/i);
+        if (allocadiaMatch && !structuredData.allocadia) {
+            structuredData.allocadia = allocadiaMatch[1].trim();
+        }
+
+        // PO (Purchase Order)
+        const poMatch = text.match(/po#?\s*([^\n]+)/i);
+        if (poMatch && !structuredData.po) {
+            structuredData.po = poMatch[1].trim();
+        }
+    }
+
+    /**
+     * Extrair texto e comentários de um arquivo PDF
+     */
+    async extractPdfContent(pdfFilePath) {
+        try {
+            console.log(`📄 Extraindo conteúdo do PDF: ${path.basename(pdfFilePath)}`);
+
+            // Verificar se o arquivo existe
+            try {
+                await fs.access(pdfFilePath);
+            } catch (error) {
+                throw new Error(`Arquivo PDF não encontrado: ${pdfFilePath}`);
+            }
+
+            // Inicializar biblioteca pdf-parse
+            const pdfParseLib = await initPdfParse();
+
+            // Ler o arquivo PDF
+            const pdfBuffer = await fs.readFile(pdfFilePath);
+
+            // Extrair dados do PDF
+            const pdfData = await pdfParseLib(pdfBuffer);
+
+            // Extrair comentários/anotações do PDF
+            console.log('💬 Buscando comentários no PDF...');
+            const comments = await this.extractPdfComments(pdfBuffer);
+
+            const result = {
+                fileName: path.basename(pdfFilePath),
+                filePath: pdfFilePath,
+                metadata: {
+                    title: pdfData.info?.Title || 'Sem título',
+                    author: pdfData.info?.Author || 'Autor não informado',
+                    subject: pdfData.info?.Subject || 'Assunto não informado',
+                    creator: pdfData.info?.Creator || 'Criador não informado',
+                    producer: pdfData.info?.Producer || 'Produtor não informado',
+                    creationDate: pdfData.info?.CreationDate || 'Data não informada',
+                    modificationDate: pdfData.info?.ModDate || 'Data não informada',
+                    pages: pdfData.numpages || 0
+                },
+                text: pdfData.text || '',
+                textLength: (pdfData.text || '').length,
+                comments: comments,
+                commentsCount: comments.length,
+                hasContent: !!(pdfData.text && pdfData.text.trim().length > 0),
+                hasComments: comments.length > 0
+            };
+
+            console.log(`✅ Conteúdo extraído: ${result.textLength} caracteres, ${result.metadata.pages} páginas, ${result.commentsCount} comentários`);
+
+            return result;
+
+        } catch (error) {
+            console.error(`❌ Erro ao extrair conteúdo do PDF: ${error.message}`);
+            throw new Error(`Falha na extração do PDF: ${error.message}`);
+        }
+    }
+
+    /**
+     * Processar todos os PDFs baixados e extrair seu conteúdo
+     */
+    async processPdfsInProject(briefPath, projectName) {
+        try {
+            console.log(`📁 Processando PDFs do projeto: ${projectName}`);
+            console.log(`📂 Pasta brief: ${briefPath}`);
+
+            // Verificar se a pasta brief existe
+            try {
+                await fs.access(briefPath);
+            } catch (error) {
+                console.log(`⚠️ Pasta brief não encontrada: ${briefPath}`);
+                return [];
+            }
+
+            // Listar todos os arquivos PDF na pasta brief
+            const files = await fs.readdir(briefPath);
+            const pdfFiles = files.filter(file => path.extname(file).toLowerCase() === '.pdf');
+
+            if (pdfFiles.length === 0) {
+                console.log('ℹ️ Nenhum arquivo PDF encontrado na pasta brief');
+                return [];
+            }
+
+            console.log(`📋 Encontrados ${pdfFiles.length} arquivos PDF para processar`);
+
+            const results = [];
+
+            // Processar cada PDF
+            for (const pdfFile of pdfFiles) {
+                const pdfFilePath = path.join(briefPath, pdfFile);
+
+                try {
+                    const pdfContent = await this.extractPdfContent(pdfFilePath);
+                    results.push(pdfContent);
+
+                    // Criar arquivo de texto com o conteúdo extraído
+                    await this.savePdfContentToText(pdfContent, briefPath);
+
+                } catch (error) {
+                    console.error(`❌ Erro ao processar ${pdfFile}: ${error.message}`);
+                    results.push({
+                        fileName: pdfFile,
+                        filePath: pdfFilePath,
+                        error: error.message,
+                        hasContent: false
+                    });
+                }
+            }
+
+            return results;
+
+        } catch (error) {
+            console.error(`❌ Erro ao processar PDFs do projeto: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Salvar conteúdo extraído do PDF em arquivo de texto
+     */
+    async savePdfContentToText(pdfContent, outputDir) {
+        try {
+            const baseName = path.basename(pdfContent.fileName, '.pdf');
+            const textFileName = `${baseName}_extracted_content.txt`;
+            const textFilePath = path.join(outputDir, textFileName);
+
+            let content = '';
+            content += '=====================================\n';
+            content += 'CONTEÚDO EXTRAÍDO DO PDF\n';
+            content += '=====================================\n\n';
+            content += `📄 Arquivo: ${pdfContent.fileName}\n`;
+            content += `📅 Data de extração: ${new Date().toLocaleString('pt-BR')}\n\n`;
+
+            content += '📊 METADADOS DO DOCUMENTO:\n';
+            content += `   Título: ${pdfContent.metadata.title}\n`;
+            content += `   Autor: ${pdfContent.metadata.author}\n`;
+            content += `   Assunto: ${pdfContent.metadata.subject}\n`;
+            content += `   Criador: ${pdfContent.metadata.creator}\n`;
+            content += `   Produtor: ${pdfContent.metadata.producer}\n`;
+            content += `   Data de criação: ${pdfContent.metadata.creationDate}\n`;
+            content += `   Data de modificação: ${pdfContent.metadata.modificationDate}\n`;
+            content += `   Número de páginas: ${pdfContent.metadata.pages}\n`;
+            content += `   Tamanho do texto: ${pdfContent.textLength} caracteres\n`;
+            content += `   Comentários encontrados: ${pdfContent.commentsCount || 0}\n\n`;
+
+            content += '=====================================\n';
+            content += 'TEXTO EXTRAÍDO:\n';
+            content += '=====================================\n\n';
+
+            if (pdfContent.hasContent) {
+                content += pdfContent.text;
+            } else {
+                content += '[AVISO] Nenhum texto foi encontrado neste PDF.\n';
+                content += 'Possíveis motivos:\n';
+                content += '- PDF é composto apenas de imagens\n';
+                content += '- PDF está protegido ou criptografado\n';
+                content += '- PDF possui formato não suportado\n';
+            }
+
+            // Adicionar seção de comentários se existirem
+            if (pdfContent.hasComments) {
+                // Processar e deduplicar comentários
+                const processedData = this.processAndDeduplicateComments(pdfContent.comments);
+                const commentsByAuthor = processedData.commentsByAuthor;
+                const uniqueLinks = processedData.links;
+                const structuredData = processedData.structuredData;
+
+                content += '\n\n=====================================\n';
+                content += 'COMENTÁRIOS/ANOTAÇÕES EXTRAÍDOS:\n';
+                content += '=====================================\n\n';
+
+                // Ordenar autores alfabeticamente
+                const sortedAuthors = Array.from(commentsByAuthor.keys()).sort();
+                
+                sortedAuthors.forEach(author => {
+                    content += `@${author}\n`;
+                    const texts = commentsByAuthor.get(author);
+                    texts.forEach(text => {
+                        content += `${text}\n`;
+                    });
+                    content += '\n';
+                });
+
+                // Links serão adicionados separadamente no final do arquivo
+                if (uniqueLinks.length > 0) {
+                    content += '\n=====================================\n';
+                    content += 'LINKS EXTRAÍDOS:\n';
+                    content += '=====================================\n\n';
+                    
+                    uniqueLinks.forEach((link) => {
+                        content += `${link}\n`;
+                    });
+                }
+
+                // Salvar dados estruturados para aplicação web
+                await this.saveStructuredDataToJson(pdfContent.fileName, structuredData, uniqueLinks, outputDir);
+            } else {
+                content += '\n\n=====================================\n';
+                content += 'COMENTÁRIOS/ANOTAÇÕES:\n';
+                content += '=====================================\n\n';
+                content += '[INFO] Nenhum comentário ou anotação foi encontrado neste PDF.\n';
+                content += 'Nota: Este extrator busca por anotações incorporadas no PDF.\n';
+                content += 'Comentários feitos em visualizadores externos (Google Drive, etc.)\n';
+                content += 'não são salvos no arquivo PDF e não podem ser extraídos.\n';
+            }
+
+            content += '\n\n=====================================\n';
+            content += 'FIM DO CONTEÚDO EXTRAÍDO\n';
+            content += '=====================================\n';
+
+            // Salvar arquivo de texto
+            await fs.writeFile(textFilePath, content, 'utf8');
+
+            console.log(`💾 Conteúdo salvo em: ${textFileName}`);
+            console.log(`📊 Resumo: ${pdfContent.textLength} caracteres, ${pdfContent.metadata.pages} páginas, ${pdfContent.commentsCount || 0} comentários`);
+
+            return textFilePath;
+
+        } catch (error) {
+            console.error(`❌ Erro ao salvar conteúdo em texto: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Salvar dados estruturados para aplicação web
+     */
+    async saveStructuredDataToJson(pdfFileName, structuredData, links, outputDir) {
+        try {
+            const baseName = path.basename(pdfFileName, '.pdf');
+            const jsonFileName = `${baseName}_structured_data.json`;
+            const jsonFilePath = path.join(outputDir, jsonFileName);
+
+            const webData = {
+                fileName: pdfFileName,
+                extractedAt: new Date().toISOString(),
+                fields: {
+                    liveDate: structuredData.liveDate,
+                    vf: structuredData.vf,
+                    headlineCopy: structuredData.headlineCopy,
+                    copy: structuredData.copy,
+                    description: structuredData.description,
+                    cta: structuredData.cta,
+                    background: structuredData.background,
+                    colorCopy: structuredData.colorCopy,
+                    postcopy: structuredData.postcopy,
+                    urn: structuredData.urn,
+                    allocadia: structuredData.allocadia,
+                    po: structuredData.po
+                },
+                links: links
+            };
+
+            await fs.writeFile(jsonFilePath, JSON.stringify(webData, null, 2), 'utf8');
+            console.log(`📄 Dados estruturados salvos em: ${jsonFileName}`);
+
+        } catch (error) {
+            console.warn(`⚠️ Erro ao salvar dados estruturados: ${error.message}`);
+        }
+    }
+
+    /**
+     * Buscar dados estruturados de um projeto
+     */
+    async getStructuredDataFromProject(projectPath) {
+        try {
+            console.log(`📁 Buscando dados estruturados em: ${projectPath}`);
+
+            // Verificar se a pasta existe
+            try {
+                await fs.access(projectPath);
+            } catch (error) {
+                throw new Error(`Pasta do projeto não encontrada: ${projectPath}`);
+            }
+
+            // Buscar recursivamente por arquivos JSON de dados estruturados
+            const structuredFiles = [];
+            
+            async function searchInDirectory(dirPath) {
+                const entries = await fs.readdir(dirPath, { withFileTypes: true });
+                
+                for (const entry of entries) {
+                    const fullPath = path.join(dirPath, entry.name);
+                    
+                    if (entry.isDirectory()) {
+                        await searchInDirectory(fullPath);
+                    } else if (entry.name.endsWith('_structured_data.json')) {
+                        try {
+                            const jsonContent = await fs.readFile(fullPath, 'utf8');
+                            const data = JSON.parse(jsonContent);
+                            structuredFiles.push({
+                                filePath: fullPath,
+                                fileName: entry.name,
+                                ...data
+                            });
+                        } catch (parseError) {
+                            console.warn(`⚠️ Erro ao ler arquivo JSON ${fullPath}: ${parseError.message}`);
+                        }
+                    }
+                }
+            }
+
+            await searchInDirectory(projectPath);
+
+            console.log(`✅ Encontrados ${structuredFiles.length} arquivos de dados estruturados`);
+            return structuredFiles;
+
+        } catch (error) {
+            console.error(`❌ Erro ao buscar dados estruturados: ${error.message}`);
+            throw error;
         }
     }
 }
