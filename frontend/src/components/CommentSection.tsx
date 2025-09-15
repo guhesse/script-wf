@@ -17,14 +17,12 @@ import type { WorkfrontFolder } from '@/types';
 interface CommentSectionProps {
     projectUrl: string;
     folders: WorkfrontFolder[];
-    selectedUser: 'carol' | 'giovana';
     currentProject: { title?: string; dsid?: string } | null;
 }
 
 export const CommentSection = ({
     projectUrl,
     folders,
-    selectedUser,
     currentProject
 }: CommentSectionProps) => {
     const { addComment, getCommentPreview, isLoading } = useWorkfrontApi();
@@ -43,9 +41,9 @@ export const CommentSection = ({
     ] as const;
 
     const teamModes = [
-        { value: 'test', label: 'Teste (Gustavo)', icon: '🧪', color: 'bg-blue-100 text-blue-800' },
-        { value: 'carol', label: 'Equipe Carol', icon: '👥', color: 'bg-purple-100 text-purple-800' },
-        { value: 'giovana', label: 'Equipe Giovana', icon: '👥', color: 'bg-green-100 text-green-800' }
+        { value: 'test', label: 'Teste (Gustavo)', icon: '🧪', color: 'bg-muted text-primary border-border' },
+        { value: 'carol', label: 'Equipe Carol', icon: '👥', color: 'bg-muted text-primary border-border' },
+        { value: 'giovana', label: 'Equipe Giovana', icon: '👥', color: 'bg-muted text-primary border-border' }
     ] as const;
 
     const handlePreview = async () => {
@@ -101,10 +99,10 @@ export const CommentSection = ({
     );
 
     return (
-        <Card className="w-full">
+        <Card className="w-full bg-card border-border">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-card-foreground">
+                    <MessageSquare className="h-5 w-5 text-primary" />
                     Adicionar Comentário Automático
                 </CardTitle>
                 {currentProject && (
@@ -112,7 +110,7 @@ export const CommentSection = ({
                         <FileText className="h-4 w-4" />
                         {currentProject.title}
                         {currentProject.dsid && (
-                            <Badge variant="secondary">
+                            <Badge variant="outline">
                                 DSID: {currentProject.dsid}
                             </Badge>
                         )}
@@ -123,8 +121,8 @@ export const CommentSection = ({
             <CardContent className="space-y-6">
                 {/* Seleção de Modo de Equipe */}
                 <div>
-                    <label className="text-sm font-medium mb-2 block">
-                        <Users className="h-4 w-4 inline mr-1" />
+                    <label className="text-sm font-medium mb-2 block text-foreground">
+                        <Users className="h-4 w-4 inline mr-1 text-primary" />
                         Modo de Equipe
                     </label>
                     <div className="grid grid-cols-3 gap-2">
@@ -145,7 +143,7 @@ export const CommentSection = ({
 
                 {/* Seleção de Tipo de Comentário */}
                 <div>
-                    <label className="text-sm font-medium mb-2 block">
+                    <label className="text-sm font-medium mb-2 block text-foreground">
                         Tipo de Comentário
                     </label>
                     <div className="grid grid-cols-1 gap-2">
@@ -168,7 +166,7 @@ export const CommentSection = ({
 
                 {/* Seleção de Arquivo */}
                 <div>
-                    <label className="text-sm font-medium mb-2 block">
+                    <label className="text-sm font-medium mb-2 block text-foreground">
                         Arquivo para Comentar
                     </label>
                     {availableFiles.length > 0 ? (
@@ -225,16 +223,16 @@ export const CommentSection = ({
 
                 {/* Preview Result */}
                 {showPreview && previewComment && (
-                    <Card className="bg-muted/50">
+                    <Card className="bg-muted border-border">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <Eye className="h-4 w-4" />
+                            <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                                <Eye className="h-4 w-4 text-primary" />
                                 Preview do Comentário
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="bg-background p-3 rounded border">
-                                <div className="text-sm font-mono whitespace-pre-wrap">
+                            <div className="bg-background p-3 border border-border">
+                                <div className="text-sm font-mono whitespace-pre-wrap text-foreground">
                                     {previewComment}
                                 </div>
                             </div>
@@ -247,9 +245,9 @@ export const CommentSection = ({
                 )}
 
                 {/* Info sobre o processo */}
-                <Alert>
-                    <MessageSquare className="h-4 w-4" />
-                    <AlertDescription>
+                <Alert className="bg-muted border-border">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    <AlertDescription className="text-muted-foreground">
                         <strong>Como funciona:</strong> O sistema abrirá o documento selecionado,
                         clicará no botão "Open summary", adicionará o comentário com @mentions automáticos
                         das pessoas da equipe selecionada, e submeterá o comentário.

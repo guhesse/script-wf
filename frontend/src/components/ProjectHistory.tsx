@@ -78,13 +78,13 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-900 text-green-300 border-green-700';
       case 'COMPLETED':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-900 text-blue-300 border-blue-700';
       case 'ARCHIVED':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-700 text-gray-300 border-gray-600';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-700 text-gray-300 border-gray-600';
     }
   };
 
@@ -103,17 +103,17 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
 
   if (loading && projects.length === 0) {
     return (
-      <Card className={className}>
+      <Card className={`${className} bg-card border-border`}>
         <CardHeader>
-          <CardTitle className="flex items-center text-purple-700">
-            <Clock className="mr-2 h-5 w-5" />
+          <CardTitle className="flex items-center text-card-foreground">
+            <Clock className="mr-2 h-5 w-5 text-primary" />
             Histórico de Projetos
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-gray-400 mr-2" />
-            <span className="text-gray-600">Carregando histórico...</span>
+            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+            <span className="text-muted-foreground">Carregando histórico...</span>
           </div>
         </CardContent>
       </Card>
@@ -122,16 +122,16 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
 
   if (error) {
     return (
-      <Card className={className}>
+      <Card className={`${className} bg-card border-border`}>
         <CardHeader>
-          <CardTitle className="flex items-center text-purple-700">
-            <Clock className="mr-2 h-5 w-5" />
+          <CardTitle className="flex items-center text-card-foreground">
+            <Clock className="mr-2 h-5 w-5 text-primary" />
             Histórico de Projetos
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Alert className="border-red-200 bg-red-50">
-            <AlertDescription className="text-red-700">
+          <Alert className="border-destructive bg-destructive/10">
+            <AlertDescription className="text-destructive">
               {error}
             </AlertDescription>
           </Alert>
@@ -150,11 +150,11 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
   }
 
   return (
-    <Card className={className}>
+    <Card className={`${className} bg-card border-border`}>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center text-purple-700">
-            <Clock className="mr-2 h-5 w-5" />
+          <CardTitle className="flex items-center text-card-foreground">
+            <Clock className="mr-2 h-5 w-5 text-primary" />
             Histórico de Projetos
           </CardTitle>
           <Button
@@ -170,8 +170,8 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
       </CardHeader>
       <CardContent>
         {projects.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Archive className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <div className="text-center py-8 text-muted-foreground">
+            <Archive className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
             <p>Nenhum projeto encontrado no histórico</p>
             <p className="text-sm mt-1">Extraia alguns documentos para começar</p>
           </div>
@@ -183,24 +183,24 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
               return (
                 <div
                   key={project.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:bg-purple-50 transition-colors cursor-pointer"
+                  className="border border-border bg-muted p-4 hover:bg-muted/80 transition-colors cursor-pointer"
                   onClick={() => handleProjectClick(project)}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <FileText className="h-4 w-4 text-purple-600" />
-                        <span className="font-medium text-gray-900 truncate max-w-md">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span className="font-medium text-foreground truncate max-w-md">
                           {project.title}
                         </span>
                       </div>
                       
                       {dsid && (
                         <div className="flex items-center gap-2 mb-2">
-                          <Hash className="h-3 w-3 text-gray-500" />
+                          <Hash className="h-3 w-3 text-muted-foreground" />
                           <Badge 
                             variant="outline" 
-                            className="text-xs bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 cursor-pointer"
+                            className="text-xs cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleProjectClick(project);
@@ -230,7 +230,7 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       <span>Criado: {formatDate(project.createdAt)}</span>
@@ -251,7 +251,7 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
             
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center gap-2 pt-4 border-t">
+              <div className="flex justify-center gap-2 pt-4 border-t border-border">
                 <Button
                   variant="outline"
                   size="sm"
@@ -260,7 +260,7 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
                 >
                   Anterior
                 </Button>
-                <span className="flex items-center px-3 text-sm text-gray-600">
+                <span className="flex items-center px-3 text-sm text-foreground">
                   Página {page} de {totalPages}
                 </span>
                 <Button

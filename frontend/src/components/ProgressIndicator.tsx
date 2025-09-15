@@ -87,7 +87,7 @@ export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressInd
     const uniqueStepsList = Array.from(uniqueSteps.values());
 
     return (
-        <Card className="border-l-4 border-l-blue-500 bg-blue-50">
+        <Card className=" border-l-blue-500 bg-blue-50">
             <CardHeader>
                 <CardTitle className="flex items-center text-blue-700">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -111,9 +111,9 @@ export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressInd
                                 {currentStep.progress}%
                             </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-gray-200 -full h-2">
                             <div
-                                className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(currentStep.progress)}`}
+                                className={`h-2 -full transition-all duration-300 ${getProgressColor(currentStep.progress)}`}
                                 style={{ width: `${currentStep.progress}%` }}
                             />
                         </div>
@@ -135,13 +135,13 @@ export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressInd
                             return (
                                 <div
                                     key={`${step.step}-${step.message}-${index}`}
-                                    className={`flex items-start space-x-3 p-2 rounded-lg transition-all ${isCurrent
-                                            ? 'bg-blue-100 border border-blue-300'
-                                            : isCompleted
-                                                ? 'bg-green-50 border border-green-200'
-                                                : isError
-                                                    ? 'bg-red-50 border border-red-200'
-                                                    : 'bg-gray-50'
+                                    className={`flex items-start space-x-3 p-2 -lg transition-all ${isCurrent
+                                        ? 'bg-blue-100 border border-blue-300'
+                                        : isCompleted
+                                            ? 'bg-green-50 border border-green-200'
+                                            : isError
+                                                ? 'bg-red-50 border border-red-200'
+                                                : 'bg-gray-50'
                                         }`}
                                 >
                                     <div className="flex-shrink-0 mt-0.5">
@@ -174,7 +174,7 @@ export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressInd
 
                 {/* Status Atual */}
                 {currentStep && currentStep.step !== 'completed' && currentStep.step !== 'error' && (
-                    <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
+                    <div className="mt-4 p-3 bg-blue-100 -lg border border-blue-200">
                         <div className="flex items-center space-x-2">
                             <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                             <span className="text-sm font-medium text-blue-700">

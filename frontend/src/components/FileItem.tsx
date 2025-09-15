@@ -57,7 +57,7 @@ export const FileItem = ({ file, folderName, isSelected, onToggle }: FileItemPro
 
   return (
     <div 
-      className={`border rounded-lg p-3 cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50 ${
+      className={`border -lg p-3 cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50 ${
         isSelected ? 'border-blue-500 bg-blue-100' : 'border-gray-200'
       }`}
       onClick={handleClick}

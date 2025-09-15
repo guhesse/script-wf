@@ -21,7 +21,7 @@ export const FolderSection = ({
 }: FolderSectionProps) => {
   return (
     <Card className="mb-4">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg p-4">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white -t-lg p-4">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold flex items-center">
             <Folder className="mr-2 h-5 w-5" />
