@@ -1,11 +1,11 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { 
-  FileText, 
-  FileImage, 
-  FileVideo, 
-  Archive, 
-  FileSpreadsheet, 
+import {
+  FileText,
+  FileImage,
+  FileVideo,
+  Archive,
+  FileSpreadsheet,
   Presentation,
   Palette,
   File,
@@ -21,8 +21,8 @@ interface FileItemProps {
 }
 
 const getFileIcon = (type: string) => {
-  const iconProps = { className: "h-8 w-8 text-blue-600" };
-  
+  const iconProps = { className: "h-8 w-8 text-violet-500" };
+
   const iconMap: Record<string, React.ReactNode> = {
     'ZIP Archive': <Archive {...iconProps} />,
     'PDF Document': <FileText {...iconProps} />,
@@ -56,37 +56,36 @@ export const FileItem = ({ file, folderName, isSelected, onToggle }: FileItemPro
   };
 
   return (
-    <div 
-      className={`border -lg p-3 cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50 ${
-        isSelected ? 'border-blue-500 bg-blue-100' : 'border-gray-200'
-      }`}
+    <div
+      className={`border -lg p-3 cursor-pointer transition-all hover:border-violet-500 hover:bg-gray-900 ${isSelected ? 'border-violet-500 bg-violet-900 hover:bg-violet-900/70' : 'border-gray-200'
+        }`}
       onClick={handleClick}
     >
       <div className="flex items-center space-x-3">
-        <Checkbox 
+        <Checkbox
           checked={isSelected}
           onChange={handleClick}
           className="pointer-events-none"
         />
-        
+
         {getFileIcon(file.type)}
-        
+
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-gray-900 truncate">
+          <div className="font-medium truncate">
             {file.name}
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm">
             {file.size || 'N/A'}
             {file.addedInfo && ` • ${file.addedInfo}`}
           </div>
-          
+
           {file.url && file.url !== 'N/A' && (
             <div className="mt-1">
-              <a 
-                href={file.url} 
-                target="_blank" 
+              <a
+                href={file.url}
+                target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800"
+                className="inline-flex items-center text-xs text-gray-400 hover:text-violet-400"
                 onClick={handlePreviewClick}
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
@@ -95,7 +94,7 @@ export const FileItem = ({ file, folderName, isSelected, onToggle }: FileItemPro
             </div>
           )}
         </div>
-        
+
         <Badge variant="secondary">
           {file.type}
         </Badge>

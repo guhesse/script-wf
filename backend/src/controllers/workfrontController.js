@@ -32,6 +32,51 @@ export class WorkfrontController {
     }
 
     /**
+     * Fazer login automatizado no Workfront com credenciais
+     */
+    async loginWithCredentials(req, res) {
+        try {
+            console.log('🔑 Iniciando processo de login automatizado...');
+
+            const { email, password } = req.body;
+
+            if (!email || !password) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'E-mail e senha são obrigatórios'
+                });
+            }
+
+            const result = await authenticationService.loginWithCredentials(email.trim(), password.trim());
+
+            // Se requer 2FA, retornar informações específicas
+            if (result.requires2FA) {
+                console.log('📱 Requer 2FA - retornando instruções');
+                return res.json({
+                    success: false,
+                    requires2FA: true,
+                    authType: result.authType,
+                    message: result.message,
+                    sessionId: result.sessionId
+                });
+            }
+
+            console.log('✅ Login automatizado concluído');
+            res.json({
+                success: true,
+                message: 'Login realizado com sucesso!',
+                ...result
+            });
+        } catch (error) {
+            console.error('❌ Erro no login automatizado:', error.message);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
      * Verificar status do login
      */
     async getLoginStatus(req, res) {
@@ -52,7 +97,7 @@ export class WorkfrontController {
      */
     async extractDocumentsStream(req, res) {
         try {
-            const { projectId } = req.params;
+            const { _projectId } = req.params;
             const { url } = req.query;
 
             if (!url) {

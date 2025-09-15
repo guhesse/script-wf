@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import workfrontRoutes from './routes/workfrontRoutes.js';
+import briefingRoutes from './routes/briefingRoutes.js';
 import { requestLogger, errorHandler } from './middleware/logger.js';
 import { swaggerUi, swaggerSpec } from './config/swagger.js';
 
@@ -40,6 +41,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Rotas da API
 app.use('/api', workfrontRoutes);
+app.use('/api/briefing', briefingRoutes);
 
 // Rota para servir o frontend (SPA)
 app.get('/', (req, res) => {

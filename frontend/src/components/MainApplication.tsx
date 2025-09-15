@@ -6,13 +6,15 @@ import {
   FolderOpen,
   MessageSquare,
   History,
-  FolderDown
+  FolderDown,
+  FileText
 } from 'lucide-react';
 import { ProgressIndicator } from './ProgressIndicator';
 import { ProjectHistory } from './ProjectHistory';
 import { CommentSection } from './CommentSection';
 import { DocumentSharingSection } from './DocumentSharingSection';
 import BulkDownload from './BulkDownload';
+import BriefingContentViewer from './BriefingContentViewer';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import type { WorkfrontFolder } from '@/types';
 
@@ -26,7 +28,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'extract' | 'comment' | 'bulk-download' | 'history'>('extract');
+  const [activeSection, setActiveSection] = useState<'extract' | 'comment' | 'bulk-download' | 'briefing-content' | 'history'>('extract');
 
   // Estados para progresso
   const [showProgress, setShowProgress] = useState(false);
@@ -137,7 +139,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
         <div className="px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <h1 className="text-xl font-semibold tracking-tight text-card-foreground">Workfront Sharing Manager</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-card-foreground">VML Workfront Manager</h1>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -201,6 +203,16 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 <span className="font-medium">Download em Massa</span>
               </button>
               <button
+                onClick={() => setActiveSection('briefing-content')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'briefing-content'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+              >
+                <FileText className="h-5 w-5" />
+                <span className="font-medium">Conteúdo de Briefings</span>
+              </button>
+              <button
                 onClick={() => setActiveSection('history')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'history'
                   ? 'bg-primary text-primary-foreground'
@@ -245,6 +257,11 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
             {/* Bulk Download Section */}
             {activeSection === 'bulk-download' && (
               <BulkDownload />
+            )}
+
+            {/* Briefing Content Section */}
+            {activeSection === 'briefing-content' && (
+              <BriefingContentViewer />
             )}
 
             {/* History Section */}

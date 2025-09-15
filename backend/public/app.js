@@ -91,7 +91,7 @@ class WorkfrontSharingManager {
         const url = document.getElementById('projectUrl').value;
         const extractBtn = document.getElementById('extractBtn');
         
-        const isValid = url && url.includes('workfront') && url.includes('documents');
+        const isValid = url && url.includes('workfront');
         extractBtn.disabled = !isValid;
         
         if (url && !isValid) {

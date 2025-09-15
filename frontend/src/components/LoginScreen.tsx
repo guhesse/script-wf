@@ -64,7 +64,7 @@ export const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
         <Card className="shadow-2xl">
           <CardContent className="p-8 text-center">
             <h1 className="text-2xl font-bold text-blue-600 mb-3">
-              Workfront Sharing Manager
+              VML Workfront Manager
             </h1>
             <p className="text-gray-600 mb-6">
               Interface visual para compartilhamento de documentos no Workfront.
