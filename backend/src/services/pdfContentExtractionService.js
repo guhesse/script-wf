@@ -314,7 +314,8 @@ export class PdfContentExtractionService {
             const processingResult = await this.processTemporaryPdfs(
                 frameLocator,
                 page,
-                briefingDownload.id
+                briefingDownload.id,
+                projectInfo
             );
 
             // Atualizar status do download
@@ -417,6 +418,12 @@ export class PdfContentExtractionService {
      */
     async updateProjectInfo(projectId, projectInfo) {
         try {
+            // Validar parâmetros obrigatórios
+            if (!projectInfo) {
+                console.warn('⚠️ Informações do projeto não fornecidas - pulando atualização');
+                return;
+            }
+
             await prisma.workfrontProject.update({
                 where: { id: projectId },
                 data: {
@@ -435,6 +442,11 @@ export class PdfContentExtractionService {
      */
     async createBriefingDownload(projectId, projectInfo) {
         try {
+            // Validar parâmetros obrigatórios
+            if (!projectInfo) {
+                throw new Error('Informações do projeto são obrigatórias para criar registro de download');
+            }
+
             const briefingDownload = await prisma.briefingDownload.create({
                 data: {
                     projectId: projectId,
@@ -518,11 +530,22 @@ export class PdfContentExtractionService {
     /**
      * Processar PDFs temporariamente - usando EXATAMENTE a lógica do BulkDownload
      */
-    async processTemporaryPdfs(frameLocator, page, downloadId) {
+    async processTemporaryPdfs(frameLocator, page, downloadId, projectInfo) {
         console.log('📥 Identificando PDFs para processamento...');
 
+        // Validar parâmetros obrigatórios
+        if (!projectInfo) {
+            throw new Error('Informações do projeto são obrigatórias para processar PDFs');
+        }
+
+        // Extrair contexto do projeto
+        const projectContext = {
+            projectName: projectInfo.projectName,
+            dsid: projectInfo.dsid
+        };
+        
         // Usar a lógica já testada do BulkDownload para encontrar arquivos
-        const fileElements = await documentBulkDownloadService.findAllDownloadableFiles(frameLocator);
+        const fileElements = await documentBulkDownloadService.findAllDownloadableFiles(frameLocator, page, projectContext);
 
         if (fileElements.length === 0) {
             console.log('⚠️ Nenhum arquivo encontrado na pasta Briefing');
@@ -541,11 +564,11 @@ export class PdfContentExtractionService {
         });
 
         // Log estatísticas de filtragem
-        console.log(`📊 Estatísticas de filtragem:`);
-        console.log(`   📄 Total de arquivos encontrados: ${fileElements.length}`);
-        console.log(`   📄 Total de PDFs encontrados: ${allPdfs.length}`);
-        console.log(`   ✅ PDFs de briefing identificados: ${briefPdfs.length}`);
-        console.log(`   ❌ PDFs descartados: ${allPdfs.length - briefPdfs.length}`);
+        console.log('📊 Estatísticas de filtragem:');
+        console.log('   📄 Total de arquivos encontrados: ' + fileElements.length);
+        console.log('   📄 Total de PDFs encontrados: ' + allPdfs.length);
+        console.log('   ✅ PDFs de briefing identificados: ' + briefPdfs.length);
+        console.log('   ❌ PDFs descartados: ' + (allPdfs.length - briefPdfs.length));
 
         if (briefPdfs.length === 0) {
             console.log('⚠️ Nenhum PDF de briefing encontrado (verificando padrões: brief, _smv_, _gam_, _csg_, award-winning, etc.)');
@@ -590,12 +613,12 @@ export class PdfContentExtractionService {
                 const status = response.status();
                 
                 // Verificar se é um response de download de PDF
-                if (status === 200 && url.includes('.pdf') && 
+                if (status === 200 && url.includes('.pdf') &&
                     (url.includes('dam.dell.com') || url.includes('workfront') || url.includes('adobe'))) {
                     
                     const contentType = response.headers()['content-type'] || '';
                     if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
-                        console.log(`📥 URL de download capturada: ${url.substring(0, 100)}...`);
+                        console.log('📥 URL de download capturada: ' + url.substring(0, 100) + '...');
                         
                         // Tentar extrair nome do arquivo da URL
                         const urlFileName = url.split('/').pop()?.split('?')[0];
@@ -607,8 +630,8 @@ export class PdfContentExtractionService {
             });
 
             const downloadedFiles = await documentBulkDownloadService.downloadSelectedFiles(
-                frameLocator, 
-                page, 
+                frameLocator,
+                page,
                 tempDir
             );
 
@@ -645,7 +668,7 @@ export class PdfContentExtractionService {
                         
                         // Tentar diferentes estratégias para encontrar a URL
                         for (const [capturedName, capturedUrl] of downloadedUrls.entries()) {
-                            if (downloadedFile.fileName.includes(capturedName) || 
+                            if (downloadedFile.fileName.includes(capturedName) ||
                                 capturedName.includes(downloadedFile.fileName.replace('.pdf', ''))) {
                                 originalUrl = capturedUrl;
                                 console.log(`✅ URL original encontrada para ${downloadedFile.fileName}: ${originalUrl.substring(0, 100)}...`);

@@ -578,8 +578,10 @@ export class WorkfrontController {
             const {
                 projectUrls,
                 downloadPath,
-                headless = true,
-                continueOnError = true
+                headless = false,
+                continueOnError = true,
+                keepFiles = false,
+                organizeByDSID = true
             } = req.body;
 
             // Validação básica
@@ -597,7 +599,9 @@ export class WorkfrontController {
                 {
                     downloadPath,
                     headless,
-                    continueOnError
+                    continueOnError,
+                    keepFiles,
+                    organizeByDSID
                 }
             );
 

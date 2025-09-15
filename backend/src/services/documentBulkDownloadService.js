@@ -43,7 +43,9 @@ export class DocumentBulkDownloadService {
             const {
                 headless = true,
                 downloadPath = this.defaultDownloadPath,
-                continueOnError = true
+                continueOnError = true,
+                keepFiles = false, // Nova opção para manter arquivos
+                organizeByDSID = true // Nova opção para organizar por DSID
             } = options;
 
             // Garantir que o diretório de download existe
@@ -53,7 +55,7 @@ export class DocumentBulkDownloadService {
             const results = await this.performBulkDownload(
                 projectUrls,
                 downloadPath,
-                { headless, continueOnError }
+                { headless, continueOnError, keepFiles, organizeByDSID }
             );
 
             console.log('✅ Download em massa concluído!');
@@ -143,7 +145,8 @@ export class DocumentBulkDownloadService {
                         page,
                         projectUrl,
                         downloadPath,
-                        i + 1
+                        i + 1,
+                        options
                     );
 
                     results.successful.push({
@@ -205,7 +208,7 @@ export class DocumentBulkDownloadService {
     /**
      * Download de briefing de um projeto específico
      */
-    async downloadProjectBriefing(page, projectUrl, downloadPath, projectNumber) {
+    async downloadProjectBriefing(page, projectUrl, downloadPath, projectNumber, options = {}) {
         console.log(`📁 Navegando para projeto ${projectNumber}...`);
 
         try {
@@ -244,7 +247,8 @@ export class DocumentBulkDownloadService {
                 frameLocator,
                 page,
                 downloadPath,
-                projectName
+                projectName,
+                options
             );
 
             // Processar PDFs baixados e extrair conteúdo
@@ -461,35 +465,139 @@ export class DocumentBulkDownloadService {
     }
 
     /**
+     * Clique seguro que lida com interceptação
+     */
+    async safeClick(element) {
+        console.log('🖱️ Executando clique seguro...');
+
+        // Estratégia 1: Scroll para elemento e aguardar
+        try {
+            await element.scrollIntoViewIfNeeded({ timeout: 2000 });
+            await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (e) {
+            console.log('⚠️ Scroll falhou, continuando...');
+        }
+
+        // Estratégia 2: Aguardar elemento estar realmente clicável
+        try {
+            await element.waitFor({ state: 'attached', timeout: 2000 });
+            await element.waitFor({ state: 'visible', timeout: 2000 });
+        } catch (e) {
+            console.log('⚠️ Aguardar elemento falhou, continuando...');
+        }
+
+        // Estratégia 3: Múltiplas tentativas de clique
+        const clickStrategies = [
+            // Clique normal
+            () => element.click({ timeout: 5000 }),
+            // Clique com delay
+            async () => {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return element.click({ timeout: 5000 });
+            },
+            // Clique forçado
+            () => element.click({ force: true, timeout: 5000 }),
+            // Clique em posição específica
+            async () => {
+                const box = await element.boundingBox();
+                if (box) {
+                    const x = box.x + box.width / 2;
+                    const y = box.y + box.height / 2;
+                    await element.page().mouse.click(x, y);
+                }
+            },
+            // Dispatch event de clique
+            () => element.dispatchEvent('click'),
+            // Usar evaluate para clique via JavaScript
+            () => element.evaluate(el => el.click())
+        ];
+
+        for (let i = 0; i < clickStrategies.length; i++) {
+            try {
+                console.log(`🎯 Tentativa ${i + 1}: ${['normal', 'com delay', 'forçado', 'por posição', 'dispatch event', 'via JavaScript'][i]}`);
+                await clickStrategies[i]();
+                console.log('✅ Clique bem-sucedido!');
+                return;
+            } catch (error) {
+                console.log(`❌ Tentativa ${i + 1} falhou: ${error.message}`);
+
+                // Se é interceptação, aguardar um pouco mais
+                if (error.message.includes('intercepts pointer events')) {
+                    console.log('⏳ Detectada interceptação, aguardando...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+
+                // Se não é a última tentativa, continuar
+                if (i < clickStrategies.length - 1) {
+                    continue;
+                }
+
+                // Se todas falharam, lançar erro
+                throw new Error(`Todas as estratégias de clique falharam. Último erro: ${error.message}`);
+            }
+        }
+    }
+
+    /**
      * Baixar todos os arquivos da pasta atual
      */
-    async downloadAllFilesInFolder(frameLocator, page, downloadPath, projectName) {
+    async downloadAllFilesInFolder(frameLocator, page, downloadPath, projectName, options = {}) {
         console.log('📥 Identificando arquivos para download...');
 
         // Criar estrutura de pastas organizada por DSID
-        const projectDownloadPath = await this.createOrganizedFolderStructure(downloadPath, projectName);
+        const projectDownloadPath = await this.createOrganizedFolderStructure(downloadPath, projectName, options);
+
+        // Extrair contexto do projeto para melhor seleção de arquivos
+        const projectContext = {
+            projectName: projectName,
+            dsid: this.extractDSIDFromTitle(projectName)
+        };
 
         // Encontrar todos os arquivos na pasta
-        const fileElements = await this.findAllDownloadableFiles(frameLocator);
+        const fileElements = await this.findAllDownloadableFiles(frameLocator, page, projectContext);
 
         if (fileElements.length === 0) {
             console.log('⚠️ Nenhum arquivo encontrado na pasta Briefing');
             return { count: 0, totalSize: 0, files: [] };
         }
 
-        console.log(`📋 ${fileElements.length} arquivos encontrados para download`);
+        // Filtrar e ordenar arquivos priorizando briefings
+        const briefingFiles = fileElements.filter(file => file.briefingInfo && file.briefingInfo.isBrief);
+        const otherFiles = fileElements.filter(file => !file.briefingInfo || !file.briefingInfo.isBrief);
 
-        // Selecionar todos os arquivos primeiro
-        console.log('✅ Selecionando todos os arquivos...');
-        for (let i = 0; i < fileElements.length; i++) {
-            const fileInfo = fileElements[i];
-            console.log(`📄 Selecionando arquivo ${i + 1}/${fileElements.length}: ${fileInfo.name}`);
+        // Ordenar briefings por prioridade (menor número = maior prioridade)
+        briefingFiles.sort((a, b) => a.briefingInfo.priority - b.briefingInfo.priority);
+
+        console.log(`📋 Total de arquivos encontrados: ${fileElements.length}`);
+        console.log(`📄 Arquivos de briefing identificados: ${briefingFiles.length}`);
+        console.log(`📄 Outros arquivos: ${otherFiles.length}`);
+
+        // Se temos briefings, usar apenas eles. Caso contrário, usar todos os PDFs
+        const filesToProcess = briefingFiles.length > 0 ? briefingFiles : fileElements;
+
+        if (briefingFiles.length > 0) {
+            console.log('✅ Processando apenas arquivos de briefing identificados:');
+            briefingFiles.forEach((file, index) => {
+                console.log(`   ${index + 1}. ${file.name} (${file.briefingInfo.reason})`);
+            });
+        } else {
+            console.log('⚠️ Nenhum briefing específico identificado, processando todos os PDFs encontrados');
+        }
+
+        console.log(`📋 ${filesToProcess.length} arquivos selecionados para download`);
+
+        // Selecionar todos os arquivos primeiro usando clique seguro
+        console.log('✅ Selecionando arquivos prioritários...');
+        for (let i = 0; i < filesToProcess.length; i++) {
+            const fileInfo = filesToProcess[i];
+            console.log(`📄 Selecionando arquivo ${i + 1}/${filesToProcess.length}: ${fileInfo.name}`);
 
             try {
-                await fileInfo.element.click();
-                await page.waitForTimeout(300); // Pequena pausa entre seleções
+                await this.safeClick(fileInfo.element);
+                await page.waitForTimeout(500); // Aumentar delay entre seleções
             } catch (error) {
                 console.error(`❌ Erro ao selecionar ${fileInfo.name}: ${error.message}`);
+                // Continuar com outros arquivos mesmo se um falhar
             }
         }
 
@@ -511,28 +619,46 @@ export class DocumentBulkDownloadService {
     /**
      * Criar estrutura organizada de pastas por DSID
      */
-    async createOrganizedFolderStructure(downloadPath, projectName) {
-        // Usar DSID como nome da pasta principal se disponível
-        const mainFolderName = this.sanitizeFileName(projectName);
+    async createOrganizedFolderStructure(downloadPath, projectName, options = {}) {
+        const { organizeByDSID = true, keepFiles = false } = options;
+
+        // Extrair DSID do nome do projeto
+        const dsid = this.extractDSIDFromTitle(projectName);
+
+        // Definir nome da pasta principal
+        let mainFolderName;
+        if (organizeByDSID && dsid) {
+            mainFolderName = dsid; // Usar apenas DSID como nome da pasta
+            console.log(`📁 Organizando por DSID: ${dsid}`);
+        } else {
+            mainFolderName = this.sanitizeFileName(projectName);
+            console.log(`📁 Organizando por nome do projeto: ${mainFolderName}`);
+        }
+
         const projectDownloadPath = path.join(downloadPath, mainFolderName);
 
         // Criar pasta principal do projeto
         await this.ensureDownloadDirectory(projectDownloadPath);
 
-        // Criar subpastas organizadas
-        const subFolders = ['brief', 'ppt', 'creatives'];
-        for (const folder of subFolders) {
-            const subFolderPath = path.join(projectDownloadPath, folder);
-            await this.ensureDownloadDirectory(subFolderPath);
-            console.log(`📁 Pasta criada: ${mainFolderName}/${folder}`);
+        if (keepFiles) {
+            // Se for para manter arquivos, criar subpastas organizadas
+            const subFolders = ['brief', 'ppt', 'creatives'];
+            for (const folder of subFolders) {
+                const subFolderPath = path.join(projectDownloadPath, folder);
+                await this.ensureDownloadDirectory(subFolderPath);
+                console.log(`📁 Pasta criada: ${mainFolderName}/${folder}`);
+            }
+
+            // Retornar o caminho da pasta brief (onde os PDFs serão salvos)
+            const briefPath = path.join(projectDownloadPath, 'brief');
+            console.log(`✅ Estrutura de pastas criada para ${organizeByDSID ? 'DSID' : 'projeto'}: ${mainFolderName}`);
+            console.log('📂 Arquivos da pasta Briefing serão salvos em: brief/');
+            return briefPath;
+        } else {
+            // Se for apenas para processamento temporário, retornar pasta principal
+            console.log(`✅ Pasta temporária criada: ${mainFolderName}`);
+            return projectDownloadPath;
         }
-
-        // Retornar o caminho da pasta brief (onde os PDFs serão salvos)
-        const briefPath = path.join(projectDownloadPath, 'brief');
-        console.log(`✅ Estrutura de pastas criada para DSID: ${mainFolderName}`);
-        console.log('📂 Arquivos da pasta Briefing serão salvos em: brief/');
-
-        return briefPath;
     }
 
     /**
@@ -570,32 +696,130 @@ export class DocumentBulkDownloadService {
     }
 
     /**
+     * Fechar sidebar summary que intercepta cliques
+     */
+    async closeSidebarSummary(frameLocator, page) {
+        console.log('🚪 Tentando fechar sidebar summary...');
+
+        try {
+            // Procurar pelo botão de fechar do sidebar
+            const closeButton = frameLocator.locator('[data-testid="minix-header-close-btn"]');
+            await closeButton.waitFor({ timeout: 3000 });
+            await closeButton.click();
+            console.log('✅ Sidebar fechado com sucesso');
+
+            // Aguardar o sidebar desaparecer completamente
+            await frameLocator.locator('[data-testid="minix-container"]').waitFor({ state: 'hidden', timeout: 3000 });
+        } catch (error) {
+            console.log('⚠️ Não foi possível fechar sidebar:', error.message);
+        }
+
+        // Aguardar um pouco para garantir que a interface se estabilize
+        await page.waitForTimeout(1000);
+    }
+
+    /**
+     * Verificar se arquivo é um briefing baseado no nome e contexto
+     */
+    isBriefingFile(fileName, projectContext = {}) {
+        const lowerFileName = fileName.toLowerCase();
+
+        // Prioridade 1: Arquivos que contêm "brief" no nome
+        if (lowerFileName.includes('brief')) {
+            console.log(`📄 Arquivo identificado como briefing por palavra-chave "brief": ${fileName}`);
+            return { isBrief: true, priority: 1, reason: 'contains_brief' };
+        }
+
+        // Prioridade 2: Verificar padrões específicos de nomenclatura de briefing
+        const briefingPatterns = [
+            /\d{4}g\d{4}_\d{4}_\d{7}.*brief/i, // Padrão completo com brief
+            /_br_.*_brief/i, // Padrão brasileiro com brief
+            /_brief[._]/i, // Brief seguido de . ou _
+            /brief_/i // Brief seguido de _
+        ];
+
+        for (const pattern of briefingPatterns) {
+            if (pattern.test(fileName)) {
+                console.log(`📄 Arquivo identificado como briefing por padrão: ${fileName}`);
+                return { isBrief: true, priority: 2, reason: 'matches_pattern' };
+            }
+        }
+
+        // Prioridade 3: Verificar se contém componentes do contexto do projeto
+        if (projectContext.dsid || projectContext.projectName) {
+            const dsid = projectContext.dsid;
+            const projectName = projectContext.projectName || '';
+
+            if (dsid && fileName.includes(dsid)) {
+                console.log(`📄 Arquivo relacionado ao projeto por DSID: ${fileName}`);
+                return { isBrief: true, priority: 3, reason: 'matches_dsid' };
+            }
+
+            // Verificar componentes do nome do projeto
+            if (projectName) {
+                const projectComponents = projectName.toLowerCase().split(/[_\-\s]+/);
+                let matchCount = 0;
+
+                for (const component of projectComponents) {
+                    if (component.length > 2 && lowerFileName.includes(component)) {
+                        matchCount++;
+                    }
+                }
+
+                if (matchCount >= 2) {
+                    console.log(`📄 Arquivo relacionado ao projeto por componentes do nome: ${fileName}`);
+                    return { isBrief: true, priority: 4, reason: 'matches_project_name' };
+                }
+            }
+        }
+
+        console.log(`📄 Arquivo não identificado como briefing: ${fileName}`);
+        return { isBrief: false, priority: 0, reason: 'no_match' };
+    }
+
+    /**
      * Encontrar todos os arquivos baixáveis na pasta
      */
-    async findAllDownloadableFiles(frameLocator) {
+    async findAllDownloadableFiles(frameLocator, page, projectContext = {}) {
         console.log('🔍 Procurando arquivos selecionáveis...');
 
-        // Aguardar pasta carregar com timeout mais curto
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Aguardar pasta carregar com timeout mais longo para evitar interceptação
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Tentar fechar sidebar summary que pode interceptar cliques
+        await this.closeSidebarSummary(frameLocator, page);
+
+        // Aguardar elementos potencialmente interceptores desaparecerem
+        try {
+            console.log('⏳ Aguardando sidebar vazia desaparecer...');
+            await frameLocator.locator('[data-testid="minix-empty-selection"]').waitFor({ state: 'hidden', timeout: 3000 });
+        } catch (_e) {
+            console.log('⚠️ Sidebar não encontrada ou não desapareceu - continuando...');
+        }
 
         const fileSelectors = [
-            // Seletores mais específicos para arquivos selecionáveis
-            '.doc-detail-view', // Seletor usado em outras partes do sistema
+            // Seletores mais específicos baseados no erro - usar o .doc-detail-view mas com estratégia diferente
+            '.doc-detail-view[role="button"]',
+            '.doc-detail-view',
+            // Seletores por papel/função
+            '[role="button"][is-folder="false"]',
+            '[role="button"]:not([is-folder="true"])',
+            // Seletores com atributos específicos do Workfront
+            '[ng-click*="selectFolderItem"]',
+            '[aria-label*=".pdf"]',
+            '[aria-label*=".PDF"]',
+            // Seletores de fallback mais específicos
             '.file-item[role="checkbox"]',
             '.document-item[role="checkbox"]',
             '[data-testid*="file"][role="checkbox"]',
             '[data-testid*="document"][role="checkbox"]',
-            // Seletores de fallback
+            // Outros seletores testados
             '.file-item',
             '.document-item',
             '[data-testid*="file"]',
             '[data-testid*="document"]',
-            // Elementos que podem ser clicáveis para seleção
             '[role="checkbox"]',
-            'input[type="checkbox"]',
-            // Seletores genéricos
-            '.selectable-file',
-            '.selectable-document'
+            'input[type="checkbox"]'
         ];
 
         const files = [];
@@ -650,13 +874,29 @@ export class DocumentBulkDownloadService {
                                 continue;
                             }
 
-                            files.push({
+                            // Verificar se é um arquivo de briefing
+                            const briefingCheck = this.isBriefingFile(fileName, projectContext);
+
+                            // Criar elemento wrapper com método de clique seguro
+                            const safeElement = {
                                 element: element,
+                                click: async () => {
+                                    return await this.safeClick(element);
+                                }
+                            };
+
+                            files.push({
+                                element: safeElement,
                                 name: fileName,
-                                index: i
+                                index: i,
+                                briefingInfo: briefingCheck
                             });
 
-                            console.log(`📄 Arquivo encontrado: ${fileName}`);
+                            if (briefingCheck.isBrief) {
+                                console.log('✅ Arquivo de briefing identificado (' + briefingCheck.reason + '): ' + fileName);
+                            } else {
+                                console.log('📄 Arquivo encontrado: ' + fileName);
+                            }
 
                         } catch (e) {
                             console.log(`⚠️ Erro ao processar elemento ${i}: ${e.message}`);
@@ -1024,7 +1264,7 @@ export class DocumentBulkDownloadService {
         try {
             // Configurar ambiente Node.js para pdfjs-dist
             const { createCanvas, createImageData } = await import('canvas');
-            
+
             // Configurar globals necessários para pdfjs-dist no Node.js
             if (typeof globalThis.DOMMatrix === 'undefined') {
                 // Mock das APIs DOM necessárias
@@ -1033,12 +1273,12 @@ export class DocumentBulkDownloadService {
                         this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0;
                     }
                 };
-                
-                globalThis.Path2D = class Path2D {};
-                globalThis.CanvasGradient = class CanvasGradient {};
-                globalThis.CanvasPattern = class CanvasPattern {};
+
+                globalThis.Path2D = class Path2D { };
+                globalThis.CanvasGradient = class CanvasGradient { };
+                globalThis.CanvasPattern = class CanvasPattern { };
             }
-            
+
             // Usar build legacy para Node.js
             const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
             console.log('✅ pdfjs-dist carregado com sucesso (configurado para Node.js)');
@@ -1449,7 +1689,9 @@ export class DocumentBulkDownloadService {
                     results.push(pdfContent);
 
                     // Criar arquivo de texto com o conteúdo extraído
-                    await this.savePdfContentToText(pdfContent, briefPath);
+                    // Não salvar JSON quando keepFiles=true (apenas para usuário final)
+                    const saveJson = false; // JSONs são apenas para controle interno
+                    await this.savePdfContentToText(pdfContent, briefPath, saveJson);
 
                 } catch (error) {
                     console.error(`❌ Erro ao processar ${pdfFile}: ${error.message}`);
@@ -1473,7 +1715,7 @@ export class DocumentBulkDownloadService {
     /**
      * Salvar conteúdo extraído do PDF em arquivo de texto
      */
-    async savePdfContentToText(pdfContent, outputDir) {
+    async savePdfContentToText(pdfContent, outputDir, saveJson = true) {
         try {
             const baseName = path.basename(pdfContent.fileName, '.pdf');
             const textFileName = `${baseName}_extracted_content.txt`;
@@ -1526,7 +1768,7 @@ export class DocumentBulkDownloadService {
 
                 // Ordenar autores alfabeticamente
                 const sortedAuthors = Array.from(commentsByAuthor.keys()).sort();
-                
+
                 sortedAuthors.forEach(author => {
                     content += `@${author}\n`;
                     const texts = commentsByAuthor.get(author);
@@ -1541,14 +1783,16 @@ export class DocumentBulkDownloadService {
                     content += '\n=====================================\n';
                     content += 'LINKS EXTRAÍDOS:\n';
                     content += '=====================================\n\n';
-                    
+
                     uniqueLinks.forEach((link) => {
                         content += `${link}\n`;
                     });
                 }
 
-                // Salvar dados estruturados para aplicação web
-                await this.saveStructuredDataToJson(pdfContent.fileName, structuredData, uniqueLinks, outputDir);
+                // Salvar dados estruturados para aplicação web (apenas se saveJson=true)
+                if (saveJson) {
+                    await this.saveStructuredDataToJson(pdfContent.fileName, structuredData, uniqueLinks, outputDir);
+                }
             } else {
                 content += '\n\n=====================================\n';
                 content += 'COMENTÁRIOS/ANOTAÇÕES:\n';
@@ -1566,8 +1810,12 @@ export class DocumentBulkDownloadService {
             // Salvar arquivo de texto
             await fs.writeFile(textFilePath, content, 'utf8');
 
-            console.log(`💾 Conteúdo salvo em: ${textFileName}`);
-            console.log(`📊 Resumo: ${pdfContent.textLength} caracteres, ${pdfContent.metadata.pages} páginas, ${pdfContent.commentsCount || 0} comentários`);
+            console.log('💾 Conteúdo salvo em: ' + textFileName);
+            console.log('📊 Resumo: ' + pdfContent.textLength + ' caracteres, ' + pdfContent.metadata.pages + ' páginas, ' + (pdfContent.commentsCount || 0) + ' comentários');
+
+            if (!saveJson) {
+                console.log('📋 JSON de controle interno não salvo (modo usuário final)');
+            }
 
             return textFilePath;
 
@@ -1579,6 +1827,8 @@ export class DocumentBulkDownloadService {
 
     /**
      * Salvar dados estruturados para aplicação web
+     * NOTA: Este JSON é apenas para controle interno do sistema
+     * Não deve ser incluído nos downloads para o usuário final
      */
     async saveStructuredDataToJson(pdfFileName, structuredData, links, outputDir) {
         try {
@@ -1630,13 +1880,13 @@ export class DocumentBulkDownloadService {
 
             // Buscar recursivamente por arquivos JSON de dados estruturados
             const structuredFiles = [];
-            
+
             async function searchInDirectory(dirPath) {
                 const entries = await fs.readdir(dirPath, { withFileTypes: true });
-                
+
                 for (const entry of entries) {
                     const fullPath = path.join(dirPath, entry.name);
-                    
+
                     if (entry.isDirectory()) {
                         await searchInDirectory(fullPath);
                     } else if (entry.name.endsWith('_structured_data.json')) {
