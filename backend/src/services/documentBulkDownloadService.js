@@ -575,8 +575,8 @@ export class DocumentBulkDownloadService {
     async findAllDownloadableFiles(frameLocator) {
         console.log('🔍 Procurando arquivos selecionáveis...');
 
-        // Aguardar pasta carregar
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Aguardar pasta carregar com timeout mais curto
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
         const fileSelectors = [
             // Seletores mais específicos para arquivos selecionáveis

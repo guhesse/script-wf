@@ -47,7 +47,7 @@ export const DocumentSharingSection = ({
     const { shareDocuments } = useWorkfrontApi();
 
     const isValidUrl = (url: string) => {
-        return url && url.includes('workfront') && url.includes('documents');
+        return url && url.includes('workfront');
     };
 
     const handleFileToggle = (folderName: string, fileName: string) => {
