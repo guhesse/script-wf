@@ -121,7 +121,7 @@ export const DocumentSharingSection = ({
             {/* Step 1: Project URL */}
             <Card className="border-l-primary bg-card border-border">
                 <CardHeader>
-                    <CardTitle className="flex items-center text-primary">
+                    <CardTitle className="flex items-center text-card-foreground">
                         <div className="w-8 h-8 bg-primary rounded-4xl text-primary-foreground flex items-center justify-center mr-3 text-sm font-semibold">
                             1
                         </div>
@@ -182,12 +182,12 @@ export const DocumentSharingSection = ({
                         </p>
                     )}
                 </CardContent>
-            </Card>
+            </Card >
 
             {/* Step 2: File Selection */}
-            <Card className="border-l-primary bg-card border-border">
+            < Card className="border-l-primary bg-card border-border" >
                 <CardHeader>
-                    <CardTitle className="flex items-center text-primary">
+                    <CardTitle className="flex items-center">
                         <div className="w-8 h-8 bg-primary text-primary-foreground rounded-4xl flex items-center justify-center mr-3 text-sm font-semibold">
                             2
                         </div>
@@ -256,12 +256,12 @@ export const DocumentSharingSection = ({
                         </div>
                     </div>
                 </CardContent>
-            </Card >
+            </ Card >
 
             {/* Step 3: Execution */}
-            <Card className="border-l-primary bg-card border-border">
+            < Card className="border-l-primary bg-card border-border" >
                 <CardHeader>
-                    <CardTitle className="flex items-center text-primary">
+                    <CardTitle className="flex items-center">
                         <div className="w-8 h-8 bg-primary text-primary-foreground rounded-4xl flex items-center justify-center mr-3 text-sm font-semibold">
                             3
                         </div>
@@ -341,7 +341,7 @@ export const DocumentSharingSection = ({
                         </div>
                     )}
                 </CardContent>
-            </ Card>
+            </ Card >
         </>
     );
 };

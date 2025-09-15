@@ -169,7 +169,6 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
         <div className="flex h-[calc(100vh-73px)]">
           {/* Fixed Sidebar */}
           <div className="w-80 bg-card border-r border-border p-6 flex-shrink-0">
-            <h3 className="text-lg font-semibold text-card-foreground mb-6 tracking-tight">Navegação</h3>
             <nav className="space-y-1">
               <button
                 onClick={() => setActiveSection('extract')}
@@ -216,37 +215,37 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto p-6">
-              {/* Extract & Share Section */}
-              {activeSection === 'extract' && (
-                <DocumentSharingSection
-                  projectUrl={projectUrl}
-                  setProjectUrl={setProjectUrl}
-                  folders={folders}
-                  setFolders={setFolders}
-                  selectedFiles={selectedFiles}
-                  setSelectedFiles={setSelectedFiles}
-                  selectedUser={selectedUser}
-                  setSelectedUser={setSelectedUser}
-                  currentProject={currentProject}
-                  setCurrentProject={setCurrentProject}
-                  onExtractDocuments={handleExtractDocuments}
-                />
-              )}
+            {/* Extract & Share Section */}
+            {activeSection === 'extract' && (
+              <DocumentSharingSection
+                projectUrl={projectUrl}
+                setProjectUrl={setProjectUrl}
+                folders={folders}
+                setFolders={setFolders}
+                selectedFiles={selectedFiles}
+                setSelectedFiles={setSelectedFiles}
+                selectedUser={selectedUser}
+                setSelectedUser={setSelectedUser}
+                currentProject={currentProject}
+                setCurrentProject={setCurrentProject}
+                onExtractDocuments={handleExtractDocuments}
+              />
+            )}
 
 
-              {/* Comments Section */}
-              {activeSection === 'comment' && (
-                <CommentSection
-                  projectUrl={projectUrl}
-                  folders={folders}
-                  currentProject={currentProject}
-                />
-              )}
+            {/* Comments Section */}
+            {activeSection === 'comment' && (
+              <CommentSection
+                projectUrl={projectUrl}
+                folders={folders}
+                currentProject={currentProject}
+              />
+            )}
 
-              {/* Bulk Download Section */}
-              {activeSection === 'bulk-download' && (
-                <BulkDownload />
-              )}
+            {/* Bulk Download Section */}
+            {activeSection === 'bulk-download' && (
+              <BulkDownload />
+            )}
 
             {/* History Section */}
             {activeSection === 'history' && (
