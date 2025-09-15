@@ -6,10 +6,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
     MessageSquare,
     Eye,
+    Sheet,
     Send,
     Users,
     FileText,
-    Clock
+    Clock,
+    Target,
+    FileCheck,
+    CheckCircle
 } from 'lucide-react';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import type { WorkfrontFolder } from '@/types';
@@ -35,9 +39,9 @@ export const CommentSection = ({
     const [teamMode, setTeamMode] = useState<'test' | 'carol' | 'giovana'>('test');
 
     const commentTypes = [
-        { value: 'assetRelease', label: 'Asset Release', icon: '🎯', description: 'Para compartilhar assets finais' },
-        { value: 'finalMaterials', label: 'Final Materials', icon: '📄', description: 'Para materiais finais' },
-        { value: 'approval', label: 'Approval', icon: '✅', description: 'Para aprovação' }
+        { value: 'assetRelease', label: 'Asset Release', icon: Target, description: 'Para compartilhar assets finais' },
+        { value: 'finalMaterials', label: 'Final Materials', icon: FileCheck, description: 'Para materiais finais' },
+        { value: 'approval', label: 'Approval', icon: CheckCircle, description: 'Para aprovação' }
     ] as const;
 
     const teamModes = [
@@ -101,7 +105,7 @@ export const CommentSection = ({
     return (
         <Card className="w-full bg-card border-border">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-card-foreground">
+                <CardTitle className="flex items-center gap-3 text-card-foreground">
                     <MessageSquare className="h-5 w-5 text-primary" />
                     Adicionar Comentário Automático
                 </CardTitle>
@@ -147,20 +151,23 @@ export const CommentSection = ({
                         Tipo de Comentário
                     </label>
                     <div className="grid grid-cols-1 gap-2">
-                        {commentTypes.map((type) => (
-                            <Button
-                                key={type.value}
-                                variant={commentType === type.value ? "default" : "outline"}
-                                onClick={() => setCommentType(type.value)}
-                                className="flex items-center justify-start gap-2 p-3 h-auto"
-                            >
-                                <span className="text-lg">{type.icon}</span>
-                                <div className="text-left">
-                                    <div className="font-medium">{type.label}</div>
-                                    <div className="text-xs opacity-70">{type.description}</div>
-                                </div>
-                            </Button>
-                        ))}
+                        {commentTypes.map((type) => {
+                            const IconComponent = type.icon;
+                            return (
+                                <Button
+                                    key={type.value}
+                                    variant={commentType === type.value ? "default" : "outline"}
+                                    onClick={() => setCommentType(type.value)}
+                                    className="flex items-center justify-start gap-2 p-3 h-auto"
+                                >
+                                    <IconComponent className="h-5 w-5" />
+                                    <div className="text-left">
+                                        <div className="font-medium">{type.label}</div>
+                                        <div className="text-xs opacity-70">{type.description}</div>
+                                    </div>
+                                </Button>
+                            );
+                        })}
                     </div>
                 </div>
 

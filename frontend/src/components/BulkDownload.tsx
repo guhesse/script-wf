@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Download, FileDown, FolderDown, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input }  from './ui/input';
+import { Input } from './ui/input';
 import { Alert } from './ui/alert';
 import { Badge } from './ui/badge';
 
@@ -69,7 +69,7 @@ const BulkDownload: React.FC = () => {
 
   const handlePreview = async () => {
     const validUrls = getValidUrls();
-    
+
     if (validUrls.length === 0) {
       setError('Adicione pelo menos uma URL de projeto');
       return;
@@ -101,7 +101,7 @@ const BulkDownload: React.FC = () => {
 
   const handleDownload = async () => {
     const validUrls = getValidUrls();
-    
+
     if (validUrls.length === 0) {
       setError('Adicione pelo menos uma URL de projeto');
       return;
@@ -151,11 +151,11 @@ const BulkDownload: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="bg-card p-6 border border-border">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-3 mb-4">
           <FolderDown className="w-5 h-5 text-primary" />
-          <h2 className="text-xl font-semibold text-card-foreground">Download em Massa - Briefings</h2>
+          <h2 className="font-semibold">Download em Massa - Briefings</h2>
         </div>
-        
+
         <p className="text-muted-foreground mb-6">
           Faça download de todos os arquivos da pasta "05. Briefing" de múltiplos projetos simultaneamente.
         </p>
@@ -165,7 +165,7 @@ const BulkDownload: React.FC = () => {
           <label className="block text-sm font-medium text-foreground">
             URLs dos Projetos Workfront
           </label>
-          
+
           {projectUrls.map((url, index) => (
             <div key={index} className="flex gap-2">
               <Input
@@ -185,7 +185,7 @@ const BulkDownload: React.FC = () => {
               </Button>
             </div>
           ))}
-          
+
           <Button
             onClick={addUrlField}
             variant="outline"
@@ -279,7 +279,7 @@ const BulkDownload: React.FC = () => {
       {preview && (
         <div className="bg-card p-6 border border-border">
           <h3 className="text-lg font-semibold text-card-foreground mb-4">Preview do Download</h3>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{preview.totalProjects}</div>
@@ -317,7 +317,7 @@ const BulkDownload: React.FC = () => {
       {result && (
         <div className="bg-card p-6 border border-border">
           <h3 className="text-lg font-semibold mb-4 text-card-foreground">Resultado do Download</h3>
-          
+
           {/* Resumo */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center p-4 bg-muted border border-border">

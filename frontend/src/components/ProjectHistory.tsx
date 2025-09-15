@@ -33,9 +33,9 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await getProjectHistory(pageNum, 5);
-      
+
       if (response.success) {
         setProjects(response.projects);
         setPage(response.pagination.page);
@@ -104,9 +104,9 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
   if (loading && projects.length === 0) {
     return (
       <Card className={`${className} bg-card border-border`}>
-        <CardHeader>
-          <CardTitle className="flex items-center text-card-foreground">
-            <Clock className="mr-2 h-5 w-5 text-primary" />
+        <CardHeader >
+          <CardTitle className="flex items-center gap-3 text-card-foreground">
+            <Clock className="h-5 w-5 text-primary" />
             Histórico de Projetos
           </CardTitle>
         </CardHeader>
@@ -123,9 +123,9 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
   if (error) {
     return (
       <Card className={`${className} bg-card border-border`}>
-        <CardHeader>
-          <CardTitle className="flex items-center text-card-foreground">
-            <Clock className="mr-2 h-5 w-5 text-primary" />
+        <CardHeader >
+          <CardTitle className="flex items-center gap-3 text-card-foreground">
+            <Clock className="h-5 w-5 text-primary" />
             Histórico de Projetos
           </CardTitle>
         </CardHeader>
@@ -153,8 +153,8 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
     <Card className={`${className} bg-card border-border`}>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center text-card-foreground">
-            <Clock className="mr-2 h-5 w-5 text-primary" />
+          <CardTitle className="flex items-center gap-3 text-card-foreground">
+            <Clock className="h-5 w-5 text-primary" />
             Histórico de Projetos
           </CardTitle>
           <Button
@@ -179,7 +179,7 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
           <div className="space-y-3">
             {projects.map((project) => {
               const dsid = extractDSID(project.title);
-              
+
               return (
                 <div
                   key={project.id}
@@ -194,12 +194,12 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
                           {project.title}
                         </span>
                       </div>
-                      
+
                       {dsid && (
                         <div className="flex items-center gap-2 mb-2">
                           <Hash className="h-3 w-3 text-muted-foreground" />
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="text-xs cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -211,7 +211,7 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex flex-col items-end gap-2">
                       <Badge className={getStatusColor(project.status)}>
                         {getStatusText(project.status)}
@@ -229,7 +229,7 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
@@ -248,7 +248,7 @@ export const ProjectHistory = ({ onLoadProject, className = '' }: ProjectHistory
                 </div>
               );
             })}
-            
+
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center gap-2 pt-4 border-t border-border">
