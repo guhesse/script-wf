@@ -43,6 +43,8 @@ const BulkDownload: React.FC = () => {
   const [downloadPath, setDownloadPath] = useState('');
   const [headless, setHeadless] = useState(true);
   const [continueOnError, setContinueOnError] = useState(true);
+  const [keepFiles, setKeepFiles] = useState(true);
+  const [organizeByDSID, setOrganizeByDSID] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BulkDownloadResult | null>(null);
   const [error, setError] = useState<string>('');
@@ -121,7 +123,9 @@ const BulkDownload: React.FC = () => {
           projectUrls: validUrls,
           downloadPath: downloadPath || undefined,
           headless,
-          continueOnError
+          continueOnError,
+          keepFiles,
+          organizeByDSID
         }),
       });
 
@@ -158,6 +162,8 @@ const BulkDownload: React.FC = () => {
 
         <p className="text-muted-foreground mb-6">
           Faça download de todos os arquivos da pasta "05. Briefing" de múltiplos projetos simultaneamente.
+          <br />
+          <strong>Melhorias implementadas:</strong> Seleção mais robusta de arquivos, tratamento de interceptação de cliques, e opções para organização personalizada.
         </p>
 
         {/* URLs dos Projetos */}
@@ -213,7 +219,7 @@ const BulkDownload: React.FC = () => {
               placeholder="Ex: C:/Downloads/Briefings"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Deixe vazio para usar o diretório padrão
+              Deixe vazio para usar o diretório padrão. Se "Manter arquivos" estiver marcado, a estrutura de pastas será criada aqui.
             </p>
           </div>
 
@@ -237,6 +243,28 @@ const BulkDownload: React.FC = () => {
               />
               <span className="text-sm text-foreground">Continuar mesmo com erros</span>
             </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={keepFiles}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKeepFiles(e.target.checked)}
+                className=""
+              />
+              <span className="text-sm text-foreground">Manter arquivos baixados (PDFs + TXTs, sem JSONs de controle)</span>
+            </label>
+
+            {keepFiles && (
+              <label className="flex items-center gap-2 ml-6">
+                <input
+                  type="checkbox"
+                  checked={organizeByDSID}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrganizeByDSID(e.target.checked)}
+                  className=""
+                />
+                <span className="text-sm text-foreground">Organizar pastas por DSID (ao invés de nome do projeto)</span>
+              </label>
+            )}
           </div>
         </div>
 
