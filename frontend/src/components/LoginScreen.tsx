@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Share, ArrowRight, LogIn } from 'lucide-react';
+import { ArrowRight, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
@@ -18,13 +18,20 @@ export const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
       try {
         const status = await checkLoginStatus();
         setLoginStatus(status);
+        
+        // Auto-redirecionar se já estiver logado
+        if (status.loggedIn) {
+          setTimeout(() => {
+            onLoginComplete();
+          }, 1000); // Pequeno delay para mostrar o status antes de redirecionar
+        }
       } catch (error) {
         console.error('Erro ao verificar status:', error);
       }
     };
 
     checkStatus();
-  }, [checkLoginStatus]);
+  }, [checkLoginStatus, onLoginComplete]);
 
   const handleLogin = async () => {
     try {
@@ -56,7 +63,6 @@ export const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
       <div className="w-full max-w-md">
         <Card className="shadow-2xl">
           <CardContent className="p-8 text-center">
-            <Share className="h-16 w-16 text-blue-600 mx-auto mb-6" />
             <h1 className="text-2xl font-bold text-blue-600 mb-3">
               Workfront Sharing Manager
             </h1>
@@ -67,20 +73,28 @@ export const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
             
             <div className="mb-6">
               <div className="flex items-center justify-center mb-2">
-                <div className={`w-3 h-3 rounded-full ${status.color} mr-2`} />
+                <div className={`w-3 h-3 -full ${status.color} mr-2`} />
                 <span className="text-sm text-gray-600">{status.text}</span>
               </div>
             </div>
             
-            {loginStatus?.loggedIn ? (
-              <Button 
-                onClick={onLoginComplete}
-                size="lg" 
-                className="w-full"
-              >
-                <ArrowRight className="mr-2 h-4 w-4" />
-                Continuar para Interface
-              </Button>
+            {loginStatus?.loggedIn ? ( 
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="animate-spin -full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Você já está conectado! Redirecionando para o dashboard...
+                  </p>
+                </div>
+                <Button 
+                  onClick={onLoginComplete}
+                  size="lg" 
+                  className="w-full"
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  Ir para Dashboard Agora
+                </Button>
+              </div>
             ) : (
               <Button 
                 onClick={handleLogin}

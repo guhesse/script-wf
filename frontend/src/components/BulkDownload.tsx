@@ -150,19 +150,19 @@ const BulkDownload: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-lg border">
+      <div className="bg-card p-6 border border-border">
         <div className="flex items-center gap-2 mb-4">
-          <FolderDown className="w-5 h-5 text-blue-600" />
-          <h2 className="text-xl font-semibold">Download em Massa - Briefings</h2>
+          <FolderDown className="w-5 h-5 text-primary" />
+          <h2 className="text-xl font-semibold text-card-foreground">Download em Massa - Briefings</h2>
         </div>
         
-        <p className="text-gray-600 mb-6">
+        <p className="text-muted-foreground mb-6">
           Faça download de todos os arquivos da pasta "05. Briefing" de múltiplos projetos simultaneamente.
         </p>
 
         {/* URLs dos Projetos */}
         <div className="space-y-4">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground">
             URLs dos Projetos Workfront
           </label>
           
@@ -196,7 +196,7 @@ const BulkDownload: React.FC = () => {
             Adicionar URL
           </Button>
 
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             URLs válidas: {getValidUrls().length} de {projectUrls.length}
           </div>
         </div>
@@ -204,7 +204,7 @@ const BulkDownload: React.FC = () => {
         {/* Configurações */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Caminho de Download (opcional)
             </label>
             <Input
@@ -212,7 +212,7 @@ const BulkDownload: React.FC = () => {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDownloadPath(e.target.value)}
               placeholder="Ex: C:/Downloads/Briefings"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Deixe vazio para usar o diretório padrão
             </p>
           </div>
@@ -223,9 +223,9 @@ const BulkDownload: React.FC = () => {
                 type="checkbox"
                 checked={headless}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHeadless(e.target.checked)}
-                className="rounded"
+                className=""
               />
-              <span className="text-sm">Modo headless (sem interface gráfica)</span>
+              <span className="text-sm text-foreground">Modo headless (sem interface gráfica)</span>
             </label>
 
             <label className="flex items-center gap-2">
@@ -233,9 +233,9 @@ const BulkDownload: React.FC = () => {
                 type="checkbox"
                 checked={continueOnError}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContinueOnError(e.target.checked)}
-                className="rounded"
+                className=""
               />
-              <span className="text-sm">Continuar mesmo com erros</span>
+              <span className="text-sm text-foreground">Continuar mesmo com erros</span>
             </label>
           </div>
         </div>
@@ -268,44 +268,44 @@ const BulkDownload: React.FC = () => {
 
         {/* Erros */}
         {error && (
-          <Alert className="mt-4 border-red-200 bg-red-50">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
-            <div className="text-red-800">{error}</div>
+          <Alert className="mt-4 border-destructive bg-destructive/10">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <div className="text-destructive">{error}</div>
           </Alert>
         )}
       </div>
 
       {/* Preview */}
       {preview && (
-        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold text-blue-900 mb-4">Preview do Download</h3>
+        <div className="bg-card p-6 border border-border">
+          <h3 className="text-lg font-semibold text-card-foreground mb-4">Preview do Download</h3>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{preview.totalProjects}</div>
-              <div className="text-sm text-blue-700">Projetos</div>
+              <div className="text-2xl font-bold text-primary">{preview.totalProjects}</div>
+              <div className="text-sm text-muted-foreground">Projetos</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{preview.targetFolder}</div>
-              <div className="text-sm text-green-700">Pasta Alvo</div>
+              <div className="text-2xl font-bold text-primary">{preview.targetFolder}</div>
+              <div className="text-sm text-muted-foreground">Pasta Alvo</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{preview.estimatedTime}</div>
-              <div className="text-sm text-purple-700">Tempo Estimado</div>
+              <div className="text-2xl font-bold text-primary">{preview.estimatedTime}</div>
+              <div className="text-sm text-muted-foreground">Tempo Estimado</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">{preview.downloadPath}</div>
-              <div className="text-sm text-gray-700">Destino</div>
+              <div className="text-2xl font-bold text-muted-foreground">{preview.downloadPath}</div>
+              <div className="text-sm text-muted-foreground">Destino</div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <h4 className="font-medium">Projetos a processar:</h4>
+            <h4 className="font-medium text-foreground">Projetos a processar:</h4>
             <div className="max-h-40 overflow-y-auto space-y-1">
               {preview.projects.map((project: BulkDownloadPreview['projects'][0], index: number) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
-                  <span className="text-sm">Projeto {project.number}</span>
-                  <Badge variant="secondary">{project.status}</Badge>
+                <div key={index} className="flex items-center justify-between p-2 bg-muted border border-border">
+                  <span className="text-sm text-foreground">Projeto {project.number}</span>
+                  <Badge variant="outline">{project.status}</Badge>
                 </div>
               ))}
             </div>
@@ -315,44 +315,44 @@ const BulkDownload: React.FC = () => {
 
       {/* Resultado */}
       {result && (
-        <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Resultado do Download</h3>
+        <div className="bg-card p-6 border border-border">
+          <h3 className="text-lg font-semibold mb-4 text-card-foreground">Resultado do Download</h3>
           
           {/* Resumo */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{result.successful.length}</div>
-              <div className="text-sm text-green-700">Sucessos</div>
+            <div className="text-center p-4 bg-muted border border-border">
+              <div className="text-2xl font-bold text-primary">{result.successful.length}</div>
+              <div className="text-sm text-muted-foreground">Sucessos</div>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{result.failed.length}</div>
-              <div className="text-sm text-red-700">Falhas</div>
+            <div className="text-center p-4 bg-muted border border-border">
+              <div className="text-2xl font-bold text-destructive">{result.failed.length}</div>
+              <div className="text-sm text-muted-foreground">Falhas</div>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{result.summary.totalFiles}</div>
-              <div className="text-sm text-blue-700">Arquivos</div>
+            <div className="text-center p-4 bg-muted border border-border">
+              <div className="text-2xl font-bold text-primary">{result.summary.totalFiles}</div>
+              <div className="text-sm text-muted-foreground">Arquivos</div>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{formatFileSize(result.summary.totalSize)}</div>
-              <div className="text-sm text-purple-700">Tamanho Total</div>
+            <div className="text-center p-4 bg-muted border border-border">
+              <div className="text-2xl font-bold text-primary">{formatFileSize(result.summary.totalSize)}</div>
+              <div className="text-sm text-muted-foreground">Tamanho Total</div>
             </div>
           </div>
 
           {/* Projetos Bem-sucedidos */}
           {result.successful.length > 0 && (
             <div className="mb-6">
-              <h4 className="font-medium text-green-700 mb-3">✅ Projetos Processados com Sucesso</h4>
+              <h4 className="font-medium text-primary mb-3">✅ Projetos Processados com Sucesso</h4>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {result.successful.map((project, index) => (
-                  <div key={index} className="p-3 bg-green-50 rounded border border-green-200">
+                  <div key={index} className="p-3 bg-muted border border-border">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-medium">{project.projectName}</div>
-                        <div className="text-sm text-gray-600">Projeto {project.projectNumber}</div>
+                        <div className="font-medium text-foreground">{project.projectName}</div>
+                        <div className="text-sm text-muted-foreground">Projeto {project.projectNumber}</div>
                       </div>
                       <div className="text-right text-sm">
-                        <div className="text-green-600 font-medium">{project.filesDownloaded} arquivos</div>
-                        <div className="text-gray-500">{formatFileSize(project.totalSize)}</div>
+                        <div className="text-primary font-medium">{project.filesDownloaded} arquivos</div>
+                        <div className="text-muted-foreground">{formatFileSize(project.totalSize)}</div>
                       </div>
                     </div>
                   </div>
@@ -364,14 +364,14 @@ const BulkDownload: React.FC = () => {
           {/* Projetos com Falha */}
           {result.failed.length > 0 && (
             <div>
-              <h4 className="font-medium text-red-700 mb-3">❌ Projetos com Falha</h4>
+              <h4 className="font-medium text-destructive mb-3">❌ Projetos com Falha</h4>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {result.failed.map((project, index) => (
-                  <div key={index} className="p-3 bg-red-50 rounded border border-red-200">
+                  <div key={index} className="p-3 bg-muted border border-border">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="text-sm text-gray-600">Projeto {project.projectNumber}</div>
-                        <div className="text-xs text-red-600 mt-1">{project.error}</div>
+                        <div className="text-sm text-foreground">Projeto {project.projectNumber}</div>
+                        <div className="text-xs text-destructive mt-1">{project.error}</div>
                       </div>
                       <Badge variant="destructive">Falha</Badge>
                     </div>
