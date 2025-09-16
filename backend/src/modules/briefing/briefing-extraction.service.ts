@@ -179,7 +179,8 @@ export class BriefingExtractionService {
                 filesDownloaded: downloadResult.count,
                 totalSize: downloadResult.totalSize,
                 files: downloadResult.files,
-                pdfProcessing: downloadResult.pdfProcessing
+                pdfProcessing: downloadResult.pdfProcessing,
+                downloadDir: (downloadResult as any).downloadDir
             };
 
         } catch (error) {
@@ -275,8 +276,13 @@ export class BriefingExtractionService {
             }
         }
 
-        // Limpeza
-        try { await fs.rm(tempDir, { recursive: true, force: true }); } catch { }
+        // Limpeza dos arquivos temporários
+        // Se keepFiles=true, manter diretório e arquivos para organização posterior
+        try {
+            if (!options.keepFiles) {
+                await fs.rm(tempDir, { recursive: true, force: true });
+            }
+        } catch { }
 
         return {
             count: pdfFiles.length,
@@ -287,7 +293,8 @@ export class BriefingExtractionService {
                 processed: pdfResults.length,
                 results: pdfResults,
                 hasTextExtraction: pdfResults.length > 0
-            }
+            },
+            downloadDir: options.keepFiles ? tempDir : undefined
         };
     }
 

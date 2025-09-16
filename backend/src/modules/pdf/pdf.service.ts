@@ -13,6 +13,7 @@ import {
 } from './dto/pdf.dto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { DocumentBulkDownloadService } from '../../download/document-bulk-download.service';
 
 @Injectable()
 export class PdfService {
@@ -20,7 +21,10 @@ export class PdfService {
     private readonly defaultDownloadPath = join(process.cwd(), 'downloads');
     private pdfParse: any = null;
 
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly bulk: DocumentBulkDownloadService,
+    ) {}
 
     async healthCheck(): Promise<any> {
         return {
@@ -205,20 +209,8 @@ export class PdfService {
      * Preview do download em massa
      */
     getBulkDownloadPreview(projectUrls: string[]): BulkDownloadPreviewResponseDto {
-        return {
-            success: true,
-            preview: {
-                totalProjects: projectUrls.length,
-                targetFolder: '05. Briefing',
-                downloadPath: this.defaultDownloadPath,
-                estimatedTime: `${projectUrls.length * 2}-${projectUrls.length * 5} minutos`,
-                projects: projectUrls.map((url, index) => ({
-                    number: index + 1,
-                    url: url,
-                    status: 'pending',
-                })),
-            },
-        };
+        const preview = this.bulk.getDownloadPreview(projectUrls);
+        return { success: true, preview: { targetFolder: '05. Briefing', downloadPath: this.defaultDownloadPath, estimatedTime: `${projectUrls.length * 2}-${projectUrls.length * 5} minutos`, ...preview } as any };
     }
 
     /**
@@ -226,33 +218,18 @@ export class PdfService {
      */
     async bulkDownloadBriefings(downloadDto: BulkDownloadDto): Promise<BulkDownloadResponseDto> {
         try {
-            const { projectUrls, downloadPath = this.defaultDownloadPath, headless = true, continueOnError = true } = downloadDto;
+            const { projectUrls, downloadPath = this.defaultDownloadPath, headless = true, continueOnError = true, keepFiles = true, organizeByDSID = true } = downloadDto;
 
-            this.logger.log('📦 === DOWNLOAD EM MASSA DE BRIEFINGS ===');
-            this.logger.log(`🔗 ${projectUrls.length} projetos para processar`);
+            const bulkRes = await this.bulk.bulkDownloadBriefings(projectUrls, { downloadPath, headless, continueOnError, keepFiles, organizeByDSID });
 
-            // TODO: Implementar integração com sistema de automação Playwright
-            // Por enquanto, retornar resultado simulado
-
-            const results: BulkDownloadResponseDto = {
+            return {
                 success: true,
-                message: `Download em massa concluído: ${projectUrls.length} projetos processados`,
-                total: projectUrls.length,
-                successful: projectUrls.map((url, index) => ({
-                    url,
-                    projectNumber: index + 1,
-                    projectName: `Projeto ${index + 1}`,
-                    filesDownloaded: 3,
-                    totalSize: 1024 * 1024 * 5, // 5MB simulado
-                })),
-                failed: [],
-                summary: {
-                    totalFiles: projectUrls.length * 3,
-                    totalSize: projectUrls.length * 1024 * 1024 * 5,
-                },
+                message: `Download em massa concluído: ${bulkRes.total} projetos processados`,
+                total: bulkRes.total,
+                successful: bulkRes.successful,
+                failed: bulkRes.failed,
+                summary: bulkRes.summary,
             };
-
-            return results;
         } catch (error) {
             this.logger.error(`❌ Erro no download em massa: ${error.message}`);
             throw error;
