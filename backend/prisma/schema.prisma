@@ -28,7 +28,7 @@ model WorkfrontProject {
 
   // Relacionamento com sessões de acesso
   accessSessions AccessSession[]
-  
+
   // Relacionamento com downloads de briefing
   briefingDownloads BriefingDownload[]
 
@@ -51,19 +51,19 @@ model AccessSession {
 
 // Modelo para armazenar downloads de briefings processados
 model BriefingDownload {
-  id            String   @id @default(cuid())
-  projectId     String
-  projectName   String
-  dsid          String?
-  totalFiles    Int      @default(0)
-  totalSize     BigInt   @default(0)
-  status        DownloadStatus @default(PROCESSING)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String         @id @default(cuid())
+  projectId   String
+  projectName String
+  dsid        String?
+  totalFiles  Int            @default(0)
+  totalSize   BigInt         @default(0)
+  status      DownloadStatus @default(PROCESSING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   // Relacionamento com o projeto Workfront
   project WorkfrontProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+
   // Relacionamento com arquivos PDF processados
   pdfFiles PdfFile[]
 
@@ -75,7 +75,7 @@ model PdfFile {
   id               String   @id @default(cuid())
   downloadId       String
   originalFileName String
-  originalUrl      String?  // URL original de onde o PDF foi baixado
+  originalUrl      String? // URL original de onde o PDF foi baixado
   fileSize         BigInt   @default(0)
   pageCount        Int      @default(0)
   hasContent       Boolean  @default(false)
@@ -85,10 +85,10 @@ model PdfFile {
 
   // Relacionamento com o download
   download BriefingDownload @relation(fields: [downloadId], references: [id], onDelete: Cascade)
-  
+
   // Relacionamento com conteúdo extraído
   extractedContent PdfExtractedContent?
-  
+
   // Relacionamento com dados estruturados
   structuredData PdfStructuredData?
 
@@ -97,18 +97,18 @@ model PdfFile {
 
 // Modelo para conteúdo extraído dos PDFs
 model PdfExtractedContent {
-  id         String   @id @default(cuid())
-  pdfFileId  String   @unique
-  fullText   String?  @db.Text
-  
+  id        String  @id @default(cuid())
+  pdfFileId String  @unique
+  fullText  String? @db.Text
+
   // Comentários agrupados por autor
-  comments   Json?    // Armazena comentários estruturados por autor
-  
+  comments Json? // Armazena comentários estruturados por autor
+
   // Links extraídos
-  links      String[] // Array de links encontrados
-  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  links String[] // Array de links encontrados
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relacionamento com o arquivo PDF
   pdfFile PdfFile @relation(fields: [pdfFileId], references: [id], onDelete: Cascade)
@@ -118,26 +118,26 @@ model PdfExtractedContent {
 
 // Modelo para dados estruturados extraídos dos PDFs
 model PdfStructuredData {
-  id            String   @id @default(cuid())
-  pdfFileId     String   @unique
-  
+  id        String @id @default(cuid())
+  pdfFileId String @unique
+
   // Campos estruturados extraídos dos comentários
-  liveDate      String?
-  vf            String?  // Visual Framework
-  headlineCopy  String?
-  copy          String?  @db.Text
-  description   String?  @db.Text
-  cta           String?
-  background    String?  @db.Text
-  colorCopy     String?
-  postcopy      String?  @db.Text
-  urn           String?
-  allocadia     String?
-  po            String?  // Purchase Order
-  
+  liveDate        String?
+  vf              String? // Visual Framework
+  headline        String?
+  copy            String? @db.Text
+  description     String? @db.Text
+  cta             String?
+  copyColor       String?
+  backgroundColor String?
+  postcopy        String? @db.Text
+  urn             String?
+  allocadia       String?
+  formats         Json? // Formatos de assets (solicitados e existentes)
+
   // Metadados
-  extractedAt   DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  extractedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relacionamento com o arquivo PDF
   pdfFile PdfFile @relation(fields: [pdfFileId], references: [id], onDelete: Cascade)
