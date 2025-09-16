@@ -719,7 +719,7 @@ router.post('/process-pdfs', workfrontController.processPdfsInProject.bind(workf
  *                             type: string
  *                           vf:
  *                             type: string
- *                           headlineCopy:
+ *                           headline:
  *                             type: string
  *                           copy:
  *                             type: string

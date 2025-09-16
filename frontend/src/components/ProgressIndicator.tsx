@@ -26,6 +26,11 @@ interface ProgressIndicatorProps {
 export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressIndicatorProps) => {
     if (!isVisible) return null;
 
+    // Saneamento defensivo: filtrar itens malformados para evitar runtime errors
+    const safeSteps: ProgressStep[] = Array.isArray(steps)
+        ? steps.filter(s => !!s && typeof s.step === 'string' && typeof s.message === 'string')
+        : [];
+
     const getStepIcon = (step: string, isCompleted: boolean, isCurrent: boolean) => {
         const iconProps = {
             className: `h-5 w-5 ${isCurrent ? 'animate-spin' : ''} ${isCompleted ? 'text-green-600' : isCurrent ? 'text-blue-600' : 'text-gray-400'
@@ -76,7 +81,7 @@ export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressInd
         return 'bg-green-500';
     };
 
-    const uniqueSteps = steps.reduce((acc, step) => {
+    const uniqueSteps = safeSteps.reduce((acc, step) => {
         const key = `${step.step}-${step.message}`;
         if (!acc.has(key)) {
             acc.set(key, step);
@@ -128,9 +133,12 @@ export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressInd
                     <h4 className="font-semibold text-gray-700 text-sm">Progresso detalhado:</h4>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         {uniqueStepsList.map((step, index) => {
-                            const isCompleted = step.step === 'completed' || step.step === 'folder-complete';
-                            const isCurrent = currentStep?.step === step.step && currentStep?.message === step.message;
-                            const isError = step.step.includes('error');
+                            const stepKey = step?.step || '';
+                            const isCompleted = stepKey === 'completed' || stepKey === 'folder-complete';
+                            const isCurrent = currentStep?.step === stepKey && currentStep?.message === step.message;
+                            const isError = stepKey.includes('error');
+                            const tsDate = step.timestamp ? new Date(step.timestamp) : null;
+                            const tsValid = tsDate && !isNaN(tsDate.getTime());
 
                             return (
                                 <div
@@ -152,14 +160,22 @@ export const ProgressIndicator = ({ isVisible, currentStep, steps }: ProgressInd
                                             }`}>
                                             {step.message}
                                         </p>
-                                        <p className="text-xs text-gray-500">
-                                            {new Date(step.timestamp).toLocaleTimeString()}
-                                        </p>
-                                        {step.data && typeof step.data === 'object' && step.data !== null && 'totalFiles' in step.data && (
-                                            <Badge variant="secondary" className="mt-1 text-xs">
-                                                {String((step.data as { totalFiles: number }).totalFiles)} arquivos
-                                            </Badge>
+                                        {tsValid && (
+                                            <p className="text-xs text-gray-500">
+                                                {tsDate!.toLocaleTimeString()}
+                                            </p>
                                         )}
+                                        {(() => {
+                                            if (step.data && typeof step.data === 'object' && step.data !== null && 'totalFiles' in step.data) {
+                                                const total = (step.data as { totalFiles: number }).totalFiles;
+                                                return (
+                                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                                        {String(total)} arquivo{Number(total) === 1 ? '' : 's'}
+                                                    </Badge>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                     </div>
                                     {step.progress > 0 && (
                                         <Badge variant="outline" className="text-xs">

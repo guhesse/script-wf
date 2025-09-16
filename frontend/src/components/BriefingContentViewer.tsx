@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     AlertTriangle,
     Download,
@@ -6,7 +6,6 @@ import {
     Copy,
     Eye,
     FileText,
-    Calendar,
     Hash,
     Loader2,
     CheckCircle2,
@@ -24,6 +23,7 @@ import { Input } from './ui/input';
 import { Alert } from './ui/alert';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
+import { DELL_COLORS, extractColorsFromText, formatFullColor, rgbString } from '../lib/dellColors';
 
 interface ProjectBriefing {
     id: string;
@@ -50,8 +50,6 @@ interface PdfComment {
     type: string;
     author: string;
     content: string;
-    creationDate: string;
-    modificationDate: string;
 }
 
 interface PdfFile {
@@ -70,16 +68,21 @@ interface PdfFile {
     structuredData?: {
         liveDate?: string;
         vf?: string;
-        headlineCopy?: string;
+        headline?: string;
         copy?: string;
         description?: string;
         cta?: string;
-        background?: string;
-        colorCopy?: string;
+        backgroundColor?: string;
+        copyColor?: string;
         postcopy?: string;
         urn?: string;
         allocadia?: string;
         po?: string;
+        formats?: {
+            requested?: string[];
+            existing?: string[];
+            summary?: string;
+        };
     };
 }
 
@@ -130,24 +133,17 @@ const BriefingContentViewer: React.FC = () => {
     // Estados para processamento de novos briefings
     const [processUrls, setProcessUrls] = useState<string[]>(['']);
     const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
-    
+
     // Estado para feedback visual dos botões de copiar
     const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
-    
+
     // Estados para seleção múltipla e exclusão
     const [selectedDownloads, setSelectedDownloads] = useState<Set<string>>(new Set());
     const [isDeleting, setIsDeleting] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [showPalette, setShowPalette] = useState(false);
 
-    useEffect(() => {
-        const loadData = async () => {
-            await loadProjects();
-            await loadStats();
-        };
-        loadData();
-    }, []);
-
-    const loadProjects = async () => {
+    const loadProjects = useCallback(async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
@@ -162,14 +158,15 @@ const BriefingContentViewer: React.FC = () => {
             } else {
                 setError(data.error || 'Erro ao carregar projetos');
             }
-        } catch (err) {
+        } catch (_err) {
+            void _err;
             setError('Erro ao conectar com o servidor');
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchTerm, filterStatus]);
 
-    const loadStats = async () => {
+    const loadStats = useCallback(async () => {
         try {
             const response = await fetch('/api/briefing/stats');
             const data = await response.json();
@@ -177,10 +174,18 @@ const BriefingContentViewer: React.FC = () => {
             if (data.success) {
                 setStats(data.data);
             }
-        } catch (err) {
-            console.error('Erro ao carregar estatísticas:', err);
+        } catch (_err) {
+            console.error('Erro ao carregar estatísticas:', _err);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const loadData = async () => {
+            await loadProjects();
+            await loadStats();
+        };
+        loadData();
+    }, [loadProjects, loadStats]);
 
     const processNewBriefings = async () => {
         const validUrls = processUrls.filter(url => url.trim() !== '');
@@ -212,16 +217,20 @@ const BriefingContentViewer: React.FC = () => {
             });
 
             const data = await response.json();
+            console.log('🔍 Response received:', data);
 
             if (data.success) {
+                console.log('✅ Setting processResult:', data.data);
                 setProcessResult(data.data);
                 // Recarregar lista de projetos
                 await loadProjects();
                 await loadStats();
             } else {
+                console.error('❌ Process failed:', data.error);
                 setError(data.error || 'Erro no processamento');
             }
-        } catch (err) {
+        } catch (_err) {
+            void _err;
             setError('Erro ao conectar com o servidor');
         } finally {
             setProcessing(false);
@@ -247,7 +256,7 @@ const BriefingContentViewer: React.FC = () => {
         try {
             await navigator.clipboard.writeText(text);
             toast.success('Texto copiado para a área de transferência!');
-            
+
             // Feedback visual temporário
             if (itemId) {
                 setCopiedItems(prev => new Set(prev).add(itemId));
@@ -265,62 +274,62 @@ const BriefingContentViewer: React.FC = () => {
         }
     };
 
-    const parsePostcopy = (postcopyText: string) => {
-        // Remover prefixo POSTCOPY se existir
-        const cleanText = postcopyText.replace(/^POSTCOPY:\s*/i, '').trim();
-        
-        // Padrões conhecidos de campos do POSTCOPY
-        const fieldPatterns = ['HL:', 'COPY:', 'DESCRIPTION:', 'CTA:', 'HEADLINE:', 'DESC:'];
-        
-        const parsed: Record<string, string> = {};
-        const textToProcess = cleanText;
-        
-        // Processar cada campo conhecido
-        fieldPatterns.forEach(pattern => {
-            const regex = new RegExp(`\\b${pattern.replace(':', '')}:\\s*([^]*?)(?=\\b(?:${fieldPatterns.map(p => p.replace(':', '')).join('|')}):|$)`, 'i');
-            const match = textToProcess.match(regex);
-            
-            if (match) {
-                const key = pattern.replace(':', '').toUpperCase();
-                const value = match[1].trim();
-                parsed[key] = value;
-            }
-        });
-        
-        // Se não conseguiu fazer parse com padrões, tentar método linha por linha
-        if (Object.keys(parsed).length === 0) {
-            const lines = cleanText.split(/\r\n|\r|\n/).filter(line => line.trim());
-            
-            lines.forEach(line => {
-                const colonIndex = line.indexOf(':');
-                if (colonIndex > 0) {
-                    const key = line.substring(0, colonIndex).trim();
-                    const value = line.substring(colonIndex + 1).trim();
-                    
-                    // Verificar se é um campo válido (maiúsculas + dois pontos)
-                    if (key.match(/^[A-Z]+$/)) {
-                        parsed[key] = value;
-                    }
-                }
-            });
-        }
-        
-        return parsed;
-    };
+    // const parsePostcopy = (postcopyText: string) => {
+    //     // Remover prefixo POSTCOPY se existir
+    //     const cleanText = postcopyText.replace(/^POSTCOPY:\s*/i, '').trim();
+
+    //     // Padrões conhecidos de campos do POSTCOPY
+    //     const fieldPatterns = ['HL:', 'COPY:', 'DESCRIPTION:', 'CTA:', 'HEADLINE:', 'DESC:'];
+
+    //     const parsed: Record<string, string> = {};
+    //     const textToProcess = cleanText;
+
+    //     // Processar cada campo conhecido
+    //     fieldPatterns.forEach(pattern => {
+    //         const regex = new RegExp(`\\b${pattern.replace(':', '')}:\\s*([^]*?)(?=\\b(?:${fieldPatterns.map(p => p.replace(':', '')).join('|')}):|$)`, 'i');
+    //         const match = textToProcess.match(regex);
+
+    //         if (match) {
+    //             const key = pattern.replace(':', '').toUpperCase();
+    //             const value = match[1].trim();
+    //             parsed[key] = value;
+    //         }
+    //     });
+
+    //     // Se não conseguiu fazer parse com padrões, tentar método linha por linha
+    //     if (Object.keys(parsed).length === 0) {
+    //         const lines = cleanText.split(/\r\n|\r|\n/).filter(line => line.trim());
+
+    //         lines.forEach(line => {
+    //             const colonIndex = line.indexOf(':');
+    //             if (colonIndex > 0) {
+    //                 const key = line.substring(0, colonIndex).trim();
+    //                 const value = line.substring(colonIndex + 1).trim();
+
+    //                 // Verificar se é um campo válido (maiúsculas + dois pontos)
+    //                 if (key.match(/^[A-Z]+$/)) {
+    //                     parsed[key] = value;
+    //                 }
+    //             }
+    //         });
+    //     }
+
+    //     return parsed;
+    // };
 
     // Função para processar links DAM removendo a parte de login para download direto
     const processDAMLink = (url: string): string => {
         if (!url.includes('dell-assetshare/login/assetshare/details.html')) {
             return url;
         }
-        
+
         // Remove a parte '/content/dell-assetshare/login/assetshare/details.html' 
         // mantendo apenas a parte do download direto
         const parts = url.split('/content/dell-assetshare/login/assetshare/details.html');
         if (parts.length === 2) {
             return parts[0] + parts[1];
         }
-        
+
         return url;
     };
 
@@ -337,7 +346,7 @@ const BriefingContentViewer: React.FC = () => {
     };
 
     const selectAllDownloads = () => {
-        const allDownloadIds = projects.flatMap(project => 
+        const allDownloadIds = projects.flatMap(project =>
             project.briefingDownloads.map(download => download.id)
         );
         setSelectedDownloads(new Set(allDownloadIds));
@@ -393,7 +402,8 @@ const BriefingContentViewer: React.FC = () => {
     const formatDate = (dateString: string) => {
         try {
             return new Date(dateString).toLocaleString('pt-BR');
-        } catch (e) {
+        } catch (_e) {
+            void _e;
             return dateString || 'Data inválida';
         }
     };
@@ -512,9 +522,9 @@ const BriefingContentViewer: React.FC = () => {
                     <div className="mt-6 p-4 bg-muted border border-border">
                         <h4 className="font-medium mb-2">Resultado do Processamento</h4>
                         <div className="text-sm space-y-1">
-                            <div>✅ Sucessos: {processResult.successful.length}</div>
-                            <div>❌ Falhas: {processResult.failed.length}</div>
-                            <div>📄 Total de arquivos: {processResult.summary.totalFiles}</div>
+                            <div>✅ Sucessos: {processResult.successful?.length || 0}</div>
+                            <div>❌ Falhas: {processResult.failed?.length || 0}</div>
+                            <div>📄 Total de arquivos: {processResult.summary?.totalFiles || 0}</div>
                         </div>
                     </div>
                 )}
@@ -576,7 +586,7 @@ const BriefingContentViewer: React.FC = () => {
                             )}
                             {selectedDownloads.size === 0 ? 'Selecionar Todos' : `${selectedDownloads.size} Selecionados`}
                         </Button>
-                        
+
                         {selectedDownloads.size > 0 && (
                             <Button
                                 onClick={clearSelection}
@@ -587,7 +597,7 @@ const BriefingContentViewer: React.FC = () => {
                             </Button>
                         )}
                     </div>
-                    
+
                     {selectedDownloads.size > 0 && (
                         <Button
                             onClick={() => setShowConfirmDialog(true)}
@@ -617,7 +627,7 @@ const BriefingContentViewer: React.FC = () => {
                                             onClick={() => {
                                                 const projectDownloadIds = project.briefingDownloads.map(d => d.id);
                                                 const allProjectSelected = projectDownloadIds.every(id => selectedDownloads.has(id));
-                                                
+
                                                 if (allProjectSelected) {
                                                     // Desmarcar todos do projeto
                                                     setSelectedDownloads(prev => {
@@ -639,7 +649,7 @@ const BriefingContentViewer: React.FC = () => {
                                             {(() => {
                                                 const projectDownloadIds = project.briefingDownloads.map(d => d.id);
                                                 const selectedCount = projectDownloadIds.filter(id => selectedDownloads.has(id)).length;
-                                                
+
                                                 if (selectedCount === 0) {
                                                     return <Square className="w-4 h-4" />;
                                                 } else if (selectedCount === projectDownloadIds.length) {
@@ -659,17 +669,7 @@ const BriefingContentViewer: React.FC = () => {
                                                     </Badge>
                                                 )}
                                             </div>
-
-                                            <div className="text-sm text-muted-foreground mb-2">
-                                                <div className="flex items-center gap-4">
-                                                    <span className="flex items-center gap-1">
-                                                        <Calendar className="w-3 h-3" />
-                                                        {formatDate(project.accessedAt)}
-                                                    </span>
-                                                    <span>{project.briefingDownloads.length} download(s)</span>
-                                                </div>
-                                            </div>
-
+                                            {/* bloco de data de comentário removido (inserido por engano) */}
                                             {/* Downloads do Projeto */}
                                             <div className="space-y-2">
                                                 {project.briefingDownloads.map((download) => (
@@ -731,7 +731,7 @@ const BriefingContentViewer: React.FC = () => {
                             <h3 className="text-lg font-semibold">Confirmar Exclusão</h3>
                         </div>
                         <p className="text-gray-600 mb-6">
-                            Tem certeza que deseja excluir {selectedDownloads.size} briefing(s) selecionado(s)? 
+                            Tem certeza que deseja excluir {selectedDownloads.size} briefing(s) selecionado(s)?
                             Esta ação não pode ser desfeita e removerá todos os dados relacionados.
                         </p>
                         <div className="flex gap-3 justify-end">
@@ -785,63 +785,64 @@ const BriefingContentViewer: React.FC = () => {
 
                     {/* Lista de PDFs */}
                     <div className="space-y-4">
-                        {selectedDownload.pdfFiles.map((pdf) => (
-                            <div key={pdf.id} className="border border-border p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <FileText className="w-4 h-4" />
-                                        <span className="font-medium">{pdf.originalFileName}</span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {pdf.pageCount} pág. • {formatFileSize(pdf.fileSize)}
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-2 text-xs">
-                                        {pdf.hasContent && (
-                                            <Badge variant="secondary">Texto</Badge>
-                                        )}
-                                        {pdf.hasComments && (
-                                            <Badge variant="secondary">Comentários</Badge>
-                                        )}
-                                        {pdf.structuredData && Object.values(pdf.structuredData).some(v => v) && (
-                                            <Badge variant="secondary">Dados Estruturados</Badge>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* URL original do PDF */}
-                                {pdf.originalUrl && (
-                                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2 flex-1">
-                                                <span className="text-xs font-medium text-blue-700">PDF Original:</span>
-                                                <a
-                                                    href={pdf.originalUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-blue-600 hover:underline flex-1 truncate"
-                                                >
-                                                    {pdf.originalUrl}
-                                                </a>
-                                            </div>
-                                            <Button
-                                                onClick={() => copyToClipboard(pdf.originalUrl!, `pdf-url-${pdf.id}`)}
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex items-center gap-1 h-6 px-2"
-                                            >
-                                                {copiedItems.has(`pdf-url-${pdf.id}`) ? (
-                                                    <Check className="w-3 h-3 text-green-600" />
-                                                ) : (
-                                                    <Copy className="w-3 h-3" />
-                                                )}
-                                                <span className="text-xs">Copiar</span>
-                                            </Button>
+                        {selectedDownload.pdfFiles && selectedDownload.pdfFiles.length > 0 ? (
+                            selectedDownload.pdfFiles.map((pdf) => (
+                                <div key={pdf.id} className="border border-border p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="w-4 h-4" />
+                                            <span className="font-medium">{pdf.originalFileName}</span>
+                                            <span className="text-sm text-muted-foreground">
+                                                {pdf.pageCount} pág. • {formatFileSize(pdf.fileSize)}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2 text-xs">
+                                            {pdf.hasContent && (
+                                                <Badge variant="secondary">Texto</Badge>
+                                            )}
+                                            {pdf.hasComments && (
+                                                <Badge variant="secondary">Comentários</Badge>
+                                            )}
+                                            {pdf.structuredData && Object.values(pdf.structuredData).some(v => v) && (
+                                                <Badge variant="secondary">Dados Estruturados</Badge>
+                                            )}
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Detalhes do PDF - sempre visíveis */}
-                                <div className="mt-4 space-y-4">
+                                    {/* URL original do PDF */}
+                                    {pdf.originalUrl && (
+                                        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <span className="text-xs font-medium text-blue-700">PDF Original:</span>
+                                                    <a
+                                                        href={pdf.originalUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-blue-600 hover:underline flex-1 truncate"
+                                                    >
+                                                        {pdf.originalUrl}
+                                                    </a>
+                                                </div>
+                                                <Button
+                                                    onClick={() => copyToClipboard(pdf.originalUrl!, `pdf-url-${pdf.id}`)}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex items-center gap-1 h-6 px-2"
+                                                >
+                                                    {copiedItems.has(`pdf-url-${pdf.id}`) ? (
+                                                        <Check className="w-3 h-3 text-green-600" />
+                                                    ) : (
+                                                        <Copy className="w-3 h-3" />
+                                                    )}
+                                                    <span className="text-xs">Copiar</span>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Detalhes do PDF - sempre visíveis */}
+                                    <div className="mt-4 space-y-4">
                                         {/* Dados Estruturados */}
                                         {pdf.structuredData && Object.values(pdf.structuredData).some(v => v) && (
                                             <div>
@@ -849,89 +850,220 @@ const BriefingContentViewer: React.FC = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                     {Object.entries(pdf.structuredData).map(([key, value]) => {
                                                         if (!value) return null;
-                                                        
-                                                        // Tratamento especial para POSTCOPY
+
+                                                        // Filtrar o campo postcopy bruto (mantemos apenas os campos parseados)
                                                         if (key.toLowerCase() === 'postcopy') {
-                                                            const parsedPostcopy = parsePostcopy(String(value));
-                                                            
-                                                            // Se conseguiu fazer parse dos campos, mostrar estruturado
-                                                            if (Object.keys(parsedPostcopy).length > 0) {
-                                                                return (
-                                                                    <div key={key} className="md:col-span-2">
-                                                                        <div className="bg-muted/30 p-4 border border-border/50">
-                                                                            <div className="text-sm font-medium text-muted-foreground mb-3 flex items-center justify-between">
-                                                                                <span>POSTCOPY</span>
-                                                                                <Button
-                                                                                    onClick={() => copyToClipboard(String(value), `postcopy-full-${pdf.id}`)}
-                                                                                    variant="ghost"
-                                                                                    size="sm"
-                                                                                    className="h-7 px-2 text-xs"
-                                                                                >
-                                                                                    {copiedItems.has(`postcopy-full-${pdf.id}`) ? (
-                                                                                        <Check className="w-3 h-3 text-green-600" />
-                                                                                    ) : (
-                                                                                        <Copy className="w-3 h-3" />
-                                                                                    )}
-                                                                                    Copiar Tudo
-                                                                                </Button>
-                                                                            </div>
-                                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                                                {Object.entries(parsedPostcopy).map(([subKey, subValue]) => (
-                                                                                    <div key={subKey} className="p-3 border border-muted-foreground/20 rounded">
-                                                                                        <div className="text-xs font-medium text-muted-foreground mb-1">
-                                                                                            {subKey}
-                                                                                        </div>
-                                                                                        <div className="text-sm flex items-start justify-between gap-2">
-                                                                                            <span className="flex-1 whitespace-pre-wrap">{subValue}</span>
-                                                                                            <Button
-                                                                                                onClick={() => copyToClipboard(subValue, `postcopy-${subKey}-${pdf.id}`)}
-                                                                                                variant="ghost"
-                                                                                                size="sm"
-                                                                                                className="h-6 w-6 p-0"
-                                                                                            >
-                                                                                                {copiedItems.has(`postcopy-${subKey}-${pdf.id}`) ? (
-                                                                                                    <Check className="w-3 h-3 text-green-600" />
-                                                                                                ) : (
-                                                                                                    <Copy className="w-3 h-3" />
-                                                                                                )}
-                                                                                            </Button>
-                                                                                        </div>
+                                                            return null;
+                                                        }
+
+                                                        // Filtrar campos PO inválidos (muito curtos ou que parecem pedaços de arquivo/texto)
+                                                        if (key.toLowerCase() === 'po') {
+                                                            const poValue = String(value).trim();
+                                                            // Ignorar se for muito curto, contém extensão de arquivo, ou é apenas uma letra
+                                                            if (poValue.length <= 2 ||
+                                                                /\.(psd|pdf|jpg|png|zip)$/i.test(poValue) ||
+                                                                /^[a-z]$/i.test(poValue) ||
+                                                                poValue.includes('-c-') || // padrão de nome de arquivo
+                                                                poValue.includes('st-c-')) { // padrão de nome de arquivo
+                                                                return null;
+                                                            }
+                                                        }
+
+                                                        // Tratamento especial para FORMATS
+                                                        if (key.toLowerCase() === 'formats' && value && typeof value === 'object') {
+                                                            const formats = value as { requested?: string[]; existing?: string[]; summary?: string };
+                                                            return (
+                                                                <div key={key} className="md:col-span-2">
+                                                                    <div className="bg-muted/30 p-4 border border-border/50">
+                                                                        <div className="text-sm font-medium text-muted-foreground mb-3 flex items-center justify-between">
+                                                                            <span>FORMATOS DE ASSETS</span>
+                                                                            <Button
+                                                                                onClick={() => copyToClipboard(formats.summary || '', `formats-summary-${pdf.id}`)}
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="h-7 px-2 text-xs"
+                                                                            >
+                                                                                {copiedItems.has(`formats-summary-${pdf.id}`) ? (
+                                                                                    <Check className="w-3 h-3 text-green-600" />
+                                                                                ) : (
+                                                                                    <Copy className="w-3 h-3" />
+                                                                                )}
+                                                                                Copiar Resumo
+                                                                            </Button>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                            {formats.requested && formats.requested.length > 0 && (
+                                                                                <div className="p-3 border border-border/50 bg-muted/20 rounded">
+                                                                                    <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                                                                                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                                                                                        Formatos Solicitados
                                                                                     </div>
-                                                                                ))}
-                                                                            </div>
+                                                                                    <div className="flex flex-wrap gap-1">
+                                                                                        {formats.requested.map((format, idx) => (
+                                                                                            <span key={idx} className="px-2 py-1 bg-primary/10 text-violet-200 text-xs rounded border border-primary/20 font-mono">
+                                                                                                {format}
+                                                                                            </span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                            {formats.existing && formats.existing.length > 0 && (
+                                                                                <div className="p-3 border border-border/50 bg-muted/20 rounded">
+                                                                                    <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                                                                                        <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+                                                                                        Formatos Existentes
+                                                                                    </div>
+                                                                                    <div className="flex flex-wrap gap-1">
+                                                                                        {formats.existing.map((format, idx) => (
+                                                                                            <span key={idx} className="px-2 py-1 bg-green-600/10 text-green-300 text-xs rounded border border-green-800 font-mono">
+                                                                                                {format}
+                                                                                            </span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
-                                                                );
-                                                            }
-                                                            // Se não conseguiu fazer parse, mostrar como texto normal
+                                                                </div>
+                                                            );
                                                         }
-                                                        
+
+                                                        // Tratamento especial para POSTCOPY
+                                                        // if (key.toLowerCase() === 'postcopy') {
+                                                        // const parsedPostcopy = parsePostcopy(String(value));
+
+                                                        // Se conseguiu fazer parse dos campos, mostrar estruturado
+                                                        // if (Object.keys(parsedPostcopy).length > 0) {
+                                                        //     return (
+                                                        //         <div key={key} className="md:col-span-2">
+                                                        //             <div className="bg-muted/30 p-4 border border-border/50">
+                                                        //                 <div className="text-sm font-medium text-muted-foreground mb-3 flex items-center justify-between">
+                                                        //                     <span>POSTCOPY</span>
+                                                        //                     <Button
+                                                        //                         onClick={() => copyToClipboard(String(value), `postcopy-full-${pdf.id}`)}
+                                                        //                         variant="ghost"
+                                                        //                         size="sm"
+                                                        //                         className="h-7 px-2 text-xs"
+                                                        //                     >
+                                                        //                         {copiedItems.has(`postcopy-full-${pdf.id}`) ? (
+                                                        //                             <Check className="w-3 h-3 text-green-600" />
+                                                        //                         ) : (
+                                                        //                             <Copy className="w-3 h-3" />
+                                                        //                         )}
+                                                        //                         Copiar Tudo
+                                                        //                     </Button>
+                                                        //                 </div>
+                                                        //                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        //                     {Object.entries(parsedPostcopy).map(([subKey, subValue]) => (
+                                                        //                         <div key={subKey} className="p-3 border border-muted-foreground/20 rounded">
+                                                        //                             <div className="text-xs font-medium text-muted-foreground mb-1">
+                                                        //                                 {subKey}
+                                                        //                             </div>
+                                                        //                             <div className="text-sm flex items-start justify-between gap-2">
+                                                        //                                 <span className="flex-1 whitespace-pre-wrap">{subValue}</span>
+                                                        //                                 <Button
+                                                        //                                     onClick={() => copyToClipboard(subValue, `postcopy-${subKey}-${pdf.id}`)}
+                                                        //                                     variant="ghost"
+                                                        //                                     size="sm"
+                                                        //                                     className="h-6 w-6 p-0"
+                                                        //                                 >
+                                                        //                                     {copiedItems.has(`postcopy-${subKey}-${pdf.id}`) ? (
+                                                        //                                         <Check className="w-3 h-3 text-green-600" />
+                                                        //                                     ) : (
+                                                        //                                         <Copy className="w-3 h-3" />
+                                                        //                                     )}
+                                                        //                                 </Button>
+                                                        //                             </div>
+                                                        //                         </div>
+                                                        //                     ))}
+                                                        //                 </div>
+                                                        //             </div>
+                                                        //         </div>
+                                                        //     );
+                                                        // }
+                                                        // Se não conseguiu fazer parse, mostrar como texto normal
+                                                        // }
+
                                                         // Garantir que value seja uma string para renderização
-                                                        const displayValue = typeof value === 'object' 
-                                                            ? JSON.stringify(value) 
+                                                        const displayValue = typeof value === 'object'
+                                                            ? JSON.stringify(value)
                                                             : String(value);
-                                                            
+                                                        const augmentedValue = displayValue;
+
                                                         const itemId = `structured-${key}-${pdf.id}`;
-                                                            
+
+                                                        const isColorField = ['background', 'backgroundcolor', 'colorcopy', 'color_copy', 'copycolor', 'copy_colour'].includes(key.toLowerCase());
+                                                        let colorMeta = undefined;
+                                                        if (isColorField) {
+                                                            const metas = extractColorsFromText(displayValue);
+                                                            if (metas.length > 0) colorMeta = metas[0];
+                                                        }
+
                                                         return (
                                                             <div key={key} className="bg-muted/30 p-3 border border-border/50">
-                                                                <div className="text-xs font-medium text-muted-foreground mb-1">
-                                                                    {key.charAt(0).toUpperCase() + key.slice(1)}
-                                                                </div>
-                                                                <div className="text-sm flex items-start justify-between gap-2">
-                                                                    <span className="flex-1">{displayValue}</span>
-                                                                    <Button
-                                                                        onClick={() => copyToClipboard(String(displayValue), itemId)}
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        className="h-6 w-6 p-0"
-                                                                    >
-                                                                        {copiedItems.has(itemId) ? (
-                                                                            <Check className="w-3 h-3 text-green-600" />
-                                                                        ) : (
-                                                                            <Copy className="w-3 h-3" />
+                                                                <div className="flex items-start justify-between gap-2 mb-1">
+                                                                    <div className="text-xs font-medium text-muted-foreground">
+                                                                        {(() => {
+                                                                            // Normalizar nomes de campos
+                                                                            const normalizedKey = key.toLowerCase();
+                                                                            if (normalizedKey === 'headline' || normalizedKey === 'hl') {
+                                                                                return 'Headline';
+                                                                            }
+                                                                            if (normalizedKey === 'backgroundcolor') {
+                                                                                return 'Background Color';
+                                                                            }
+                                                                            if (normalizedKey === 'colorcopy' || normalizedKey === 'copycolor' || normalizedKey === 'copy_colour') {
+                                                                                return 'Color Copy';
+                                                                            }
+                                                                            if (normalizedKey === 'livedate') {
+                                                                                return 'Live Date';
+                                                                            }
+                                                                            return key.charAt(0).toUpperCase() + key.slice(1);
+                                                                        })()}
+                                                                    </div>
+                                                                    <div className="flex gap-1">
+                                                                        <Button
+                                                                            onClick={() => copyToClipboard(String(displayValue), itemId)}
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="h-6 w-6 p-0"
+                                                                        >
+                                                                            {copiedItems.has(itemId) ? (
+                                                                                <Check className="w-3 h-3 text-green-600" />
+                                                                            ) : (
+                                                                                <Copy className="w-3 h-3" />
+                                                                            )}
+                                                                        </Button>
+                                                                        {colorMeta && (
+                                                                            <Button
+                                                                                onClick={() => copyToClipboard(formatFullColor(colorMeta), `${itemId}-color`)}
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="h-6 w-6 p-0"
+                                                                            >
+                                                                                {copiedItems.has(`${itemId}-color`) ? (
+                                                                                    <Check className="w-3 h-3 text-green-600" />
+                                                                                ) : (
+                                                                                    <span className="w-3 h-3 rounded-sm border border-border" style={{ background: colorMeta.match.hex }} />
+                                                                                )}
+                                                                            </Button>
                                                                         )}
-                                                                    </Button>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-sm flex flex-col gap-2">
+                                                                    <span className="whitespace-pre-wrap break-words">{augmentedValue}</span>
+                                                                    {colorMeta && (
+                                                                        <div className="text-xs rounded border border-border/50 p-2 flex items-center gap-3 bg-background/60">
+                                                                            <div className="w-10 h-10 rounded border border-border shadow-sm" style={{ background: colorMeta.match.hex }} />
+                                                                            <div className="grid text-[11px] leading-tight">
+                                                                                <span className="font-medium">{colorMeta.match.name}{colorMeta.match.alias ? ` (${colorMeta.match.alias})` : ''}</span>
+                                                                                <span>HEX {colorMeta.match.hex}</span>
+                                                                                <span>RGB {rgbString(colorMeta.match)}</span>
+                                                                                {colorMeta.match.pms && <span>PMS {colorMeta.match.pms}</span>}
+                                                                                <span>CMYK {colorMeta.match.cmyk.c}/{colorMeta.match.cmyk.m}/{colorMeta.match.cmyk.y}/{colorMeta.match.cmyk.k}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );
@@ -944,7 +1076,7 @@ const BriefingContentViewer: React.FC = () => {
                                         {(() => {
                                             // Parse seguro dos comentários
                                             let comments: PdfComment[] = [];
-                                            
+
                                             if (pdf.extractedContent?.comments) {
                                                 if (Array.isArray(pdf.extractedContent.comments)) {
                                                     comments = pdf.extractedContent.comments;
@@ -954,12 +1086,12 @@ const BriefingContentViewer: React.FC = () => {
                                                         if (Array.isArray(parsed)) {
                                                             comments = parsed;
                                                         }
-                                                    } catch (e) {
-                                                        console.error('Erro ao fazer parse dos comentários:', e);
+                                                    } catch (_e) {
+                                                        console.error('Erro ao fazer parse dos comentários:', _e);
                                                     }
                                                 }
                                             }
-                                            
+
                                             return comments.length > 0 ? (
                                                 <div>
                                                     <h4 className="font-medium mb-2">Comentários do PDF ({comments.length})</h4>
@@ -974,7 +1106,7 @@ const BriefingContentViewer: React.FC = () => {
                                                                         <Badge variant="secondary" className="text-xs">
                                                                             {comment.type}
                                                                         </Badge>
-                                                                        <span className="text-xs text-muted-foreground">
+                                                                        <span className="text-xs text-muted-foreground font-medium">
                                                                             {comment.author}
                                                                         </span>
                                                                     </div>
@@ -994,16 +1126,6 @@ const BriefingContentViewer: React.FC = () => {
                                                                 <div className="text-sm whitespace-pre-wrap">
                                                                     {comment.content}
                                                                 </div>
-                                                                <div className="text-xs text-muted-foreground mt-2">
-                                                                    Criado: {(() => {
-                                                                        try {
-                                                                            const dateStr = comment.creationDate.replace(/D:|'/g, '');
-                                                                            return new Date(dateStr).toLocaleString('pt-BR');
-                                                                        } catch (e) {
-                                                                            return comment.creationDate;
-                                                                        }
-                                                                    })()}
-                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1015,7 +1137,7 @@ const BriefingContentViewer: React.FC = () => {
                                         {(() => {
                                             // Parse seguro dos links
                                             let links: string[] = [];
-                                            
+
                                             if (pdf.extractedContent?.links) {
                                                 if (Array.isArray(pdf.extractedContent.links)) {
                                                     links = pdf.extractedContent.links;
@@ -1025,12 +1147,12 @@ const BriefingContentViewer: React.FC = () => {
                                                         if (Array.isArray(parsed)) {
                                                             links = parsed;
                                                         }
-                                                    } catch (e) {
-                                                        console.error('Erro ao fazer parse dos links:', e);
+                                                    } catch (_e) {
+                                                        console.error('Erro ao fazer parse dos links:', _e);
                                                     }
                                                 }
                                             }
-                                            
+
                                             return links.length > 0 ? (
                                                 <div>
                                                     <div className="flex items-center justify-between mb-2">
@@ -1055,33 +1177,33 @@ const BriefingContentViewer: React.FC = () => {
                                                     </div>
                                                     <div className="space-y-2">
                                                         {links.map((link: string, index: number) => (
-                                                        <div key={index} className="bg-muted/30 p-3 border border-border/50">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <a
-                                                                    href={link}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-primary hover:underline text-sm flex-1 truncate"
-                                                                >
-                                                                    {link}
-                                                                </a>
-                                                                <Button
-                                                                    onClick={() => copyToClipboard(link, `link-${index}-${pdf.id}`)}
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-6 w-6 p-0"
-                                                                >
-                                                                    {copiedItems.has(`link-${index}-${pdf.id}`) ? (
-                                                                        <Check className="w-3 h-3 text-green-600" />
-                                                                    ) : (
-                                                                        <Copy className="w-3 h-3" />
-                                                                    )}
-                                                                </Button>
+                                                            <div key={index} className="bg-muted/30 p-3 border border-border/50">
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <a
+                                                                        href={link}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-primary hover:underline text-sm flex-1 truncate"
+                                                                    >
+                                                                        {link}
+                                                                    </a>
+                                                                    <Button
+                                                                        onClick={() => copyToClipboard(link, `link-${index}-${pdf.id}`)}
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-6 w-6 p-0"
+                                                                    >
+                                                                        {copiedItems.has(`link-${index}-${pdf.id}`) ? (
+                                                                            <Check className="w-3 h-3 text-green-600" />
+                                                                        ) : (
+                                                                            <Copy className="w-3 h-3" />
+                                                                        )}
+                                                                    </Button>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
                                             ) : null;
                                         })()}
 
@@ -1112,11 +1234,57 @@ const BriefingContentViewer: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p>Nenhum arquivo PDF encontrado neste briefing</p>
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
             )}
+            {/* Paleta de Cores Dell (toggle) */}
+            <div className="mt-8 border border-border rounded">
+                <div className="flex items-center justify-between p-3 bg-muted/30">
+                    <h3 className="font-medium text-sm">Paleta de Cores Dell</h3>
+                    <Button variant="outline" size="sm" onClick={() => setShowPalette(p => !p)} className="h-7 px-2 text-xs">
+                        {showPalette ? 'Ocultar' : 'Mostrar'}
+                    </Button>
+                </div>
+                {showPalette && (
+                    <div className="p-4 grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                        {DELL_COLORS.map(color => {
+                            const itemId = `palette-${color.id}`;
+                            return (
+                                <div key={color.id} className="border border-border/50 rounded p-2 bg-background/60 flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-10 h-10 rounded border border-border shadow-sm" style={{ background: color.hex }} />
+                                        <div className="text-[11px] leading-tight flex-1">
+                                            <div className="font-medium">{color.name}{color.alias ? ` (${color.alias})` : ''}</div>
+                                            <div className="text-muted-foreground">{color.hex}</div>
+                                        </div>
+                                        <Button
+                                            onClick={() => copyToClipboard(formatFullColor({ source: 'name', match: color, input: color.name }), itemId)}
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0"
+                                        >
+                                            {copiedItems.has(itemId) ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                                        </Button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+                                        <span>RGB</span><span>{rgbString(color).replace('rgb(', '').replace(')', '')}</span>
+                                        {color.pms && (<><span>PMS</span><span>{color.pms}</span></>)}
+                                        <span>CMYK</span><span>{`${color.cmyk.c}/${color.cmyk.m}/${color.cmyk.y}/${color.cmyk.k}`}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
