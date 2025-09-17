@@ -45,6 +45,7 @@ import {
 import { Observable } from 'rxjs';
 import { BulkProgressService } from '../pdf/bulk-progress.service';
 import { DocumentBulkDownloadService } from '../../download/document-bulk-download.service';
+import { spawnSync } from 'child_process';
 
 @ApiTags('Projetos')
 @Controller('api')
@@ -338,6 +339,128 @@ export class WorkfrontController {
   }
 
   // ===== ROTAS DE DOWNLOAD EM MASSA =====
+
+  @Get('select-folder')
+  @ApiOperation({ summary: 'Abrir seletor de pasta do Windows (com caixa para colar caminho) e retornar o selecionado' })
+  @ApiResponse({ status: 200, description: 'Caminho selecionado retornado' })
+  async selectFolder(@Query('initial') initial?: string) {
+    try {
+      // Apenas Windows: usa PowerShell + System.Windows.Forms.FolderBrowserDialog
+      const isWin = process.platform === 'win32';
+      if (!isWin) {
+        throw new HttpException('Selecionador nativo disponível apenas no Windows', HttpStatus.BAD_REQUEST);
+      }
+
+      const psScript = [
+        "$ErrorActionPreference='Stop';",
+        '$code = @"',
+        'using System;',
+        'using System.Runtime.InteropServices;',
+        'public static class FolderPicker {',
+        '  [ComImport]',
+        '  [Guid("DC1C5A9C-E88A-4DDE-A5A1-60F82A20AEF7")]',
+        '  private class FileOpenDialog {}',
+        '  [ComImport]',
+        '  [Guid("42f85136-db7e-439c-85f1-e4075d135fc8")]',
+        '  [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]',
+        '  private interface IFileDialog {',
+        '    int Show(IntPtr parent);',
+        '    void SetFileTypes(uint cFileTypes, IntPtr rgFilterSpec);',
+        '    void SetFileTypeIndex(uint iFileType);',
+        '    void GetFileTypeIndex(out uint piFileType);',
+        '    void Advise(IntPtr pfde, out uint pdwCookie);',
+        '    void Unadvise(uint dwCookie);',
+        '    void SetOptions(uint fos);',
+        '    void GetOptions(out uint pfos);',
+        '    void SetDefaultFolder(IShellItem psi);',
+        '    void SetFolder(IShellItem psi);',
+        '    void GetFolder(out IShellItem ppsi);',
+        '    void GetCurrentSelection(out IShellItem ppsi);',
+        '    void SetFileName(string pszName);',
+        '    void GetFileName(out IntPtr ppszName);',
+        '    void SetTitle(string pszTitle);',
+        '    void SetOkButtonLabel(string pszText);',
+        '    void SetFileNameLabel(string pszLabel);',
+        '    void GetResult(out IShellItem ppsi);',
+        '    void AddPlace(IShellItem psi, int fdap);',
+        '    void SetDefaultExtension(string pszDefaultExtension);',
+        '    void Close(int hr);',
+        '    void SetClientGuid(ref Guid guid);',
+        '    void ClearClientData();',
+        '    void SetFilter(IntPtr pFilter);',
+        '  }',
+        '  [ComImport]',
+        '  [Guid("43826d1e-e718-42ee-bc55-a1e261c37bfe")]',
+        '  [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]',
+        '  private interface IShellItem {',
+        '    void BindToHandler(IntPtr pbc, ref Guid bhid, ref Guid riid, out IntPtr ppv);',
+        '    void GetParent(out IShellItem ppsi);',
+        '    void GetDisplayName(uint sigdnName, out IntPtr ppszName);',
+        '    void GetAttributes(uint sfgaoMask, out uint psfgaoAttribs);',
+        '    void Compare(IShellItem psi, uint hint, out int piOrder);',
+        '  }',
+        '  private const uint FOS_PICKFOLDERS = 0x00000020;',
+        '  private const uint FOS_FORCEFILESYSTEM = 0x00000040;',
+        '  private const uint SIGDN_FILESYSPATH = 0x80058000;',
+        '  public static string PickFolder(string title) {',
+        '    var dialog = (IFileDialog)new FileOpenDialog();',
+        '    uint options; dialog.GetOptions(out options);',
+        '    options |= FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM; dialog.SetOptions(options);',
+        '    if (!string.IsNullOrEmpty(title)) dialog.SetTitle(title);',
+        '    int hr = dialog.Show(IntPtr.Zero);',
+        '    if (hr != 0) return null;',
+        '    IShellItem result; dialog.GetResult(out result);',
+        '    IntPtr psz; result.GetDisplayName(SIGDN_FILESYSPATH, out psz);',
+        '    string path = Marshal.PtrToStringUni(psz);',
+        '    Marshal.FreeCoTaskMem(psz);',
+        '    return path;',
+        '  }',
+        '}',
+        '"@;',
+        'Add-Type -TypeDefinition $code -Language CSharp;',
+        "$title = 'Escolha a pasta para download';",
+        '$p = [FolderPicker]::PickFolder($title);',
+        'if ($p) { [Console]::Out.WriteLine($p) }'
+      ].join(' ');
+
+      const res = spawnSync('powershell', ['-NoProfile', '-STA', '-Command', psScript], {
+        encoding: 'utf8',
+      });
+
+      const stdout = (res.stdout || '').trim();
+      const stderr = (res.stderr || '').trim();
+
+      if (res.error || res.status !== 0) {
+        // Fall through to legacy dialog below
+      }
+
+      if (stdout) {
+        return { success: true, canceled: false, path: stdout };
+      }
+
+      // Fallback: Shell.Application com NEWDIALOGSTYLE + EDITBOX e pasta inicial se fornecida
+      const root = (initial && initial.trim()) ? initial.trim().replace(/`/g, '``').replace(/"/g, '\"') : '';
+      const psShell = [
+        "$ErrorActionPreference='Stop';",
+        '$shell = New-Object -ComObject Shell.Application;',
+        '$flags = 0x1 -bor 0x10 -bor 0x40;',
+        "$title = 'Escolha a pasta para download';",
+        root ? `$root = "${root}";` : '$root = 0;',
+        '$folder = $shell.BrowseForFolder(0, $title, $flags, $root);',
+        'if ($null -ne $folder) { [Console]::Out.WriteLine($folder.Self.Path) }'
+      ].join(' ');
+
+      const resShell = spawnSync('powershell', ['-NoProfile', '-STA', '-Command', psShell], { encoding: 'utf8' });
+      const sel = (resShell.stdout || '').trim();
+      return { success: true, canceled: !sel, path: sel };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Post('bulk-download')
   @ApiOperation({ summary: 'Download em massa de briefings de múltiplos projetos' })

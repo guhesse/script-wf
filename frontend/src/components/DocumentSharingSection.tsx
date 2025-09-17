@@ -10,7 +10,10 @@ import {
     CheckCircle,
     UserCheck,
     FileText,
-    Share
+    Share,
+    Link,
+    File,
+    Share2
 } from 'lucide-react';
 import { FolderSection } from './FolderSection';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
@@ -121,10 +124,8 @@ export const DocumentSharingSection = ({
             {/* Step 1: Project URL */}
             <Card className="border-l-primary bg-card border-border">
                 <CardHeader>
-                    <CardTitle className="flex items-center text-card-foreground">
-                        <div className="w-8 h-8 bg-primary rounded-4xl text-primary-foreground flex items-center justify-center mr-3 text-sm font-semibold">
-                            1
-                        </div>
+                    <CardTitle className="flex items-center text-card-foreground gap-3">
+                        <Link className="w-4 h-4 text-primary" />
                         Adicionar URL do Projeto
                     </CardTitle>
                 </CardHeader>
@@ -187,10 +188,8 @@ export const DocumentSharingSection = ({
             {/* Step 2: File Selection */}
             < Card className="border-l-primary bg-card border-border" >
                 <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <div className="w-8 h-8 bg-primary text-primary-foreground rounded-4xl flex items-center justify-center mr-3 text-sm font-semibold">
-                            2
-                        </div>
+                    <CardTitle className="flex items-center text-card-foreground gap-3">
+                        <File className="w-4 h-4 text-primary" />
                         Selecionar Arquivos e Equipe
                     </CardTitle>
                 </CardHeader>
@@ -261,10 +260,8 @@ export const DocumentSharingSection = ({
             {/* Step 3: Execution */}
             < Card className="border-l-primary bg-card border-border" >
                 <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <div className="w-8 h-8 bg-primary text-primary-foreground rounded-4xl flex items-center justify-center mr-3 text-sm font-semibold">
-                            3
-                        </div>
+                    <CardTitle className="flex items-center text-card-foreground gap-3">
+                        <Share className="w-4 h-4 text-primary" />
                         Executar Compartilhamento
                     </CardTitle>
                 </CardHeader>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Download, FileDown, FolderDown, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Download, FolderDown, FolderOpen, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Alert } from './ui/alert';
@@ -41,7 +41,7 @@ interface BulkDownloadResult {
 const BulkDownload: React.FC = () => {
   const [projectUrls, setProjectUrls] = useState<string[]>(['']);
   const [downloadPath, setDownloadPath] = useState('');
-  const [headless, setHeadless] = useState(true);
+  const [headless] = useState(true);
   // Opções avançadas removidas da UI por enquanto: continueOnError, keepFiles, organizeByDSID
   const [result, setResult] = useState<BulkDownloadResult | null>(null);
   interface ProgressItem {
@@ -65,6 +65,12 @@ const BulkDownload: React.FC = () => {
     setProjectUrls([...projectUrls, '']);
   };
 
+  const addUrlFieldAfter = (index: number) => {
+    const newUrls = [...projectUrls];
+    newUrls.splice(index + 1, 0, '');
+    setProjectUrls(newUrls);
+  };
+
   const removeUrlField = (index: number) => {
     const newUrls = projectUrls.filter((_, i) => i !== index);
     setProjectUrls(newUrls.length > 0 ? newUrls : ['']);
@@ -80,46 +86,17 @@ const BulkDownload: React.FC = () => {
     return projectUrls.filter(url => url.trim() !== '');
   };
 
-  const handlePreview = async () => {
-    const validUrls = getValidUrls();
 
-    if (validUrls.length === 0) {
-      setError('Adicione pelo menos uma URL de projeto');
-      return;
-    }
-
+  const handleOpenFolderDialog = async () => {
     try {
-      setError('');
-      const response = await fetch('/api/bulk-download/preview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectUrls: validUrls
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setPreview(data.preview);
-      } else {
-        setError(data.error || 'Erro ao gerar preview');
+      const q = downloadPath ? `?initial=${encodeURIComponent(downloadPath)}` : '';
+      const resp = await fetch(`/api/select-folder${q}`);
+      const data = await resp.json();
+      if (data && data.success && !data.canceled && data.path) {
+        setDownloadPath(data.path);
       }
     } catch {
-      setError('Erro ao conectar com o servidor');
-    }
-  };
-
-  const handlePastePath = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text && text.trim()) {
-        setDownloadPath(text.trim());
-      }
-    } catch {
-      setError('Não foi possível ler da área de transferência. Cole manualmente (Ctrl+V).');
+      setError('Não foi possível abrir o seletor de pastas.');
     }
   };
 
@@ -333,26 +310,25 @@ const BulkDownload: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
+              <Button
+                onClick={() => addUrlFieldAfter(index)}
+                variant="outline"
+                size="sm"
+                className="px-3"
+                title="Adicionar nova URL abaixo"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
           ))}
 
-          <Button
-            onClick={addUrlField}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar URL
-          </Button>
-
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             URLs válidas: {getValidUrls().length} de {projectUrls.length}
           </div>
         </div>
 
         {/* Configurações */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-1 gap-4 mt-6">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Caminho de Download (opcional)
@@ -363,28 +339,26 @@ const BulkDownload: React.FC = () => {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDownloadPath(e.target.value)}
                 placeholder="Ex: C:/Downloads/Briefings"
               />
-              <Button type="button" variant="outline" onClick={handlePastePath} title="Colar caminho da área de transferência">
-                Colar caminho
+              <Button type="button" variant="outline" onClick={handleOpenFolderDialog} title="Abrir seletor de pasta">
+                <FolderOpen className="w-4 h-4 mr-1" />
+                Abrir pasta
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Deixe vazio para usar o diretório padrão. Se "Manter arquivos" estiver marcado, a estrutura de pastas será criada aqui.
-            </p>
           </div>
-
           <div className="space-y-3">
-
             <div>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center gap-3">
                 <label className="block text-sm font-medium text-foreground mb-2">Organização de pastas</label>
-                <select
-                  className="border border-border bg-background text-foreground text-sm p-2"
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as 'pm' | 'studio')}
-                >
-                  <option value="pm">PM</option>
-                  <option value="studio">Studio</option>
-                </select>
+                <div className="flex items-center gap-3">
+                  <select
+                    className="border border-border bg-background text-foreground text-sm p-2"
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value as 'pm' | 'studio')}
+                  >
+                    <option value="pm">PM</option>
+                    <option value="studio">Studio</option>
+                  </select>
+                </div>
               </div>
               <div className="mt-2 text-xs text-muted-foreground">
                 {mode === 'pm' ? (
@@ -410,17 +384,7 @@ const BulkDownload: React.FC = () => {
 
         {/* Botões de Ação */}
         <div className="flex gap-3 mt-6">
-          <Button
-            onClick={handlePreview}
-            variant="outline"
-            disabled={sseActive || getValidUrls().length === 0}
-            className="flex items-center gap-2"
-          >
-            <FileDown className="w-4 h-4" />
-            Preview
-          </Button>
-
-          {/* Removido download sem progresso */}
+          {/* Preview removido */}
 
           <Button
             onClick={handleDownloadWithProgress}

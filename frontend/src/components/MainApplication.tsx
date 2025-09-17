@@ -180,11 +180,11 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                   }`}
               >
                 <FolderOpen className="h-5 w-5" />
-                <span className="font-medium">Extrair & Compartilhar</span>
+                <span className="font-medium">Asset Release</span>
               </button>
               <button
-                onClick={() => setActiveSection('comment')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'comment'
+                // onClick={() => setActiveSection('comment')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150  ${activeSection === 'comment'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
