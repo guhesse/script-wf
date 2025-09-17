@@ -11,6 +11,15 @@ import {
     DashboardStatsDto,
     LinkStatus,
 } from './dto/workfront.dto';
+import { ShareAutomationService } from './share-automation.service';
+import { CommentService } from '../pdf/comment.service';
+import { CommentType, UserTeam } from '../pdf/dto/pdf.dto';
+import {
+    ShareAndCommentDto,
+    ShareAndCommentResponseDto,
+    ShareAndCommentProjectResultDto,
+    ShareAndCommentItemResultDto,
+} from './dto/share-comment.dto';
 
 @Injectable()
 export class WorkfrontService {
@@ -19,6 +28,8 @@ export class WorkfrontService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly workfrontRepository: WorkfrontRepository,
+        private readonly shareAutomation: ShareAutomationService,
+        private readonly commentService: CommentService,
     ) {}
 
     async healthCheck(): Promise<any> {
@@ -162,7 +173,7 @@ export class WorkfrontService {
      */
     async shareDocuments(shareData: ShareDocumentsDto): Promise<ShareDocumentsResponseDto> {
         try {
-            const { projectUrl, selections, selectedUser = 'carol', userAgent, ipAddress } = shareData;
+            const { projectUrl, selections, selectedUser = 'carol', userAgent, ipAddress, headless = false } = shareData;
 
             // 1. Buscar ou criar projeto
             let project = await this.workfrontRepository.findByUrl(projectUrl);
@@ -182,14 +193,13 @@ export class WorkfrontService {
                 ipAddress,
             });
 
-            // 3. TODO: Implementar execução do compartilhamento
-            // Por enquanto, simular resultado
-            const results = selections.map((selection) => ({
-                folder: selection.folder,
-                fileName: selection.fileName,
-                success: true,
-                message: 'Compartilhado com sucesso',
-            }));
+            // 3. Executar automação real com Playwright
+            const { results, summary } = await this.shareAutomation.shareDocuments(
+                projectUrl,
+                selections,
+                (selectedUser as any) ?? 'carol',
+                headless === true ? true : false, // default para debug: visível
+            );
 
             const successCount = results.filter((r) => r.success).length;
             const errorCount = results.filter((r) => !r.success).length;
@@ -205,7 +215,7 @@ export class WorkfrontService {
                 message: `Compartilhamento concluído: ${successCount} sucessos, ${errorCount} erros`,
                 project: this.mapProjectToDto(project),
                 results,
-                summary: {
+                summary: summary ?? {
                     total: selections.length,
                     success: successCount,
                     errors: errorCount,
@@ -215,6 +225,107 @@ export class WorkfrontService {
             this.logger.error('Erro no service shareDocuments:', error);
             throw error;
         }
+    }
+
+    /**
+     * Fluxo combinado: Compartilhar + Comentar (por arquivo) com suporte a múltiplas URLs
+     */
+    async shareAndComment(payload: ShareAndCommentDto): Promise<ShareAndCommentResponseDto> {
+        const headless = payload.headless === true;
+        const selectedUser = (payload.selectedUser || UserTeam.CAROL) as UserTeam;
+        const commentType = (payload.commentType || CommentType.ASSET_RELEASE) as CommentType;
+
+        // Normalizar para lista de itens (multi-URL) mesmo quando simples
+        const items = (payload.items && payload.items.length > 0)
+            ? payload.items
+            : [{ projectUrl: payload.projectUrl!, selections: payload.selections || [] }];
+
+        const projectResults: ShareAndCommentProjectResultDto[] = [];
+        let totalFiles = 0; let totalSuccess = 0; let totalErrors = 0;
+
+        for (const it of items) {
+            const { projectUrl, selections } = it;
+            const itemResults: ShareAndCommentItemResultDto[] = [];
+            let projSuccess = 0; let projErrors = 0;
+
+            // garantir projeto registrado
+            let project = await this.workfrontRepository.findByUrl(projectUrl);
+            if (!project) {
+                project = await this.workfrontRepository.createOrUpdate({ url: projectUrl, title: 'Projeto Workfront' });
+            }
+
+            for (const sel of selections) {
+                totalFiles++;
+                const res: ShareAndCommentItemResultDto = {
+                    folder: sel.folder,
+                    fileName: sel.fileName,
+                    share: { success: false },
+                    comment: { success: false },
+                };
+
+                // 1) Abrir projeto e selecionar documento uma vez
+                try {
+                    const opened = await this.shareAutomation.openProjectAndSelectDocument(projectUrl, sel.folder, sel.fileName, headless);
+
+                    // 1a) Share no mesmo contexto
+                    try {
+                        await this.shareAutomation.shareUsingOpenPage(opened.frame, opened.page, selectedUser as any);
+                        res.share = { success: true, message: 'Compartilhado com sucesso' };
+                    } catch (err: any) {
+                        res.share = { success: false, error: err?.message || 'Erro no compartilhamento' };
+                    }
+
+                    // 1b) Comment no mesmo contexto
+                    try {
+                        const commentOut = await this.commentService.addCommentUsingOpenPage({
+                            frameLocator: opened.frame,
+                            page: opened.page,
+                            fileName: sel.fileName,
+                            folderName: sel.folder,
+                            commentType,
+                            selectedUser,
+                        } as any);
+                        res.comment = { success: commentOut.success, message: commentOut.message };
+                    } catch (err: any) {
+                        res.comment = { success: false, error: err?.message || 'Erro ao comentar' };
+                    }
+
+                    // fechar navegador dessa iteração
+                    try { await opened.page.context().browser()?.close(); } catch {}
+                } catch (err: any) {
+                    // Falha ao abrir/selecionar
+                    res.share = { success: false, error: err?.message || 'Erro ao preparar página' };
+                    res.comment = { success: false, error: 'Comentário não executado (falha na preparação)'};
+                }
+
+                if (res.share.success && res.comment.success) { projSuccess++; totalSuccess++; } else { projErrors++; totalErrors++; }
+                itemResults.push(res);
+            }
+
+            projectResults.push({
+                projectUrl,
+                items: itemResults,
+                summary: { total: selections.length, success: projSuccess, errors: projErrors },
+            });
+
+            // atualização de descrição resumida
+            await this.workfrontRepository.createOrUpdate({
+                url: projectUrl,
+                description: `Última execução combinado: ${projSuccess} sucessos, ${projErrors} erros`,
+            });
+        }
+
+        return {
+            success: totalErrors === 0,
+            message: `Fluxo combinado concluído: ${totalSuccess} sucessos, ${totalErrors} erros em ${totalFiles} arquivo(s)`,
+            results: projectResults,
+            summary: {
+                totalProjects: projectResults.length,
+                totalFiles,
+                success: totalSuccess,
+                errors: totalErrors,
+            },
+        };
     }
 
     /**

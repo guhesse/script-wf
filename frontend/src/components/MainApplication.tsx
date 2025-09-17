@@ -9,10 +9,9 @@ import {
   FolderDown,
   FileText
 } from 'lucide-react';
-import { ProgressIndicator } from './ProgressIndicator';
 import { ProjectHistory } from './ProjectHistory';
 import { CommentSection } from './CommentSection';
-import { DocumentSharingSection } from './DocumentSharingSection';
+import { AssetReleaseSection } from './AssetReleaseSection';
 import BulkDownload from './BulkDownload';
 import BriefingContentViewer from './BriefingContentViewer';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
@@ -26,28 +25,14 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [projectUrl, setProjectUrl] = useState('');
   const [folders, setFolders] = useState<WorkfrontFolder[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana'>('carol');
+  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
   const [activeSection, setActiveSection] = useState<'extract' | 'comment' | 'bulk-download' | 'briefing-content' | 'history'>('extract');
 
-  // Estados para progresso
+  // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
-  const [currentProgressStep, setCurrentProgressStep] = useState<{
-    step: string;
-    message: string;
-    progress: number;
-    timestamp: string;
-    data?: unknown;
-  } | null>(null);
-  const [progressSteps, setProgressSteps] = useState<Array<{
-    step: string;
-    message: string;
-    progress: number;
-    timestamp: string;
-    data?: unknown;
-  }>>([]);
 
-  const { extractDocumentsWithProgress, clearCache, getProjectByUrl } = useWorkfrontApi();
+  const { extractDocuments, clearCache, getProjectByUrl } = useWorkfrontApi();
 
   const handleLogoutWithCacheClearing = async () => {
     try {
@@ -89,7 +74,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   };
 
   const isValidUrl = (url: string) => {
-    return url && url.includes('workfront') && url.includes('documents');
+    return url && url.includes('workfront');
   };
 
   const handleExtractDocuments = async (urlToUse?: string) => {
@@ -100,28 +85,9 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
     }
 
     try {
-      // Resetar estados
-      setProgressSteps([]);
-      setCurrentProgressStep(null);
+      // Versão direta (não-SSE) para usar Playwright real imediatamente
       setShowProgress(true);
-
-      // Callback para atualizar progresso
-      const handleProgress = (step: string, message: string, progress: number, data?: unknown) => {
-        const progressData = {
-          step,
-          message,
-          progress,
-          timestamp: new Date().toISOString(),
-          data
-        };
-
-        setCurrentProgressStep(progressData);
-        setProgressSteps(prev => [...prev, progressData]);
-      };
-
-      // Usar a extração com progresso
-      const extractedFolders = await extractDocumentsWithProgress(urlToExtract, handleProgress);
-
+      const extractedFolders = await extractDocuments(urlToExtract);
       setFolders(extractedFolders);
       setSelectedFiles(new Set());
       setShowProgress(false);
@@ -160,12 +126,14 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
       </nav>
 
       <div className="relative">
-        {/* Progress Indicator */}
-        <ProgressIndicator
-          isVisible={showProgress}
-          currentStep={currentProgressStep}
-          steps={progressSteps}
-        />
+        {/* Indicador simples de progresso */}
+          {showProgress && (
+            <div className="absolute inset-x-0 top-0 z-10">
+              <div className="mx-auto my-2 w-fit rounded bg-muted px-3 py-1 text-sm text-muted-foreground border border-border">
+                Processando extração do Workfront...
+              </div>
+            </div>
+          )}
 
         {/* Main Content with Fixed Sidebar Layout */}
         <div className="flex h-[calc(100vh-73px)]">
@@ -229,7 +197,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
           <div className="flex-1 overflow-y-auto p-6">
             {/* Extract & Share Section */}
             {activeSection === 'extract' && (
-              <DocumentSharingSection
+              <AssetReleaseSection
                 projectUrl={projectUrl}
                 setProjectUrl={setProjectUrl}
                 folders={folders}
