@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Download, FileDown, FolderDown, Loader2, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Download, FileDown, FolderDown, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Alert } from './ui/alert';
@@ -42,13 +42,24 @@ const BulkDownload: React.FC = () => {
   const [projectUrls, setProjectUrls] = useState<string[]>(['']);
   const [downloadPath, setDownloadPath] = useState('');
   const [headless, setHeadless] = useState(true);
-  const [continueOnError, setContinueOnError] = useState(true);
-  const [keepFiles, setKeepFiles] = useState(true);
-  const [organizeByDSID, setOrganizeByDSID] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  // Opções avançadas removidas da UI por enquanto: continueOnError, keepFiles, organizeByDSID
   const [result, setResult] = useState<BulkDownloadResult | null>(null);
+  interface ProgressItem {
+    projectNumber?: number;
+    status: 'pending' | 'running' | 'success' | 'fail' | 'canceled';
+    stage?: string;
+    percent: number;
+    dsid?: string;
+    queueIndex?: number;
+    dsidProvisional?: boolean;
+  }
+  const [progressList, setProgressList] = useState<ProgressItem[]>([]);
+  // helper removido; usaremos placeholders pendentes e atualizaremos conforme eventos
   const [error, setError] = useState<string>('');
   const [preview, setPreview] = useState<BulkDownloadPreview | null>(null);
+  const [sseActive, setSseActive] = useState(false);
+  const [operationId, setOperationId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'pm' | 'studio'>('pm');
 
   const addUrlField = () => {
     setProjectUrls([...projectUrls, '']);
@@ -101,7 +112,19 @@ const BulkDownload: React.FC = () => {
     }
   };
 
-  const handleDownload = async () => {
+  const handlePastePath = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        setDownloadPath(text.trim());
+      }
+    } catch {
+      setError('Não foi possível ler da área de transferência. Cole manualmente (Ctrl+V).');
+    }
+  };
+
+  // Fluxo com SSE de progresso (inline por projeto)
+  const handleDownloadWithProgress = async () => {
     const validUrls = getValidUrls();
 
     if (validUrls.length === 0) {
@@ -110,37 +133,158 @@ const BulkDownload: React.FC = () => {
     }
 
     try {
-      setIsLoading(true);
       setError('');
       setResult(null);
+      setPreview(null);
+      setSseActive(true);
+      // Pré-popula a UI com placeholders pendentes para todos os projetos
+      setProgressList(Array.from({ length: validUrls.length }, (_, i) => ({
+        queueIndex: i + 1,
+        status: 'pending',
+        percent: 0,
+        stage: 'Aguardando'
+      })));
 
-      const response = await fetch('/api/bulk-download', {
+      // 1) Iniciar operação e obter operationId
+      const startResp = await fetch('/api/bulk-download/start', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectUrls: validUrls,
           downloadPath: downloadPath || undefined,
           headless,
-          continueOnError,
-          keepFiles,
-          organizeByDSID
-        }),
+          continueOnError: true,
+          keepFiles: true,
+          organizeByDSID: true,
+          // Concorrência default 3
+          concurrency: 3,
+          mode
+        })
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setResult(data);
-        setPreview(null);
-      } else {
-        setError(data.error || 'Erro no download em massa');
+      const startData = await startResp.json();
+      if (!startData.success || !startData.operationId) {
+        setSseActive(false);
+        setError(startData.message || 'Falha ao iniciar operação de bulk');
+        return;
       }
+      setOperationId(startData.operationId as string);
+
+      // Helpers: mapping de estágio -> label/percent
+      const stageLabel = (stage?: string) => {
+        if (stage === 'navigating-briefing-folder') return 'Navegando para pasta';
+        if (stage === 'downloading-and-extracting') return 'Salvando arquivos';
+        if (stage === 'organizing-files') return 'Organizando arquivos';
+        if (stage === 'cancel-requested') return 'Cancelado (solicitado)';
+        return stage || 'Processando';
+      };
+      const stagePercent = (stage?: string) => {
+        if (stage === 'navigating-briefing-folder') return 25;
+        if (stage === 'downloading-and-extracting') return 70;
+        if (stage === 'organizing-files') return 90;
+        return 10;
+      };
+
+      // 3) Conectar ao SSE
+      const es = new EventSource(`/api/bulk-download/stream/${startData.operationId}`);
+
+      const counters = { total: validUrls.length, started: 0, success: 0, fail: 0 };
+
+      es.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data || '{}');
+          const type = payload.type as string;
+          const data = payload.data || {};
+
+          if (type === 'start') {
+            counters.total = data.total || validUrls.length;
+          } else if (type === 'project-start') {
+            counters.started += 1;
+            const pn = data.projectNumber as number;
+            setProgressList(prev => {
+              // Se já existe com esse projectNumber, atualiza; caso contrário, pega o primeiro pendente
+              let idx = prev.findIndex(p => p.projectNumber === pn);
+              if (idx < 0) idx = prev.findIndex(p => p.status === 'pending');
+              if (idx < 0) {
+                // fallback: adiciona no fim
+                return [...prev, { projectNumber: pn, status: 'running', stage: 'Acessando informações do projeto', percent: 10 }];
+              }
+              const updated: ProgressItem = { ...prev[idx], projectNumber: pn, status: 'running', stage: 'Acessando informações do projeto', percent: 10 };
+              return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
+            });
+          } else if (type === 'stage') {
+            const pn = data.projectNumber as number;
+            setProgressList(prev => {
+              const idx = prev.findIndex(p => p.projectNumber === pn);
+              if (idx < 0) return prev; // sem mapeamento ainda
+              const base: ProgressItem = prev[idx];
+              const friendly = stageLabel(data.stage);
+              const percent = stagePercent(data.stage);
+              const status: ProgressItem['status'] = data.stage === 'cancel-requested' ? 'canceled' : base.status;
+              const updated: ProgressItem = { ...base, stage: friendly, percent, status };
+              if (idx >= 0) return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
+              return [...prev, updated];
+            });
+          } else if (type === 'project-success') {
+            counters.success += 1;
+            const pn = data.projectNumber as number;
+            setProgressList(prev => {
+              const idx = prev.findIndex(p => p.projectNumber === pn);
+              const base: ProgressItem = idx >= 0 ? prev[idx] : { projectNumber: pn, status: 'running', percent: 90 };
+              const updated: ProgressItem = { ...base, status: 'success', stage: 'Concluído', percent: 100 };
+              if (idx >= 0) return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
+              return [...prev, updated];
+            });
+          } else if (type === 'project-fail') {
+            counters.fail += 1;
+            const pn = data.projectNumber as number;
+            setProgressList(prev => {
+              const idx = prev.findIndex(p => p.projectNumber === pn);
+              const base: ProgressItem = idx >= 0 ? prev[idx] : { projectNumber: pn, status: 'running', percent: 90 };
+              const updated: ProgressItem = { ...base, status: 'fail', stage: 'Falha', percent: base.percent ?? 90 };
+              if (idx >= 0) return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
+              return [...prev, updated];
+            });
+          } else if (type === 'project-meta') {
+            // Atualiza DSID no progresso
+            const pn = data.projectNumber as number;
+            setProgressList(prev => {
+              let idx = prev.findIndex(p => p.projectNumber === pn);
+              if (idx < 0) idx = prev.findIndex(p => p.status === 'pending');
+              if (idx < 0) return prev;
+              const base: ProgressItem = prev[idx];
+              const updated: ProgressItem = {
+                ...base,
+                projectNumber: pn ?? base.projectNumber,
+                dsid: data?.provisional ? undefined : (data.dsid as string | undefined),
+                dsidProvisional: !!data?.provisional
+              };
+              return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
+            });
+          } else if (type === 'completed') {
+            es.close();
+            setSseActive(false);
+            setOperationId(null);
+          } else if (type === 'error') {
+            es.close();
+            setSseActive(false);
+            setOperationId(null);
+            setError(data.message || 'Erro na operação');
+          }
+        } catch {
+          // ignorar parse errors
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        setSseActive(false);
+        setOperationId(null);
+        setError('Conexão de progresso encerrada');
+      };
+
     } catch {
-      setError('Erro ao conectar com o servidor');
-    } finally {
-      setIsLoading(false);
+      setSseActive(false);
+      setError('Erro ao iniciar operação com progresso');
     }
   };
 
@@ -213,58 +357,54 @@ const BulkDownload: React.FC = () => {
             <label className="block text-sm font-medium text-foreground mb-2">
               Caminho de Download (opcional)
             </label>
-            <Input
-              value={downloadPath}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDownloadPath(e.target.value)}
-              placeholder="Ex: C:/Downloads/Briefings"
-            />
+            <div className="flex gap-2">
+              <Input
+                value={downloadPath}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDownloadPath(e.target.value)}
+                placeholder="Ex: C:/Downloads/Briefings"
+              />
+              <Button type="button" variant="outline" onClick={handlePastePath} title="Colar caminho da área de transferência">
+                Colar caminho
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Deixe vazio para usar o diretório padrão. Se "Manter arquivos" estiver marcado, a estrutura de pastas será criada aqui.
             </p>
           </div>
 
           <div className="space-y-3">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={headless}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHeadless(e.target.checked)}
-                className=""
-              />
-              <span className="text-sm text-foreground">Modo headless (sem interface gráfica)</span>
-            </label>
 
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={continueOnError}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContinueOnError(e.target.checked)}
-                className=""
-              />
-              <span className="text-sm text-foreground">Continuar mesmo com erros</span>
-            </label>
-
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={keepFiles}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKeepFiles(e.target.checked)}
-                className=""
-              />
-              <span className="text-sm text-foreground">Manter arquivos baixados (PDFs + TXTs, sem JSONs de controle)</span>
-            </label>
-
-            {keepFiles && (
-              <label className="flex items-center gap-2 ml-6">
-                <input
-                  type="checkbox"
-                  checked={organizeByDSID}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrganizeByDSID(e.target.checked)}
-                  className=""
-                />
-                <span className="text-sm text-foreground">Organizar pastas por DSID (ao invés de nome do projeto)</span>
-              </label>
-            )}
+            <div>
+              <div className="flex items-center space-x-3">
+                <label className="block text-sm font-medium text-foreground mb-2">Organização de pastas</label>
+                <select
+                  className="border border-border bg-background text-foreground text-sm p-2"
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value as 'pm' | 'studio')}
+                >
+                  <option value="pm">PM</option>
+                  <option value="studio">Studio</option>
+                </select>
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                {mode === 'pm' ? (
+                  <pre className="whitespace-pre leading-4 p-2 border border-border bg-muted">{`DSID
+├─ brief
+├─ creatives
+└─ ppt`}</pre>
+                ) : (
+                  <pre className="whitespace-pre leading-4 p-2 border border-border bg-muted">{`DSID
+├─ brief
+├─ assets
+│  ├─ master
+│  ├─ products
+│  ├─ lifestyles
+│  └─ screenfill
+├─ deliverables
+└─ sb`}</pre>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -273,24 +413,24 @@ const BulkDownload: React.FC = () => {
           <Button
             onClick={handlePreview}
             variant="outline"
-            disabled={isLoading || getValidUrls().length === 0}
+            disabled={sseActive || getValidUrls().length === 0}
             className="flex items-center gap-2"
           >
             <FileDown className="w-4 h-4" />
             Preview
           </Button>
 
+          {/* Removido download sem progresso */}
+
           <Button
-            onClick={handleDownload}
-            disabled={isLoading || getValidUrls().length === 0}
+            onClick={handleDownloadWithProgress}
+            variant="secondary"
+            disabled={sseActive || getValidUrls().length === 0}
             className="flex items-center gap-2"
+            title="Executa com progresso em tempo real"
           >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-            {isLoading ? 'Processando...' : 'Iniciar Download'}
+            <Download className="w-4 h-4" />
+            {sseActive ? 'Em Progresso...' : 'Fazer Download'}
           </Button>
         </div>
 
@@ -338,6 +478,87 @@ const BulkDownload: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Progresso inline por projeto */}
+      {sseActive && progressList.length > 0 && (
+        <div className="bg-card p-6 border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-card-foreground">Progresso</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!operationId || progressList.every(p => p.status !== 'running')}
+                onClick={async () => {
+                  if (!operationId) return;
+                  // dispara cancel para todos os que estiverem em execução
+                  const running = progressList.filter(p => p.status === 'running' && p.projectNumber);
+                  for (const r of running) {
+                    try { await fetch(`/api/bulk-download/cancel/${operationId}/${r.projectNumber}`, { method: 'POST' }); } catch (e) { console.error('Erro ao cancelar', r.projectNumber, e); }
+                  }
+                }}
+                title="Cancelar todos"
+              >
+                Cancelar todos
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {progressList.map((p) => (
+              <div
+                key={p.projectNumber || p.queueIndex}
+                className={`p-3 border border-border ${p.status === 'success' ? 'bg-green-900 text-white' : 'bg-muted'}`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium">
+                    {p.dsid ? (
+                      <>DSID {p.dsid}{p.projectNumber ? <span className="text-muted-foreground ml-2">(Projeto {p.projectNumber})</span> : null}</>
+                    ) : p.projectNumber ? (
+                      <>Projeto {p.projectNumber}</>
+                    ) : (
+                      <>Aguardando...</>
+                    )}
+                  </div>
+                  <button
+                    className="text-xs p-1 rounded hover:bg-background"
+                    onClick={async () => {
+                      if (!operationId) return;
+                      try {
+                        await fetch(`/api/bulk-download/cancel/${operationId}/${p.projectNumber}`, { method: 'POST' });
+                      } catch (err) {
+                        console.error('Erro ao cancelar projeto', err);
+                      }
+                    }}
+                    disabled={p.status !== 'running'}
+                    title="Cancelar este projeto"
+                  >
+                    <Trash2 className={`w-4 h-4 ${p.status !== 'running' ? 'opacity-50' : ''}`} />
+                  </button>
+                </div>
+                <div className={`h-2 ${p.status === 'success' ? 'bg-green-950' : 'bg-background'} border border-border`}>
+                  <div className={`h-2 ${p.status === 'fail' ? 'bg-destructive' : p.status === 'success' ? 'bg-green-600' : 'bg-primary'}`} style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}></div>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{p.stage || (p.status === 'success' ? 'Concluído' : p.status === 'fail' ? 'Falha' : p.status === 'canceled' ? 'Cancelado' : 'Processando')}</div>
+              </div>
+            ))}
+          </div>
+          {/* Histórico simples: itens concluídos */}
+          {progressList.some(p => p.status === 'success' || p.status === 'fail' || p.status === 'canceled') && (
+            <div className="mt-6">
+              <h4 className="text-sm font-medium mb-2">Concluído</h4>
+              <div className="space-y-2">
+                {progressList
+                  .filter(p => p.status === 'success' || p.status === 'fail' || p.status === 'canceled')
+                  .map(p => (
+                    <div key={`hist-${p.projectNumber || p.queueIndex}`} className="text-xs text-muted-foreground">
+                      {p.dsid ? `DSID ${p.dsid}` : p.projectNumber ? `Projeto ${p.projectNumber}` : 'Projeto'} — {p.status === 'success' ? 'Concluído' : p.status === 'fail' ? 'Falha' : 'Cancelado'}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

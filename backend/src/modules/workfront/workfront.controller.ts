@@ -43,6 +43,8 @@ import {
   CommentPreviewResponseDto,
 } from '../pdf/dto/pdf.dto';
 import { Observable } from 'rxjs';
+import { BulkProgressService } from '../pdf/bulk-progress.service';
+import { DocumentBulkDownloadService } from '../../download/document-bulk-download.service';
 
 @ApiTags('Projetos')
 @Controller('api')
@@ -52,6 +54,8 @@ export class WorkfrontController {
     private readonly pdfService: PdfService,
     private readonly commentService: CommentService,
     private readonly extractionService: ExtractionService,
+    private readonly progressService: BulkProgressService,
+    private readonly bulkService: DocumentBulkDownloadService,
   ) {}
 
   @Get('health')
@@ -381,6 +385,54 @@ export class WorkfrontController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  // ===== ROTAS DE BULK DOWNLOAD COM PROGRESSO (SSE) =====
+
+  @Post('bulk-download/start')
+  @ApiOperation({ summary: 'Iniciar bulk download com progresso via SSE' })
+  @ApiResponse({ status: 200, description: 'Operação iniciada', schema: { type: 'object', properties: { success: { type: 'boolean' }, operationId: { type: 'string' } } } })
+  async startBulkDownload(@Body() downloadDto: BulkDownloadDto) {
+    const operationId = `bulk_${Date.now()}`;
+    // iniciar em background (não bloquear request)
+    setTimeout(() => {
+      this.bulkService.startBulkWithProgress(operationId, downloadDto.projectUrls, downloadDto).catch(err => {
+        this.progressService.emit(operationId, { type: 'error', data: { message: err.message } });
+        this.progressService.complete(operationId);
+      });
+    }, 0);
+    return { success: true, operationId };
+  }
+
+  @Sse('bulk-download/stream/:operationId')
+  @ApiOperation({ summary: 'Stream SSE do progresso de uma operação de bulk' })
+  @ApiParam({ name: 'operationId', description: 'ID da operação retornado no start' })
+  sseBulk(@Param('operationId') operationId: string): Observable<any> {
+    return new Observable((subscriber) => {
+      // garantir que exista um stream
+      this.progressService.create(operationId);
+      const sub = this.progressService.observe(operationId).subscribe({
+        next: (evt) => subscriber.next({ data: JSON.stringify(evt) }),
+        error: (err) => subscriber.error(err),
+        complete: () => subscriber.complete(),
+      });
+      // limpar quando cliente desconectar
+      return () => sub.unsubscribe();
+    });
+  }
+
+  @Post('bulk-download/cancel/:operationId/:projectNumber')
+  @ApiOperation({ summary: 'Cancelar processamento de um projeto em uma operação' })
+  @ApiParam({ name: 'operationId' })
+  @ApiParam({ name: 'projectNumber' })
+  async cancelProject(
+    @Param('operationId') operationId: string,
+    @Param('projectNumber') projectNumber: string,
+  ) {
+    const pn = Number(projectNumber);
+    if (!pn || pn < 1) return { success: false, message: 'projectNumber inválido' };
+    this.progressService.cancel(operationId, pn);
+    return { success: true };
   }
 
   // ===== ROTAS DE EXTRAÇÃO DE DOCUMENTOS =====

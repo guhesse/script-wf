@@ -152,6 +152,16 @@ export class BulkDownloadDto {
     @IsOptional()
     @IsBoolean()
     organizeByDSID?: boolean = false;
+
+    @ApiProperty({ description: 'Limite de concorrência para processamento em paralelo', required: false, default: 2 })
+    @IsOptional()
+    @IsNumber()
+    concurrency?: number = 2;
+
+    @ApiProperty({ description: 'Modo de organização de pastas', required: false, enum: ['pm', 'studio'], default: 'pm' })
+    @IsOptional()
+    @IsEnum(['pm', 'studio'] as any)
+    mode?: 'pm' | 'studio' = 'pm';
 }
 
 // DTO para resposta de download em massa

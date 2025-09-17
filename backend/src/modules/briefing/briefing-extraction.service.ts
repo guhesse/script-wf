@@ -75,6 +75,8 @@ export class BriefingExtractionService {
     async processProjectsBriefings(projectUrls: string[], options: any = {}) {
         try {
             this.logger.log(`📋 Iniciando processamento de ${projectUrls.length} projetos (pipeline interno)...`);
+            const progress = options.progress as undefined | ((ev: { type: string; data?: any }) => void);
+            const operationId = options.operationId as string | undefined;
 
             const results = {
                 total: projectUrls.length,
@@ -95,11 +97,18 @@ export class BriefingExtractionService {
 
             await this.ensureTempDirectory();
 
-            for (let i = 0; i < projectUrls.length; i++) {
-                const url = projectUrls[i];
-                this.logger.log(`\n🔄 Projeto ${i + 1}/${projectUrls.length}: ${url}`);
+            // Concorrência controlada
+            const concurrency = Math.max(1, Math.min(Number(options.concurrency) || 2, 5));
+            let inFlight = 0;
+            let index = 0;
+            const runNext = async (): Promise<void> => {
+                if (index >= projectUrls.length) return;
+                const currentIndex = index++;
+                const url = projectUrls[currentIndex];
+                inFlight++;
+                this.logger.log(`\n🔄 Projeto ${currentIndex + 1}/${projectUrls.length} (conc=${inFlight}/${concurrency}): ${url}`);
                 try {
-                    const projectResult = await this.processProjectBriefing(url, i + 1, options);
+                    const projectResult = await this.processProjectBriefing(url, currentIndex + 1, options);
                     if (projectResult.success) {
                         results.successful++;
                         results.downloadResults.successful.push(projectResult);
@@ -114,17 +123,27 @@ export class BriefingExtractionService {
                         }
                     } else {
                         results.failed++;
-                        results.downloadResults.failed.push({ url, projectNumber: i + 1, error: projectResult.error || 'Erro desconhecido' });
+                        results.downloadResults.failed.push({ url, projectNumber: currentIndex + 1, error: projectResult.error || 'Erro desconhecido' });
                     }
                 } catch (err) {
                     results.failed++;
-                    results.downloadResults.failed.push({ url, projectNumber: i + 1, error: err.message });
-                    this.logger.error(`❌ Erro no projeto ${i + 1}: ${err.message}`);
-                    if (!options.continueOnError) break;
+                    results.downloadResults.failed.push({ url, projectNumber: currentIndex + 1, error: err.message });
+                    this.logger.error(`❌ Erro no projeto ${currentIndex + 1}: ${err.message}`);
+                    if (!options.continueOnError) {
+                        inFlight--;
+                        return; // sai cedo; as promessas já lançadas continuam
+                    }
                 }
-            }
+                inFlight--;
+                await runNext();
+            };
+
+            progress?.({ type: 'start', data: { total: projectUrls.length, concurrency } });
+            const starters = Array.from({ length: Math.min(concurrency, projectUrls.length) }, () => runNext());
+            await Promise.all(starters);
 
             this.logger.log(`✅ Processamento concluído: ${results.successful} sucessos, ${results.failed} falhas`);
+            progress?.({ type: 'completed', data: { successful: results.successful, failed: results.failed } });
             return results;
         } catch (error) {
             this.logger.error('❌ Erro no processamento de briefings:', error);
@@ -136,6 +155,8 @@ export class BriefingExtractionService {
      * Processar briefing de um projeto específico
      */
     private async processProjectBriefing(projectUrl: string, projectNumber: number, options: any = {}) {
+        const progress = options.progress as undefined | ((ev: { type: string; data?: any }) => void);
+        const isCanceled = options.isCanceled as undefined | ((projectNumber: number) => boolean);
         const browser = await chromium.launch({
             headless: options.headless !== false,
             args: options.headless !== false ? [] : ['--start-maximized']
@@ -155,6 +176,14 @@ export class BriefingExtractionService {
 
             // Navegar para o projeto
             this.logger.log(`🌍 Acessando URL: ${projectUrl}`);
+            progress?.({ type: 'project-start', data: { projectNumber, url: projectUrl } });
+            // Emitir DSID imediatamente se possível (fallback pelo URL)
+            try {
+                const urlDsid = this.extractDSIDFromProjectName(projectUrl);
+                if (urlDsid) {
+                    progress?.({ type: 'project-meta', data: { projectNumber, dsid: urlDsid, provisional: true } });
+                }
+            } catch { /* noop */ }
             await page.goto(projectUrl, {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
@@ -164,11 +193,20 @@ export class BriefingExtractionService {
             // Extrair nome do projeto
             const projectName = await this.extractProjectName(page, projectUrl, projectNumber);
             this.logger.log(`📋 Nome do projeto: ${projectName}`);
+            // Emitir dsid como meta, se existir (a partir do título extraído)
+            const dsidMeta = this.extractDSIDFromProjectName(projectName);
+            if (dsidMeta) progress?.({ type: 'project-meta', data: { projectNumber, dsid: dsidMeta, provisional: false } });
+
+            if (isCanceled?.(projectNumber)) {
+                throw new Error('Operação cancelada pelo usuário');
+            }
 
             // Navegar para a pasta "05. Briefing"
+            progress?.({ type: 'stage', data: { projectNumber, stage: 'navigating-briefing-folder' } });
             await this.navigateToBriefingFolder(page);
 
             // Simular download e processamento (implementação básica)
+            progress?.({ type: 'stage', data: { projectNumber, stage: 'downloading-and-extracting' } });
             const downloadResult = await this.realDownloadAndProcessing(page, projectName, options);
 
             return {
@@ -185,6 +223,7 @@ export class BriefingExtractionService {
 
         } catch (error) {
             this.logger.error(`❌ Erro no projeto ${projectNumber}: ${error.message}`);
+            progress?.({ type: 'project-fail', data: { projectNumber, url: projectUrl, error: error.message } });
             return {
                 success: false,
                 url: projectUrl,
