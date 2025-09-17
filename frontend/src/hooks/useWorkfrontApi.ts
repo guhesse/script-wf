@@ -69,7 +69,7 @@ export const useWorkfrontApi = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ projectUrl })
+        body: JSON.stringify({ projectUrl, headless: false })
       });
 
       const data: DocumentsResponse = await response.json();
@@ -184,7 +184,8 @@ export const useWorkfrontApi = () => {
           projectUrl,
           selections,
           users: [], // Será usado pelos usuários configurados no backend
-          selectedUser
+          selectedUser,
+          headless: false
         })
       });
 
@@ -200,6 +201,61 @@ export const useWorkfrontApi = () => {
     } catch (error) {
       console.error('Erro no compartilhamento:', error);
       toast.error('Erro de conexão durante o compartilhamento');
+      throw error;
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, []);
+
+  type CombinedSimpleParams = {
+    projectUrl: string;
+    selections: ShareSelection[];
+    selectedUser?: 'carol' | 'giovana' | 'test';
+    commentType?: 'assetRelease' | 'finalMaterials' | 'approval';
+    headless?: boolean;
+  };
+  type CombinedBatchItem = { projectUrl: string; selections: ShareSelection[] };
+  type CombinedBatchParams = {
+    items: CombinedBatchItem[];
+    selectedUser?: 'carol' | 'giovana' | 'test';
+    commentType?: 'assetRelease' | 'finalMaterials' | 'approval';
+    headless?: boolean;
+  };
+
+  const shareAndComment = useCallback(async (
+    params: CombinedSimpleParams | CombinedBatchParams
+  ): Promise<import('@/types').ShareAndCommentResponse> => {
+    const isBatch = 'items' in params;
+    const selections = isBatch ? params.items.flatMap((i) => i.selections) : params.selections;
+    if (!isBatch && (!selections || selections.length === 0)) {
+      toast.warning('Selecione pelo menos um arquivo');
+      throw new Error('Nenhum arquivo selecionado');
+    }
+
+    const totalFiles = isBatch ? selections.length : selections.length;
+    setIsLoading(true);
+    setLoadingMessage(`Executando compartilhamento + comentário para ${totalFiles} arquivo(s)...\nO navegador será aberto em modo visível.`);
+
+    try {
+      const response = await fetch('/api/share-and-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...params,
+          headless: false,
+        }),
+      });
+      const data: import('@/types').ShareAndCommentResponse = await response.json();
+      if (data.success) {
+        toast.success(data.message || 'Fluxo concluído com sucesso');
+      } else {
+        toast.error(data.message || 'Falha ao executar fluxo');
+      }
+      return data;
+    } catch (error) {
+      console.error('Erro no fluxo combinado:', error);
+      toast.error('Erro de conexão no fluxo combinado');
       throw error;
     } finally {
       setIsLoading(false);
@@ -334,6 +390,7 @@ export const useWorkfrontApi = () => {
     extractDocuments,
     extractDocumentsWithProgress,
     shareDocuments,
+    shareAndComment,
     clearCache,
     getProjectHistory,
     getProjectByUrl,

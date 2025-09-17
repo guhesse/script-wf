@@ -57,7 +57,7 @@ export class WorkfrontController {
     private readonly extractionService: ExtractionService,
     private readonly progressService: BulkProgressService,
     private readonly bulkService: DocumentBulkDownloadService,
-  ) {}
+  ) { }
 
   @Get('health')
   @ApiOperation({ summary: 'Health check do sistema' })
@@ -256,6 +256,23 @@ export class WorkfrontController {
         {
           success: false,
           message: error.message,
+          timestamp: new Date().toISOString(),
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('share-and-comment')
+  @ApiOperation({ summary: 'Executar fluxo combinado: compartilhar e comentar arquivos selecionados' })
+  async shareAndComment(@Body() body: any) {
+    try {
+      return await this.workfrontService.shareAndComment(body);
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: (error as Error).message,
           timestamp: new Date().toISOString(),
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -609,11 +626,11 @@ export class WorkfrontController {
       // Por enquanto, retornar observable simples
       return new Observable((observer) => {
         observer.next({ data: JSON.stringify({ status: 'started', projectId }) });
-        
+
         setTimeout(() => {
           observer.next({ data: JSON.stringify({ status: 'processing', progress: 50 }) });
         }, 1000);
-        
+
         setTimeout(() => {
           observer.next({ data: JSON.stringify({ status: 'completed', progress: 100 }) });
           observer.complete();

@@ -51,6 +51,32 @@ export interface ShareResponse {
   };
 }
 
+export interface SharePhaseResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface ShareAndCommentItemResult {
+  folder: string;
+  fileName: string;
+  share: SharePhaseResult;
+  comment: SharePhaseResult;
+}
+
+export interface ShareAndCommentProjectResult {
+  projectUrl: string;
+  items: ShareAndCommentItemResult[];
+  summary: { total: number; success: number; errors: number };
+}
+
+export interface ShareAndCommentResponse {
+  success: boolean;
+  message: string;
+  results: ShareAndCommentProjectResult[];
+  summary: { totalProjects: number; totalFiles: number; success: number; errors: number };
+}
+
 export interface WorkfrontProject {
   id: string;
   url: string;

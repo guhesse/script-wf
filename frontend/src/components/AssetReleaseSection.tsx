@@ -13,27 +13,26 @@ import {
     Share,
     Link,
     File,
-    Share2
 } from 'lucide-react';
 import { FolderSection } from './FolderSection';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
-import type { WorkfrontFolder, ShareSelection, ShareResult } from '@/types';
+import type { WorkfrontFolder, ShareSelection, ShareResult, ShareAndCommentResponse, ShareAndCommentProjectResult } from '@/types';
 
-interface DocumentSharingSectionProps {
+interface AssetReleaseSectionProps {
     projectUrl: string;
     setProjectUrl: (url: string) => void;
     folders: WorkfrontFolder[];
     setFolders: (folders: WorkfrontFolder[]) => void;
     selectedFiles: Set<string>;
     setSelectedFiles: (files: Set<string>) => void;
-    selectedUser: 'carol' | 'giovana';
-    setSelectedUser: (user: 'carol' | 'giovana') => void;
+    selectedUser: 'carol' | 'giovana' | 'test';
+    setSelectedUser: (user: 'carol' | 'giovana' | 'test') => void;
     currentProject: { title?: string; dsid?: string } | null;
     setCurrentProject: (project: { title?: string; dsid?: string } | null) => void;
     onExtractDocuments: (urlToUse?: string) => Promise<void>;
 }
 
-export const DocumentSharingSection = ({
+export const AssetReleaseSection = ({
     projectUrl,
     setProjectUrl,
     folders,
@@ -43,14 +42,15 @@ export const DocumentSharingSection = ({
     setSelectedUser,
     currentProject,
     onExtractDocuments
-}: DocumentSharingSectionProps) => {
+}: AssetReleaseSectionProps) => {
     const [shareResults, setShareResults] = useState<ShareResult[]>([]);
+    const [combinedResults, setCombinedResults] = useState<ShareAndCommentProjectResult[] | null>(null);
     const [showResults, setShowResults] = useState(false);
 
-    const { shareDocuments } = useWorkfrontApi();
+    const { shareAndComment } = useWorkfrontApi();
 
     const isValidUrl = (url: string) => {
-        return url && url.includes('workfront');
+        return !!url && url.includes('workfront');
     };
 
     const handleFileToggle = (folderName: string, fileName: string) => {
@@ -97,8 +97,18 @@ export const DocumentSharingSection = ({
         });
 
         try {
-            const response = await shareDocuments(projectUrl, selections, selectedUser);
-            setShareResults(response.results);
+            const response = await shareAndComment({ projectUrl, selections, selectedUser, commentType: 'assetRelease', headless: false }) as ShareAndCommentResponse;
+            setCombinedResults(response.results);
+            // Mapear resultados de share para manter painel atual
+            const flatShare: ShareResult[] = [];
+            response.results.forEach(pr => pr.items.forEach(item => flatShare.push({
+                folder: item.folder,
+                fileName: item.fileName,
+                success: item.share.success && item.comment.success,
+                message: item.share.message || item.comment.message,
+                error: item.share.error || item.comment.error,
+            })));
+            setShareResults(flatShare);
             setShowResults(true);
         } catch (error) {
             console.error('Erro no compartilhamento:', error);
@@ -217,11 +227,22 @@ export const DocumentSharingSection = ({
                                     Equipe Reduzida (Giovana)
                                     <Badge variant="secondary" className="ml-2">3 pessoas</Badge>
                                 </Button>
+                                <Button
+                                    variant={selectedUser === 'test' ? 'default' : 'secondary'}
+                                    onClick={() => setSelectedUser('test')}
+                                    className="flex-1 justify-start"
+                                >
+                                    <UserCheck className="mr-2 h-4 w-4" />
+                                    Teste (Gustavo)
+                                    <Badge variant="secondary" className="ml-2">1 pessoa</Badge>
+                                </Button>
                             </div>
                             <p className="text-sm text-muted-foreground mt-2">
                                 {selectedUser === 'carol'
                                     ? 'Inclui: Yasmin, Gabriela, Eduarda, Evili, Giovanna, Natascha e Carolina'
-                                    : 'Inclui: Luiza, Gislaine e Giovana'
+                                    : selectedUser === 'giovana'
+                                        ? 'Inclui: Luiza, Gislaine e Giovana'
+                                        : 'Inclui: Gustavo Hesse'
                                 }
                             </p>
                         </div>
@@ -262,13 +283,11 @@ export const DocumentSharingSection = ({
                 <CardHeader>
                     <CardTitle className="flex items-center text-card-foreground gap-3">
                         <Share className="w-4 h-4 text-primary" />
-                        Executar Compartilhamento
+                        Compartilhar + Comentar (Fluxo Único)
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground mb-4">
-                        Execute o processo de compartilhamento para os arquivos selecionados.
-                    </p>
+                    <p className="text-muted-foreground mb-4">Executa o compartilhamento e adiciona o comentário padrão (Asset Release) para cada arquivo selecionado.</p>
 
                     <div className="flex justify-between items-center">
                         <div>
@@ -285,10 +304,10 @@ export const DocumentSharingSection = ({
                                     <div className="flex items-center space-x-2">
                                         <UserCheck className="h-4 w-4 text-primary" />
                                         <span className="text-foreground text-sm">
-                                            Equipe: {selectedUser === 'carol' ? 'Completa (Carolina)' : 'Reduzida (Giovana)'}
+                                            Equipe: {selectedUser === 'carol' ? 'Completa (Carolina)' : selectedUser === 'giovana' ? 'Reduzida (Giovana)' : 'Teste (Gustavo)'}
                                         </span>
                                         <Badge variant="outline" className="text-xs">
-                                            {selectedUser === 'carol' ? '7 pessoas' : '3 pessoas'}
+                                            {selectedUser === 'carol' ? '7 pessoas' : selectedUser === 'giovana' ? '3 pessoas' : '1 pessoa'}
                                         </Badge>
                                     </div>
                                 </div>
@@ -302,7 +321,7 @@ export const DocumentSharingSection = ({
                             className=""
                         >
                             <Share className="mr-2 h-4 w-4" />
-                            Compartilhar Selecionados
+                            Executar Fluxo
                         </Button>
                     </div>
 
@@ -311,8 +330,17 @@ export const DocumentSharingSection = ({
                         <div className="mt-6">
                             <h4 className="text-lg font-semibold text-foreground mb-3 flex items-center">
                                 <CheckCircle className="mr-2 h-5 w-5" />
-                                Resultados do Compartilhamento
+                                Resultados do Fluxo
                             </h4>
+                            {combinedResults && (
+                                <div className="mb-4 text-sm text-muted-foreground">
+                                    {combinedResults.map((proj, idx) => (
+                                        <div key={idx} className="mb-1">
+                                            <strong className="text-foreground">Projeto:</strong> {proj.projectUrl} — {proj.summary.success}/{proj.summary.total} OK, {proj.summary.errors} erros
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 {shareResults.map((result, index) => (
                                     <Alert
