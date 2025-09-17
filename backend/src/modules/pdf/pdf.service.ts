@@ -218,9 +218,9 @@ export class PdfService {
      */
     async bulkDownloadBriefings(downloadDto: BulkDownloadDto): Promise<BulkDownloadResponseDto> {
         try {
-            const { projectUrls, downloadPath = this.defaultDownloadPath, headless = true, continueOnError = true, keepFiles = true, organizeByDSID = true } = downloadDto;
+            const { projectUrls, downloadPath = this.defaultDownloadPath, headless = true, continueOnError = true, keepFiles = true, organizeByDSID = true, concurrency = 2, mode = 'pm' } = downloadDto as any;
 
-            const bulkRes = await this.bulk.bulkDownloadBriefings(projectUrls, { downloadPath, headless, continueOnError, keepFiles, organizeByDSID });
+            const bulkRes = await this.bulk.bulkDownloadBriefings(projectUrls, { downloadPath, headless, continueOnError, keepFiles, organizeByDSID, concurrency, mode });
 
             return {
                 success: true,

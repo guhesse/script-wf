@@ -3,6 +3,7 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import { BriefingExtractionService } from '../modules/briefing/briefing-extraction.service';
 import { FolderOrganizationService } from './folder-organization.service';
+import { BulkProgressService } from '../modules/pdf/bulk-progress.service';
 
 export interface BulkDownloadOptions {
     headless?: boolean;
@@ -10,6 +11,8 @@ export interface BulkDownloadOptions {
     continueOnError?: boolean;
     keepFiles?: boolean;
     organizeByDSID?: boolean;
+    concurrency?: number;
+    mode?: 'pm' | 'studio';
 }
 
 export interface BulkDownloadResult {
@@ -60,6 +63,7 @@ export class DocumentBulkDownloadService {
     constructor(
         private readonly extraction: BriefingExtractionService,
         private readonly folders: FolderOrganizationService,
+        private readonly progress: BulkProgressService,
     ) {}
 
     /**
@@ -69,11 +73,13 @@ export class DocumentBulkDownloadService {
         projectUrls: string[],
         options: BulkDownloadOptions = {}
     ): Promise<BulkDownloadResult> {
-        const headless = options.headless !== false;
+    const headless = options.headless !== false;
         const continueOnError = options.continueOnError !== false;
         const keepFiles = options.keepFiles !== false; // default manter pois vamos organizar
         const organizeByDSID = options.organizeByDSID !== false;
         const downloadPath = options.downloadPath || path.join(process.cwd(), 'downloads');
+        const concurrency = Math.max(1, Math.min(Number(options.concurrency) || 3, 5));
+        const mode = options.mode === 'studio' ? 'studio' : 'pm';
 
         await fs.mkdir(downloadPath, { recursive: true });
 
@@ -89,7 +95,7 @@ export class DocumentBulkDownloadService {
         };
 
         // Usar pipeline já existente que também persiste no banco
-        const pipeline: any = await this.extraction.processProjectsBriefings(projectUrls, { headless, continueOnError, keepFiles });
+    const pipeline: any = await this.extraction.processProjectsBriefings(projectUrls, { headless, continueOnError, keepFiles, concurrency });
 
         // Mapear falhas primeiro
         for (const fail of pipeline.downloadResults?.failed || []) {
@@ -108,12 +114,12 @@ export class DocumentBulkDownloadService {
             let projectFolder: string | undefined;
 
             if (keepFiles && success.pdfProcessing?.results?.length) {
-                projectFolder = await this.folders.ensureProjectFolder(downloadPath, projectName, dsid, { organizeByDSID, keepFiles });
+                projectFolder = await this.folders.ensureProjectFolder(downloadPath, projectName, dsid, { organizeByDSID, keepFiles, mode });
                 for (const pdf of success.pdfProcessing.results) {
                     if (!pdf.filePath) continue;
                     const stat = await fs.stat(pdf.filePath).catch(() => null);
                     if (stat) totalSize += stat.size;
-                    await this.folders.moveIntoProject(projectFolder, pdf.filePath);
+                    await this.folders.moveIntoProject(projectFolder, pdf.filePath, { organizeByDSID, keepFiles, mode });
                     organizedCount++;
                 }
                 // Limpar diretório temporário original, se conhecido
@@ -144,6 +150,62 @@ export class DocumentBulkDownloadService {
         }
 
         return result;
+    }
+
+    /**
+     * Variante com progresso: emite eventos SSE usando operationId
+     */
+    async startBulkWithProgress(operationId: string, projectUrls: string[], options: BulkDownloadOptions = {}) {
+        const headless = options.headless !== false;
+        const continueOnError = options.continueOnError !== false;
+        const keepFiles = options.keepFiles !== false;
+        const organizeByDSID = options.organizeByDSID !== false;
+    const downloadPath = options.downloadPath || path.join(process.cwd(), 'downloads');
+    const concurrency = Math.max(1, Math.min(Number(options.concurrency) || 3, 5));
+    const mode = options.mode === 'studio' ? 'studio' : 'pm';
+
+        await fs.mkdir(downloadPath, { recursive: true });
+        this.progress.create(operationId);
+
+        const progressHook = (ev: { type: string; data?: any }) => {
+            switch (ev.type) {
+                case 'start':
+                    this.progress.emit(operationId, { type: 'start', data: ev.data }); break;
+                case 'project-start':
+                    this.progress.emit(operationId, { type: 'project-start', data: ev.data }); break;
+                case 'stage':
+                    this.progress.emit(operationId, { type: 'stage', data: ev.data }); break;
+                case 'project-fail':
+                    this.progress.emit(operationId, { type: 'project-fail', data: ev.data }); break;
+                case 'project-meta':
+                    this.progress.emit(operationId, { type: 'project-meta', data: ev.data }); break;
+                case 'completed':
+                    this.progress.emit(operationId, { type: 'completed', data: ev.data }); break;
+            }
+        };
+
+        const pipeline: any = await this.extraction.processProjectsBriefings(projectUrls, {
+            headless, continueOnError, keepFiles, concurrency, progress: progressHook, operationId,
+            isCanceled: (projectNumber: number) => this.progress.isCanceled(operationId, projectNumber)
+        });
+
+        // Emit organização e término por projeto
+        for (const success of pipeline.downloadResults?.successful || []) {
+            const dsid = (this.extraction as any)['extractDSIDFromProjectName']?.call(this.extraction, success.projectName) || null;
+            let projectFolder: string | undefined;
+            if (keepFiles && success.pdfProcessing?.results?.length) {
+                this.progress.emit(operationId, { type: 'stage', data: { projectNumber: success.projectNumber, stage: 'organizing-files' } });
+                projectFolder = await this.folders.ensureProjectFolder(downloadPath, success.projectName, dsid, { organizeByDSID, keepFiles, mode });
+                for (const pdf of success.pdfProcessing.results) {
+                    if (!pdf.filePath) continue;
+                    await this.folders.moveIntoProject(projectFolder, pdf.filePath, { organizeByDSID, keepFiles, mode });
+                }
+            }
+            this.progress.emit(operationId, { type: 'project-success', data: { projectNumber: success.projectNumber, folder: projectFolder } });
+        }
+
+        this.progress.emit(operationId, { type: 'completed', data: { successful: pipeline.successful, failed: pipeline.failed } });
+        this.progress.complete(operationId);
     }
 
     /**

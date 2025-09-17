@@ -6,10 +6,11 @@ import { WorkfrontModule } from '../workfront/workfront.module';
 import { DocumentBulkDownloadService } from '../../download/document-bulk-download.service';
 import { FolderOrganizationService } from '../../download/folder-organization.service';
 import { BriefingModule } from '../briefing/briefing.module';
+import { BulkProgressService } from './bulk-progress.service';
 
 @Module({
   imports: [forwardRef(() => WorkfrontModule), forwardRef(() => BriefingModule)],
-  providers: [PdfService, CommentService, ExtractionService, DocumentBulkDownloadService, FolderOrganizationService],
-  exports: [PdfService, CommentService, ExtractionService, DocumentBulkDownloadService, FolderOrganizationService],
+  providers: [PdfService, CommentService, ExtractionService, DocumentBulkDownloadService, FolderOrganizationService, BulkProgressService],
+  exports: [PdfService, CommentService, ExtractionService, DocumentBulkDownloadService, FolderOrganizationService, BulkProgressService],
 })
 export class PdfModule {}
