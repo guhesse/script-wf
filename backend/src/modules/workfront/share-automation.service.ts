@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { chromium, Browser, Page } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { CommentService } from '../pdf/comment.service';
+import { CommentType, AddCommentDto } from '../pdf/dto/pdf.dto';
 
 const STATE_FILE = 'wf_state.json';
 
@@ -43,6 +45,10 @@ const TEST_TEAM = [
 @Injectable()
 export class ShareAutomationService {
     private readonly logger = new Logger(ShareAutomationService.name);
+
+    constructor(
+        private readonly commentService: CommentService,
+    ) { }
 
     async shareDocuments(
         projectUrl: string,
@@ -90,8 +96,7 @@ export class ShareAutomationService {
         folderName: string,
         fileName: string,
         headless = false,
-    ): Promise<{ browser: Browser; page: Page; frame: any }>
-    {
+    ): Promise<{ browser: Browser; page: Page; frame: any }> {
         const browser: Browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
         const statePath = await this.ensureStateFile();
         const context = await browser.newContext({ storageState: statePath, viewport: null });
@@ -105,8 +110,8 @@ export class ShareAutomationService {
         // Aguarda iframe do Workfront estar presente
         try {
             await page.waitForSelector('iframe[src*="workfront"], iframe[src*="experience"]', { timeout: 30000 });
-        } catch {}
-    const frameLocator = this.frameLocator(page);
+        } catch { }
+        const frameLocator = this.frameLocator(page);
         await this.closeSidebarIfOpen(frameLocator, page);
 
         if (folderName && folderName !== 'root') {
@@ -125,7 +130,7 @@ export class ShareAutomationService {
                 try {
                     const el = frameLocator.locator(sel).first();
                     if ((await el.count()) > 0) { await el.click(); await page.waitForTimeout(4000); ok = true; break; }
-                } catch {}
+                } catch { }
             }
             if (!ok) throw new Error(`Não foi possível navegar para a pasta "${folderName}"`);
             this.logger.log(`📁 Pasta aberta: ${folderName}`);
@@ -133,7 +138,7 @@ export class ShareAutomationService {
 
         // Selecionar documento
         this.logger.log(`📄 Selecionando documento: ${fileName}`);
-    await this.closeSidebarIfOpen(frameLocator, page);
+        await this.closeSidebarIfOpen(frameLocator, page);
         await page.waitForTimeout(3000);
         const docCandidates = await frameLocator.locator('body').evaluate((body, target: string) => {
             const found: any[] = [];
@@ -154,8 +159,8 @@ export class ShareAutomationService {
         } else {
             await frameLocator.locator(`.doc-detail-view:nth-of-type(${(target.index || 0) + 1})`).click();
         }
-    await page.waitForTimeout(1500);
-    this.logger.log(`📄 Documento selecionado: ${fileName}`);
+        await page.waitForTimeout(1500);
+        this.logger.log(`📄 Documento selecionado: ${fileName}`);
 
         return { browser, page, frame: frameLocator };
     }
@@ -180,7 +185,7 @@ export class ShareAutomationService {
                     const ok = await this.verifyShareModal(frameLocator);
                     if (ok) { shareOpened = true; break; }
                 }
-            } catch {}
+            } catch { }
         }
         if (!shareOpened) throw new Error('Botão de compartilhar não encontrado/ modal não abriu');
 
@@ -202,7 +207,7 @@ export class ShareAutomationService {
                     const ro = await inp.getAttribute('readonly');
                     if (!ro) { emailInput = inp; break; }
                 }
-            } catch {}
+            } catch { }
         }
         if (!emailInput) throw new Error('Campo de entrada de usuários não encontrado');
 
@@ -237,7 +242,7 @@ export class ShareAutomationService {
         try {
             if ((await saveBtn.count()) > 0) await saveBtn.click();
             await page.waitForTimeout(1200);
-        } catch {}
+        } catch { }
     }
 
     private getTeamUsers(selectedUser: TeamKey) {
@@ -290,9 +295,9 @@ export class ShareAutomationService {
                     await page.waitForTimeout(600);
                 }
             }
-        } catch {}
+        } catch { }
     }
-    
+
     private async debugShot(page: Page, name: string) {
         try {
             const dir = path.resolve(process.cwd(), 'automation_debug');
@@ -302,6 +307,38 @@ export class ShareAutomationService {
             this.logger.log(`🖼️ Debug screenshot salvo: ${file}`);
         } catch (e: any) {
             this.logger.warn(`Não foi possível salvar screenshot: ${e?.message}`);
+        }
+    }
+
+    // Helper: selecionar documento na lista atual (não abre novas instâncias)
+    private async selectDocumentInPage(frameLocator: any, page: Page, fileName: string): Promise<boolean> {
+        try {
+            await this.closeSidebarIfOpen(frameLocator, page);
+            await page.waitForTimeout(800);
+            const docCandidates = await frameLocator.locator('body').evaluate((body, target: string) => {
+                const found: any[] = [];
+                const els = (body as any).querySelectorAll('.doc-detail-view');
+                els.forEach((el: any, idx: number) => {
+                    const aria = el.getAttribute('aria-label') || '';
+                    const txt = (el.textContent || '').toLowerCase();
+                    if (aria.includes(target) || txt.includes(target.toLowerCase())) {
+                        found.push({ index: idx, ariaLabel: aria, isVisible: (el.offsetWidth > 0 && el.offsetHeight > 0) });
+                    }
+                });
+                return found;
+            }, fileName);
+
+            if (!docCandidates || docCandidates.length === 0) return false;
+            const target = docCandidates.find((d: any) => d.isVisible) || docCandidates[0];
+            if (target?.ariaLabel) {
+                await frameLocator.locator(`[aria-label="${target.ariaLabel}"]`).first().click();
+            } else {
+                await frameLocator.locator(`.doc-detail-view:nth-of-type(${(target.index || 0) + 1})`).click();
+            }
+            await page.waitForTimeout(1000);
+            return true;
+        } catch {
+            return false;
         }
     }
 
@@ -560,6 +597,530 @@ export class ShareAutomationService {
         } catch {
             try { await page.keyboard.press('Escape'); } catch { }
             return false;
+        }
+    }
+
+    // ===== AUTOMAÇÃO DE UPLOAD =====
+
+    async executeUploadPlan(params: {
+        projectUrl: string;
+        selectedUser: TeamKey;
+        assetZipPath: string;
+        finalMaterialPaths: string[];
+        headless?: boolean;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        results: Array<{
+            type: 'asset-release' | 'final-materials';
+            fileName: string;
+            uploadSuccess: boolean;
+            commentSuccess: boolean;
+            message?: string;
+            error?: string;
+        }>;
+        summary: { totalFiles: number; uploadSuccesses: number; commentSuccesses: number; errors: number };
+    }> {
+        const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, headless = false } = params;
+
+        this.logger.log('🚀 === EXECUTANDO PLANO DE UPLOAD ===');
+        this.logger.log(`📁 ZIP: ${path.basename(assetZipPath)}`);
+        this.logger.log(`📄 Finals: ${finalMaterialPaths.map(p => path.basename(p)).join(', ')}`);
+        this.logger.log(`👥 Equipe: ${selectedUser}`);
+
+        const results: any[] = [];
+        let uploadSuccesses = 0;
+        let commentSuccesses = 0;
+        let errors = 0;
+
+        const browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
+
+        try {
+            const statePath = await this.ensureStateFile();
+            const context = await browser.newContext({ storageState: statePath, viewport: null });
+            const page = await context.newPage();
+
+            // Navegar para o projeto uma única vez
+            this.logger.log('🌍 Abrindo projeto Workfront...');
+            await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
+            await page.waitForTimeout(4000);
+
+            // Aguardar iframe carregar
+            this.logger.log('🔍 Aguardando frame do Workfront...');
+            await this.waitForWorkfrontFrame(page);
+            const frameLocator = this.frameLocator(page);
+            await this.closeSidebarIfOpen(frameLocator, page);
+
+            // 1. Upload Asset Release (ZIP)
+            this.logger.log('📦 [1/3] Upload Asset Release...');
+
+            // Navegar para pasta Asset Release
+            this.logger.log('📁 Navegando para pasta "Asset Release"...');
+            const assetFolderResult = await this.navigateToFolder(frameLocator, page, 'Asset Release');
+            if (!assetFolderResult) {
+                this.logger.warn('⚠️ Pasta "Asset Release" não encontrada, continuando na pasta atual');
+            }
+
+            const assetResult = await this.uploadSingleFile(frameLocator, page, assetZipPath, 'asset-release', selectedUser, false);
+            results.push({
+                type: 'asset-release',
+                fileName: path.basename(assetZipPath),
+                uploadSuccess: assetResult.uploadSuccess,
+                commentSuccess: false,
+                message: assetResult.message,
+                error: assetResult.error
+            });
+            if (assetResult.uploadSuccess) uploadSuccesses++;
+            // Share do Asset Release e Comentário usando a MESMA página
+            if (assetResult.uploadSuccess) {
+                const assetFileName = this.getOriginalFileName(assetZipPath);
+                this.logger.log('🔗 Compartilhando Asset Release (in-page)...');
+                try {
+                    // Selecionar documento
+                    const selOk = await this.selectDocumentInPage(frameLocator, page, assetFileName);
+                    if (!selOk) this.logger.warn('⚠️ Não foi possível selecionar o ZIP para compartilhar');
+                    // Abrir modal de share e aplicar permissões
+                    await this.shareUsingOpenPage(frameLocator, page, selectedUser);
+                } catch (e: any) {
+                    this.logger.warn(`⚠️ Erro no share in-page do Asset Release: ${e?.message}`);
+                    errors++;
+                }
+
+                // Comentário do Asset Release via CommentService, com página aberta
+                this.logger.log('💬 Comentando Asset Release via CommentService (open page)...');
+                try {
+                    const commentRes = await this.commentService.addCommentUsingOpenPage({
+                        frameLocator,
+                        page,
+                        folderName: 'Asset Release',
+                        fileName: assetFileName,
+                        commentType: CommentType.ASSET_RELEASE,
+                        selectedUser: selectedUser as any,
+                    });
+                    if (commentRes?.success) {
+                        commentSuccesses++;
+                        results[results.length - 1].commentSuccess = true;
+                        results[results.length - 1].message = commentRes.message || results[results.length - 1].message;
+                    } else {
+                        results[results.length - 1].commentSuccess = false;
+                        results[results.length - 1].error = (results[results.length - 1].error || '') + ' | Falha no comentário de Asset Release';
+                        errors++;
+                    }
+                } catch (e: any) {
+                    this.logger.warn(`⚠️ Erro ao comentar Asset Release (open page): ${e?.message}`);
+                    results[results.length - 1].commentSuccess = false;
+                    results[results.length - 1].error = (results[results.length - 1].error || '') + ` | Comentário AR erro: ${e?.message}`;
+                    errors++;
+                }
+            } else {
+                errors++;
+            }
+
+            // 2. Upload Final Materials (non-PDF first)
+            this.logger.log('📋 [2/3] Upload Final Materials...');
+
+            // Navegar para pasta Final Materials
+            this.logger.log('📁 Navegando para pasta "Final Materials"...');
+            const finalFolderResult = await this.navigateToFolder(frameLocator, page, 'Final Materials');
+            if (!finalFolderResult) {
+                this.logger.warn('⚠️ Pasta "Final Materials" não encontrada, continuando na pasta atual');
+            }
+
+            // Separar PDFs dos outros arquivos
+            const pdfFiles = finalMaterialPaths.filter(p => path.basename(p).toLowerCase().endsWith('.pdf'));
+            const nonPdfFiles = finalMaterialPaths.filter(p => !path.basename(p).toLowerCase().endsWith('.pdf'));
+
+            // Upload arquivos não-PDF primeiro (sem comentário)
+            for (let i = 0; i < nonPdfFiles.length; i++) {
+                const filePath = nonPdfFiles[i];
+                const fileName = path.basename(filePath);
+
+                this.logger.log(`📄 [${i + 1}/${nonPdfFiles.length}] Uploading (non-PDF): ${fileName}`);
+
+                const finalResult = await this.uploadSingleFile(
+                    frameLocator,
+                    page,
+                    filePath,
+                    'final-materials',
+                    selectedUser,
+                    false // Apenas upload
+                );
+
+                results.push({
+                    type: 'final-materials',
+                    fileName,
+                    uploadSuccess: finalResult.uploadSuccess,
+                    commentSuccess: finalResult.commentSuccess,
+                    message: finalResult.message,
+                    error: finalResult.error
+                });
+
+                if (finalResult.uploadSuccess) uploadSuccesses++;
+                if (!finalResult.uploadSuccess) errors++;
+
+                // Delay entre uploads
+                if (i < nonPdfFiles.length - 1) {
+                    await this.delay(2000);
+                }
+            }
+
+            // 3. Upload PDFs por último (para aparecer como último no Workfront)
+            this.logger.log('📄 [3/3] Upload Final Materials (PDFs)...');
+            for (let i = 0; i < pdfFiles.length; i++) {
+                const filePath = pdfFiles[i];
+                const fileName = path.basename(filePath);
+                const isLastPdf = i === pdfFiles.length - 1;
+
+                this.logger.log(`📄 [${i + 1}/${pdfFiles.length}] Uploading (PDF): ${fileName}`);
+
+                const finalResult = await this.uploadSingleFile(
+                    frameLocator,
+                    page,
+                    filePath,
+                    'final-materials',
+                    selectedUser,
+                    false // Upload apenas; comentário será feito separado
+                );
+
+                results.push({
+                    type: 'final-materials',
+                    fileName,
+                    uploadSuccess: finalResult.uploadSuccess,
+                    commentSuccess: finalResult.commentSuccess,
+                    message: finalResult.message,
+                    error: finalResult.error
+                });
+
+                if (finalResult.uploadSuccess) uploadSuccesses++;
+                if (!finalResult.uploadSuccess) errors++;
+
+                // Delay entre uploads
+                if (i < pdfFiles.length - 1) {
+                    await this.delay(2000);
+                }
+            }
+
+            // Comentário em Final Materials (no último PDF, se houver)
+            if (pdfFiles.length > 0) {
+                try {
+                    const lastPdf = pdfFiles[pdfFiles.length - 1];
+                    const lastPdfName = this.getOriginalFileName(lastPdf);
+                    this.logger.log('💬 Comentando Final Materials via CommentService (open page)...');
+                    const commentRes = await this.commentService.addCommentUsingOpenPage({
+                        frameLocator,
+                        page,
+                        folderName: 'Final Materials',
+                        fileName: lastPdfName,
+                        commentType: CommentType.FINAL_MATERIALS,
+                        selectedUser: selectedUser as any,
+                    });
+                    // marcar no entry existente do último PDF
+                    const idx = results.findIndex(r => r.type === 'final-materials' && r.fileName === lastPdfName);
+                    if (idx >= 0) {
+                        results[idx].commentSuccess = !!commentRes?.success;
+                        results[idx].message = commentRes?.message || results[idx].message;
+                        if (!commentRes?.success) {
+                            results[idx].error = (results[idx].error || '') + ' | Falha no comentário de Final Materials';
+                        }
+                    }
+                    if (commentRes?.success) commentSuccesses++; else errors++;
+                } catch (e: any) {
+                    this.logger.warn(`⚠️ Erro ao comentar Final Materials: ${e?.message}`);
+                    const lastPdfName = this.getOriginalFileName(pdfFiles[pdfFiles.length - 1]);
+                    const idx = results.findIndex(r => r.type === 'final-materials' && r.fileName === lastPdfName);
+                    if (idx >= 0) {
+                        results[idx].commentSuccess = false;
+                        results[idx].error = (results[idx].error || '') + ` | Comentário FM erro: ${e?.message}`;
+                    }
+                    errors++;
+                }
+            }
+
+            const totalFiles = 1 + finalMaterialPaths.length;
+            const success = errors === 0;
+
+            return {
+                success,
+                message: success
+                    ? `Upload completo! ${uploadSuccesses} uploads e ${commentSuccesses} comentários realizados.`
+                    : `Upload finalizado com ${errors} erro(s). ${uploadSuccesses} uploads e ${commentSuccesses} comentários realizados.`,
+                results,
+                summary: { totalFiles, uploadSuccesses, commentSuccesses, errors }
+            };
+
+        } catch (error: any) {
+            this.logger.error(`❌ Erro no plano de upload: ${error?.message}`);
+            return {
+                success: false,
+                message: `Falha na execução: ${error?.message}`,
+                results,
+                summary: { totalFiles: results.length, uploadSuccesses, commentSuccesses, errors: errors + 1 }
+            };
+        } finally {
+            await browser.close();
+        }
+    }
+
+    private getOriginalFileName(filePath: string): string {
+        const fileName = path.basename(filePath);
+        // Se o arquivo foi staged com prefixo, remover o prefixo
+        const match = fileName.match(/^\d+_[a-z0-9]+__(.+)$/);
+        return match ? match[1] : fileName;
+    }
+
+    private async uploadDocument(frameLocator: any, page: Page, filePath: string): Promise<boolean> {
+        // caminho temporário criado para forçar o nome original no upload
+        let tempPathToRemove: string | null = null;
+        try {
+            // Verificar se o arquivo existe
+            await fs.access(filePath);
+
+            this.logger.log(`📤 Iniciando upload: ${path.basename(filePath)}`);
+
+            // 1. Procurar e clicar no botão "Add new" dropdown
+            const addNewSelectors = [
+                'button[data-testid="add-new"]',
+                'button.add-new-react-button',
+                'button:has-text("Add new")',
+                'button[id="add-new-button"]',
+            ];
+
+            let addNewClicked = false;
+            for (const selector of addNewSelectors) {
+                try {
+                    const addNewBtn = frameLocator.locator(selector).first();
+                    if (await addNewBtn.count() > 0 && await addNewBtn.isVisible()) {
+                        this.logger.log('🎯 Clicando "Add new" dropdown...');
+                        await addNewBtn.click();
+                        await page.waitForTimeout(1500);
+                        addNewClicked = true;
+                        break;
+                    }
+                } catch {
+                    continue;
+                }
+            }
+
+            if (!addNewClicked) {
+                this.logger.warn('⚠️ Botão "Add new" não encontrado');
+                return false;
+            }
+
+            // 2. Setup file chooser listener and click Document option
+            const documentSelectors = [
+                'li[data-test-id="upload-file"]',
+                'li.select-files-button',
+                'li:has-text("Document")',
+                '[role="menuitem"]:has-text("Document")',
+                'div.btn:has-text("Document")',
+            ];
+
+            // Preparar caminho de upload com nome original (sem prefixos de staging)
+            const originalFileName = this.getOriginalFileName(filePath);
+            let uploadFilePath = filePath;
+            try {
+                const currentBase = path.basename(filePath);
+                if (currentBase !== originalFileName) {
+                    const tmpDir = path.resolve(process.cwd(), 'Downloads', 'staging', '.tmp_uploads');
+                    await fs.mkdir(tmpDir, { recursive: true });
+                    const candidate = path.resolve(tmpDir, originalFileName);
+                    // Se já existir, remove para garantir conteúdo correto
+                    try { await fs.unlink(candidate); } catch { }
+                    await fs.copyFile(filePath, candidate);
+                    uploadFilePath = candidate;
+                    tempPathToRemove = candidate;
+                    this.logger.log(`🧩 Usando nome original no upload: ${originalFileName}`);
+                }
+            } catch (e: any) {
+                this.logger.warn(`⚠️ Não foi possível preparar arquivo temporário: ${e?.message}`);
+                uploadFilePath = filePath; // fallback
+            }
+
+            let uploadTriggered = false;
+            for (const selector of documentSelectors) {
+                try {
+                    const documentBtn = frameLocator.locator(selector).first();
+                    if (await documentBtn.count() > 0 && await documentBtn.isVisible()) {
+                        this.logger.log('📄 Clicando opção "Document"...');
+
+                        // Start waiting for file chooser BEFORE clicking
+                        const fileChooserPromise = page.waitForEvent('filechooser');
+                        await documentBtn.click();
+
+                        // Wait for file chooser to appear
+                        this.logger.log('📂 Aguardando file chooser...');
+                        const fileChooser = await fileChooserPromise;
+
+                        // Set the file
+                        this.logger.log('📤 Enviando arquivo via file chooser...');
+                        await fileChooser.setFiles(uploadFilePath);
+
+                        uploadTriggered = true;
+                        break;
+                    }
+                } catch (error: any) {
+                    this.logger.warn(`⚠️ Erro com seletor ${selector}: ${error?.message}`);
+                    continue;
+                }
+            }
+
+            if (!uploadTriggered) {
+                this.logger.warn('⚠️ Opção "Document" não encontrada no dropdown');
+                return false;
+            }
+
+            // 3. Aguardar processamento do upload
+            this.logger.log('⏳ Aguardando upload processar...');
+            await page.waitForTimeout(4000);
+
+            // 4. Verificar se o arquivo apareceu na lista de documentos
+            this.logger.log(`🔍 Procurando arquivo: ${originalFileName}`);
+
+            const fileVerificationSelectors = [
+                `text="${originalFileName}"`,
+                `[aria-label*="${originalFileName}"]`,
+                `.doc-detail-view:has-text("${originalFileName}")`,
+                `[title="${originalFileName}"]`,
+                `.document-item:has-text("${originalFileName}")`,
+                `*:has-text("${originalFileName}")`,
+                `span:has-text("${originalFileName}")`,
+                `div:has-text("${originalFileName}")`,
+            ];
+
+            let fileExists = false;
+            for (const selector of fileVerificationSelectors) {
+                try {
+                    const fileElement = frameLocator.locator(selector).first();
+                    if (await fileElement.count() > 0 && await fileElement.isVisible()) {
+                        fileExists = true;
+                        this.logger.log(`✅ Arquivo encontrado via: ${selector}`);
+                        break;
+                    }
+                } catch (error: any) {
+                    this.logger.debug(`Seletor falhou: ${selector} - ${error?.message}`);
+                }
+            }
+
+            if (!fileExists) {
+                // Fallback: aguardar mais um pouco e tentar novamente
+                this.logger.log('⏳ Aguardando mais tempo para confirmação...');
+                await page.waitForTimeout(3000);
+
+                for (const selector of fileVerificationSelectors) {
+                    try {
+                        const fileElement = frameLocator.locator(selector).first();
+                        if (await fileElement.count() > 0 && await fileElement.isVisible()) {
+                            fileExists = true;
+                            this.logger.log(`✅ Arquivo encontrado via: ${selector} (fallback)`);
+                            break;
+                        }
+                    } catch (error: any) {
+                        this.logger.debug(`Seletor fallback falhou: ${selector} - ${error?.message}`);
+                    }
+                }
+            }
+
+            this.logger.log(fileExists ? '✅ Upload confirmado' : '⚠️ Upload não confirmado na lista');
+            return fileExists;
+
+        } catch (error: any) {
+            this.logger.error(`❌ Erro no upload: ${error?.message}`);
+            return false;
+        } finally {
+            if (tempPathToRemove) {
+                try { await fs.unlink(tempPathToRemove); } catch { }
+            }
+        }
+    }
+
+    // Métodos internos de comentário removidos — usamos CommentService com página aberta
+
+    private async navigateToFolder(frameLocator: any, page: Page, folderName: string): Promise<boolean> {
+        try {
+            this.logger.log(`📁 Procurando pasta: ${folderName}`);
+
+            await this.closeSidebarIfOpen(frameLocator, page);
+            await page.waitForTimeout(1500);
+
+            const folderSelectors = [
+                `button:has-text("13. ${folderName}")`,
+                `button:has-text("14. ${folderName}")`,
+                `button:has-text("15. ${folderName}")`,
+                `button:has-text("${folderName}")`,
+                `a:has-text("${folderName}")`,
+                `[role="button"]:has-text("${folderName}")`,
+                `*[data-testid*="item"]:has-text("${folderName}")`,
+                `.folder-item:has-text("${folderName}")`,
+            ];
+
+            for (const selector of folderSelectors) {
+                try {
+                    const element = frameLocator.locator(selector).first();
+                    if (await element.count() > 0 && await element.isVisible()) {
+                        this.logger.log(`🎯 Clicando pasta via seletor: ${selector}`);
+                        await element.click();
+                        await page.waitForTimeout(3000);
+                        this.logger.log(`✅ Pasta "${folderName}" selecionada`);
+                        return true;
+                    }
+                } catch (e: any) {
+                    // Continuar tentando próximo seletor
+                }
+            }
+
+            this.logger.warn(`⚠️ Pasta "${folderName}" não encontrada`);
+            return false;
+        } catch (error: any) {
+            this.logger.error(`❌ Erro ao navegar para pasta ${folderName}: ${error?.message}`);
+            return false;
+        }
+    }
+
+    private async waitForWorkfrontFrame(page: Page): Promise<void> {
+        try {
+            // Aguardar iframe aparecer
+            await page.waitForSelector('iframe[src*="workfront"], iframe[src*="experience"], iframe', { timeout: 10000 });
+            await page.waitForTimeout(3000);
+
+            // Aguardar conteúdo do iframe carregar
+            const frameLocator = this.frameLocator(page);
+            await frameLocator.locator('body').waitFor({ timeout: 10000 });
+
+            this.logger.log('✅ Frame do Workfront carregado');
+        } catch (error: any) {
+            this.logger.warn(`⚠️ Timeout aguardando frame: ${error?.message}`);
+        }
+    }
+
+    private async uploadSingleFile(
+        frameLocator: any,
+        page: Page,
+        filePath: string,
+        type: 'asset-release' | 'final-materials',
+        selectedUser: TeamKey,
+        addComment: boolean = true
+    ): Promise<{ uploadSuccess: boolean; commentSuccess: boolean; message?: string; error?: string }> {
+        try {
+            // Upload do arquivo
+            this.logger.log(`📤 Fazendo upload: ${path.basename(filePath)}`);
+            const uploadSuccess = await this.uploadDocument(frameLocator, page, filePath);
+
+            if (!uploadSuccess) {
+                return { uploadSuccess: false, commentSuccess: false, error: 'Falha no upload' };
+            }
+
+            // Aguardar processamento
+            await page.waitForTimeout(3000);
+
+            return {
+                uploadSuccess: true,
+                commentSuccess: false,
+                message: `${type} enviado com sucesso`
+            };
+
+        } catch (error: any) {
+            this.logger.error(`❌ Erro no ${type}: ${error?.message}`);
+            return { uploadSuccess: false, commentSuccess: false, error: error?.message };
         }
     }
 }
