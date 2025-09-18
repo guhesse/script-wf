@@ -12,6 +12,7 @@ import {
 import { ProjectHistory } from './ProjectHistory';
 import { CommentSection } from './CommentSection';
 import { AssetReleaseSection } from './AssetReleaseSection';
+import UploadSection from './UploadSection';
 import BulkDownload from './BulkDownload';
 import BriefingContentViewer from './BriefingContentViewer';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
@@ -27,7 +28,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'extract' | 'comment' | 'bulk-download' | 'briefing-content' | 'history'>('extract');
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'comment' | 'bulk-download' | 'briefing-content' | 'history'>('extract');
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
@@ -141,6 +142,16 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
           <div className="w-80 bg-card border-r border-border p-6 flex-shrink-0">
             <nav className="space-y-1">
               <button
+                onClick={() => setActiveSection('upload')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'upload'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+              >
+                <FolderOpen className="h-5 w-5" />
+                <span className="font-medium">Upload (Novo Fluxo)</span>
+              </button>
+              <button
                 onClick={() => setActiveSection('extract')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'extract'
                   ? 'bg-primary text-primary-foreground'
@@ -195,6 +206,16 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto p-6">
+            {/* Upload Section */}
+            {activeSection === 'upload' && (
+              <UploadSection
+                projectUrl={projectUrl}
+                setProjectUrl={setProjectUrl}
+                selectedUser={selectedUser}
+                setSelectedUser={setSelectedUser}
+                currentProject={currentProject}
+              />
+            )}
             {/* Extract & Share Section */}
             {activeSection === 'extract' && (
               <AssetReleaseSection

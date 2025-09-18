@@ -60,7 +60,11 @@ export class CommentService {
             this.logger.log(`👥 Equipe: ${selectedUser}`);
 
             const template = COMMENT_TEMPLATES[commentType] || COMMENT_TEMPLATES[CommentType.ASSET_RELEASE];
-            const users = this.getUsersForTeam(selectedUser);
+            const allUsers = this.getUsersForTeam(selectedUser);
+            // Final Materials: mencionar apenas a líder do time
+            const users = commentType === CommentType.FINAL_MATERIALS
+                ? [this.getLeadUserForTeam(selectedUser) || allUsers[0]].filter(Boolean)
+                : allUsers;
             const mentionedUsers = template.mentions ? users.length : 0;
 
             const auto = await this.performDocumentComment({
@@ -101,7 +105,10 @@ export class CommentService {
         page.setDefaultTimeout(45000);
 
         const template = COMMENT_TEMPLATES[commentType] || COMMENT_TEMPLATES[CommentType.ASSET_RELEASE];
-        const users = this.getUsersForTeam(selectedUser);
+        const allUsers = this.getUsersForTeam(selectedUser);
+        const users = commentType === CommentType.FINAL_MATERIALS
+            ? [this.getLeadUserForTeam(selectedUser) || allUsers[0]].filter(Boolean)
+            : allUsers;
         const testMode = selectedUser.toString() === 'test';
         const textToUse = testMode ? 'teste' : template.text;
 
@@ -483,8 +490,11 @@ export class CommentService {
         try {
             const { commentType, selectedUser } = previewDto;
             const template = COMMENT_TEMPLATES[commentType] || COMMENT_TEMPLATES[CommentType.ASSET_RELEASE];
-            const users = this.getUsersForTeam(selectedUser);
-            const usersToMention = template.mentions ? users : [];
+            const allUsers = this.getUsersForTeam(selectedUser);
+            const selected = commentType === CommentType.FINAL_MATERIALS
+                ? [this.getLeadUserForTeam(selectedUser) || allUsers[0]].filter(Boolean)
+                : allUsers;
+            const usersToMention = template.mentions ? selected : [];
 
             return { success: true, commentText: template.text, users: usersToMention.map((u) => ({ name: u.name, email: u.email, id: u.id })) };
         } catch (error: any) {
@@ -496,6 +506,20 @@ export class CommentService {
     private getUsersForTeam(team: UserTeam): any[] {
         const teamKey = team.toString();
         return USERS_CONFIG[teamKey] || USERS_CONFIG.test;
+    }
+
+    // Retorna a líder por time para FINAL_MATERIALS
+    private getLeadUserForTeam(team: UserTeam) {
+        const teamKey = team.toString();
+        const users = USERS_CONFIG[teamKey] || [];
+        if (teamKey === 'carol') {
+            return users.find(u => u.name === 'Carolina Lipinski') || users[0];
+        }
+        if (teamKey === 'giovana') {
+            return users.find(u => u.name === 'Giovana Jockyman') || users[0];
+        }
+        // test ou outros: mantemos o primeiro usuário
+        return users[0];
     }
 
     private async closeSidebarIfOpen(frameLocator: any, page: Page): Promise<void> {
@@ -659,54 +683,72 @@ export class CommentService {
             await page.waitForTimeout(200);
 
             if (tag === 'input') {
-                // Estratégia evaluate/teclado/fill
-                try { await field.scrollIntoViewIfNeeded(); } catch { }
-                try { await field.focus(); } catch { }
-                let finalValue = '';
-                let filledOk = false;
+                // Primeiro, tentar detectar se este input ativa o editor RTE (para suportar mentions)
+                let toggledToRTE = false;
                 try {
-                    const handle = await field.elementHandle({ timeout: 1000 }).catch(() => null);
-                    if (handle) {
-                        await handle.evaluate((el: HTMLInputElement, v: string) => {
-                            el.focus();
-                            el.value = '';
-                            el.dispatchEvent(new Event('input', { bubbles: true }));
-                            el.dispatchEvent(new Event('change', { bubbles: true }));
-                            el.value = v;
-                            el.dispatchEvent(new Event('input', { bubbles: true }));
-                            el.dispatchEvent(new Event('change', { bubbles: true }));
-                        }, commentText);
-                        await page.waitForTimeout(60);
-                        finalValue = await field.inputValue().catch(() => '');
-                        filledOk = !!finalValue && finalValue.includes(commentText);
+                    const omegaAction = await field.evaluate((el: any) => el.getAttribute('data-omega-action'));
+                    if (omegaAction === 'toggle-RTE-mode') {
+                        // Clicar para ativar o RTE
+                        await field.click({ force: true });
+                        await page.waitForTimeout(600);
+                        const rteField = await this.findRTEEditor(frameLocator);
+                        if (rteField) {
+                            await this.typeInRTEEditor(page, rteField, { mentions: true }, users, commentText);
+                            toggledToRTE = true;
+                        }
                     }
                 } catch { }
-                if (!filledOk) {
+
+                if (!toggledToRTE) {
+                    // Sem RTE disponível: fallback para texto simples (mentions podem não ser suportadas)
+                    try { await field.scrollIntoViewIfNeeded(); } catch { }
+                    try { await field.focus(); } catch { }
+                    let finalValue = '';
+                    let filledOk = false;
                     try {
-                        await field.click({ force: true });
-                        await page.waitForTimeout(20);
-                        await page.keyboard.press('Control+A');
-                        await page.keyboard.press('Delete');
-                        await page.keyboard.insertText(commentText);
-                        await page.waitForTimeout(80);
-                        finalValue = await field.inputValue().catch(() => '');
-                        filledOk = !!finalValue && finalValue.includes(commentText);
+                        const handle = await field.elementHandle({ timeout: 800 }).catch(() => null);
+                        if (handle) {
+                            await handle.evaluate((el: HTMLInputElement, v: string) => {
+                                el.focus();
+                                el.value = '';
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                                el.value = v;
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                            }, commentText);
+                            await page.waitForTimeout(60);
+                            finalValue = await field.inputValue().catch(() => '');
+                            filledOk = !!finalValue && finalValue.includes(commentText);
+                        }
                     } catch { }
+                    if (!filledOk) {
+                        try {
+                            await field.click({ force: true });
+                            await page.waitForTimeout(20);
+                            await page.keyboard.press('Control+A');
+                            await page.keyboard.press('Delete');
+                            await page.keyboard.insertText(commentText);
+                            await page.waitForTimeout(80);
+                            finalValue = await field.inputValue().catch(() => '');
+                            filledOk = !!finalValue && finalValue.includes(commentText);
+                        } catch { }
+                    }
+                    if (!filledOk) {
+                        try {
+                            await field.fill('', { timeout: 600 });
+                            await field.fill(commentText, { timeout: 1000 });
+                            finalValue = await field.inputValue().catch(() => '');
+                            filledOk = !!finalValue && finalValue.includes(commentText);
+                        } catch { }
+                    }
+                    if (!filledOk) throw new Error('Falha ao preencher o campo de comentário (input)');
                 }
-                if (!filledOk) {
-                    try {
-                        await field.fill('', { timeout: 800 });
-                        await field.fill(commentText, { timeout: 1200 });
-                        finalValue = await field.inputValue().catch(() => '');
-                        filledOk = !!finalValue && finalValue.includes(commentText);
-                    } catch { }
-                }
-                if (!filledOk) throw new Error('Falha ao preencher o campo de comentário (input)');
             } else if (isCE) {
                 await field.fill('');
                 for (let i = 0; i < users.length; i++) {
                     const u = users[i];
-                    await field.insertText('@' + u.name); await page.waitForTimeout(600);
+                    await field.insertText('@' + u.name); await page.waitForTimeout(400);
                     try { const opt = frameLocator.locator('[role="option"]').filter({ hasText: u.name }).first(); if ((await opt.count()) > 0) await opt.click(); } catch { }
                     if (i < users.length - 1) await field.insertText(' ');
                 }

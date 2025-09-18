@@ -10,7 +10,15 @@ import {
   HttpException,
   HttpStatus,
   Sse,
+  UploadedFiles,
+  UseInterceptors,
+  Logger,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
+import type { Express } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { WorkfrontService } from './workfront.service';
 import { PdfService } from '../pdf/pdf.service';
@@ -25,6 +33,10 @@ import {
   ShareDocumentsResponseDto,
   DashboardStatsDto,
 } from './dto/workfront.dto';
+import {
+  ExecuteUploadDto,
+  UploadExecutionResponseDto,
+} from './dto/upload-automation.dto';
 import {
   ExtractPdfDto,
   ExtractPdfResponseDto,
@@ -45,13 +57,17 @@ import {
 import { Observable } from 'rxjs';
 import { BulkProgressService } from '../pdf/bulk-progress.service';
 import { DocumentBulkDownloadService } from '../../download/document-bulk-download.service';
+import { ShareAutomationService } from './share-automation.service';
 import { spawnSync } from 'child_process';
 
 @ApiTags('Projetos')
 @Controller('api')
 export class WorkfrontController {
+  private readonly logger = new Logger(WorkfrontController.name);
+
   constructor(
     private readonly workfrontService: WorkfrontService,
+    private readonly shareAutomationService: ShareAutomationService,
     private readonly pdfService: PdfService,
     private readonly commentService: CommentService,
     private readonly extractionService: ExtractionService,
@@ -693,6 +709,84 @@ export class WorkfrontController {
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  // ===== ROTAS DE UPLOAD (staging) =====
+  @Post('upload/prepare')
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'assetZip', maxCount: 1 },
+    { name: 'finalMaterials', maxCount: 50 },
+  ], {
+    storage: diskStorage({
+      destination: (req, file, cb) => {
+        const base = path.resolve(process.cwd(), 'Downloads', 'staging');
+        fs.mkdirSync(base, { recursive: true });
+        cb(null, base);
+      },
+      filename: (req, file, cb) => {
+        // Preservar nome original do arquivo
+        const originalName = file.originalname;
+        // Apenas sanitizar caracteres perigosos, mantendo o nome
+        const safeName = originalName.replace(/[<>:"|?*\\]/g, '_');
+        cb(null, safeName);
+      }
+    })
+  }))
+
+  
+  async prepareUpload(
+    @UploadedFiles() files: any,
+    @Body() body: { projectUrl: string; selectedUser: 'carol' | 'giovana' | 'test' }
+  ) {
+    try {
+      if (!body?.projectUrl) throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
+      const assetZip = files?.assetZip?.[0];
+      const finals = files?.finalMaterials || [];
+      if (!assetZip) throw new HttpException('assetZip é obrigatório', HttpStatus.BAD_REQUEST);
+      if (finals.length === 0) throw new HttpException('finalMaterials é obrigatório', HttpStatus.BAD_REQUEST);
+
+      const staged = {
+        assetZip: assetZip ? path.resolve(assetZip.destination, assetZip.filename) : undefined,
+        finalMaterials: finals.map(f => path.resolve(f.destination, f.filename)),
+      };
+
+      return {
+        success: true,
+        staged,
+        message: 'Arquivos salvos em staging com sucesso',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException({ success: false, message: (error as Error).message }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('upload/execute')
+  @ApiOperation({ summary: 'Executar automação de upload no Workfront usando paths salvos' })
+  @ApiResponse({
+    status: 200,
+    description: 'Automação executada com sucesso',
+    type: UploadExecutionResponseDto,
+  })
+  async executeUpload(@Body() executeDto: ExecuteUploadDto): Promise<UploadExecutionResponseDto> {
+    try {
+      const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, headless } = executeDto;
+
+      this.logger.log(`🚀 Executando upload automation: ${assetZipPath} + ${finalMaterialPaths.length} finals`);
+
+      const result = await this.shareAutomationService.executeUploadPlan({
+        projectUrl,
+        selectedUser,
+        assetZipPath,
+        finalMaterialPaths,
+        headless: headless || false,
+      });
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException({ success: false, message: (error as Error).message }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

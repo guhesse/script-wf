@@ -382,6 +382,96 @@ export const useWorkfrontApi = () => {
     }
   }, []);
 
+  // Novo: preparar upload (envia arquivos e recebe caminhos salvos no backend para automação)
+  const prepareUploadPlan = useCallback(async (params: {
+    projectUrl: string;
+    selectedUser: 'carol' | 'giovana' | 'test';
+    assetZip: File;
+    finalMaterials: File[];
+  }): Promise<{ success: boolean; staged: { assetZip?: string; finalMaterials?: string[] }; message?: string } > => {
+    if (!params.projectUrl) throw new Error('URL do projeto é obrigatória');
+    if (!params.assetZip) throw new Error('ZIP de Asset Release é obrigatório');
+    if (!params.finalMaterials || params.finalMaterials.length === 0) throw new Error('Adicione arquivos de Final Materials');
+
+    setIsLoading(true);
+    setLoadingMessage('Enviando arquivos e preparando fluxo...');
+
+    try {
+      const form = new FormData();
+      form.append('projectUrl', params.projectUrl);
+      form.append('selectedUser', params.selectedUser);
+      form.append('assetZip', params.assetZip);
+      params.finalMaterials.forEach((f) => form.append('finalMaterials', f));
+
+      // Tenta via proxy do Vite primeiro
+  let response: Response | null = await fetch('/api/upload/prepare', { method: 'POST', body: form }).catch(() => null);
+      // Fallback direto para o backend (evita erros de proxy como ALPN negotiation)
+      if (!response || !response.ok) {
+        const direct = `http://localhost:3000/api/upload/prepare`;
+        response = await fetch(direct, { method: 'POST', body: form });
+      }
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Arquivos enviados! Pronto para acionar automação.');
+      } else {
+        toast.error(data.message || 'Falha ao preparar upload');
+      }
+      return data;
+    } catch (e) {
+      console.error('Erro no prepareUploadPlan:', e);
+      toast.error('Erro de conexão ao enviar arquivos');
+      throw e;
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, []);
+
+  // Executar automação de upload (usa paths salvos no backend)
+  const executeUploadAutomation = useCallback(async (params: {
+    projectUrl: string;
+    selectedUser: 'carol' | 'giovana' | 'test';
+    assetZipPath: string;
+    finalMaterialPaths: string[];
+    headless?: boolean;
+  }): Promise<{ success: boolean; message: string; results?: unknown[]; summary?: unknown }> => {
+    setIsLoading(true);
+    setLoadingMessage('Executando automação de upload no Workfront...');
+
+    try {
+      // Tenta via proxy primeiro
+      let response: Response | null = await fetch('/api/upload/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      }).catch(() => null);
+      
+      // Fallback direto
+      if (!response || !response.ok) {
+        response = await fetch('http://localhost:3000/api/upload/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+        });
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message || 'Automação concluída com sucesso!');
+      } else {
+        toast.error(data.message || 'Falha na automação');
+      }
+      return data;
+    } catch (e) {
+      console.error('Erro no executeUploadAutomation:', e);
+      toast.error('Erro de conexão na automação');
+      throw e;
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, []);
+
   return {
     isLoading,
     loadingMessage,
@@ -395,6 +485,8 @@ export const useWorkfrontApi = () => {
     getProjectHistory,
     getProjectByUrl,
     addComment,
-    getCommentPreview
+    getCommentPreview,
+    prepareUploadPlan,
+    executeUploadAutomation,
   };
 };
