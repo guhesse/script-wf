@@ -81,6 +81,16 @@ export class AddCommentDto {
     @IsOptional()
     @IsBoolean()
     headless?: boolean = true;
+
+    @ApiProperty({ description: 'Modo de comentário: plain (default) ou raw', required: false, enum: ['plain', 'raw'], default: 'plain' })
+    @IsOptional()
+    @IsEnum(['plain', 'raw'] as any)
+    commentMode?: 'plain' | 'raw' = 'plain';
+
+    @ApiProperty({ description: 'HTML bruto do comentário (usado quando commentMode=raw)', required: false })
+    @IsOptional()
+    @IsString()
+    rawHtml?: string;
 }
 
 // DTO para resposta de comentário

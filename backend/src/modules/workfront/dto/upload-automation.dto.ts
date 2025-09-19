@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsArray, IsOptional, IsIn } from 'class-validator';
-
 export class ExecuteUploadDto {
     @ApiProperty({ description: 'URL do projeto Workfront (documentos)' })
     @IsString()
@@ -36,6 +35,7 @@ export class UploadExecutionResponseDto {
         type: 'asset-release' | 'final-materials';
         fileName: string;
         uploadSuccess: boolean;
+        shareSuccess: boolean;
         commentSuccess: boolean;
         message?: string;
         error?: string;
@@ -45,6 +45,7 @@ export class UploadExecutionResponseDto {
     summary?: {
         totalFiles: number;
         uploadSuccesses: number;
+        shareSuccesses: number;
         commentSuccesses: number;
         errors: number;
     };
