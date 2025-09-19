@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { ProjectHistory } from './ProjectHistory';
 import { CommentSection } from './CommentSection';
-import { AssetReleaseSection } from './AssetReleaseSection';
 import UploadSection from './UploadSection';
 import BulkDownload from './BulkDownload';
 import BriefingContentViewer from './BriefingContentViewer';
@@ -28,10 +27,12 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'comment' | 'bulk-download' | 'briefing-content' | 'history'>('extract');
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'comment' | 'bulk-download' | 'briefing-content' | 'history'>('upload');
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
+  // NOVO: modo rápido Playwright
+  const [fastMode, setFastMode] = useState<boolean>(true);
 
   const { extractDocuments, clearCache, getProjectByUrl } = useWorkfrontApi();
 
@@ -86,9 +87,9 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
     }
 
     try {
-      // Versão direta (não-SSE) para usar Playwright real imediatamente
       setShowProgress(true);
-      const extractedFolders = await extractDocuments(urlToExtract);
+      // ALTERADO: passa options com fast
+      const extractedFolders = await extractDocuments(urlToExtract, { fast: fastMode });
       setFolders(extractedFolders);
       setSelectedFiles(new Set());
       setShowProgress(false);
@@ -109,6 +110,24 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
               <h1 className="text-xl font-semibold tracking-tight text-card-foreground">VML Workfront Manager</h1>
             </div>
             <div className="flex items-center space-x-4">
+              {/* NOVO: Toggle Fast Mode */}
+              <div className="flex items-center space-x-2">
+                <label className="text-xs font-medium text-muted-foreground">Modo Rápido</label>
+                <button
+                  type="button"
+                  onClick={() => setFastMode(f => !f)}
+                  className={`h-6 w-11 rounded-full relative transition ${
+                    fastMode ? 'bg-green-500' : 'bg-muted'
+                  }`}
+                  title="Ativa bloqueio de imagens / fonts / media no Playwright"
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                      fastMode ? 'right-0.5' : 'left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
               <div className="flex items-center space-x-2">
                 <UserCheck className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">Conectado</span>
@@ -128,13 +147,13 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
       <div className="relative">
         {/* Indicador simples de progresso */}
-          {showProgress && (
-            <div className="absolute inset-x-0 top-0 z-10">
-              <div className="mx-auto my-2 w-fit rounded bg-muted px-3 py-1 text-sm text-muted-foreground border border-border">
-                Processando extração do Workfront...
-              </div>
+        {showProgress && (
+          <div className="absolute inset-x-0 top-0 z-10">
+            <div className="mx-auto my-2 w-fit rounded bg-muted px-3 py-1 text-sm text-muted-foreground border border-border">
+              Processando extração do Workfront...
             </div>
-          )}
+          </div>
+        )}
 
         {/* Main Content with Fixed Sidebar Layout */}
         <div className="flex h-[calc(100vh-73px)]">
@@ -150,16 +169,6 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
               >
                 <FolderOpen className="h-5 w-5" />
                 <span className="font-medium">Upload (Novo Fluxo)</span>
-              </button>
-              <button
-                onClick={() => setActiveSection('extract')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'extract'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-              >
-                <FolderOpen className="h-5 w-5" />
-                <span className="font-medium">Asset Release</span>
               </button>
               <button
                 // onClick={() => setActiveSection('comment')}
@@ -216,23 +225,6 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 currentProject={currentProject}
               />
             )}
-            {/* Extract & Share Section */}
-            {activeSection === 'extract' && (
-              <AssetReleaseSection
-                projectUrl={projectUrl}
-                setProjectUrl={setProjectUrl}
-                folders={folders}
-                setFolders={setFolders}
-                selectedFiles={selectedFiles}
-                setSelectedFiles={setSelectedFiles}
-                selectedUser={selectedUser}
-                setSelectedUser={setSelectedUser}
-                currentProject={currentProject}
-                setCurrentProject={setCurrentProject}
-                onExtractDocuments={handleExtractDocuments}
-              />
-            )}
-
 
             {/* Comments Section */}
             {activeSection === 'comment' && (
