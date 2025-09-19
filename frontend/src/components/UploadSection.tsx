@@ -257,14 +257,12 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                 </CardContent>
             </Card>
 
-            {/* Timeline Section - aparece após preparar arquivos */}
-            {stagedPaths && (
-                <TimelineSection
-                    projectUrl={projectUrl}
-                    selectedUser={selectedUser}
-                    stagedPaths={stagedPaths}
-                />
-            )}
+            {/* Timeline Section - agora sempre visível para permitir Status/Horas sem arquivos */}
+            <TimelineSection
+                projectUrl={projectUrl}
+                selectedUser={selectedUser}
+                stagedPaths={stagedPaths}
+            />
 
             {/* Ações - modificado */}
             <div className="space-y-4">
@@ -283,21 +281,18 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                 {stagedPaths && (
                     <Alert className="border-primary/20 bg-primary/5">
                         <AlertDescription className="text-sm">
-                            ✅ Arquivos preparados! Use a Timeline acima para configurar e executar as ações desejadas.
-                            Você pode habilitar/desabilitar cada etapa individualmente.
+                            ✅ Arquivos preparados! Use a Timeline para configurar Upload / Share / Comments ou apenas Status / Hours.
+                        </AlertDescription>
+                    </Alert>
+                )}
+                {!stagedPaths && (
+                    <Alert className="border-primary/20 bg-primary/5">
+                        <AlertDescription className="text-sm">
+                            Você pode já lançar Status e Hours na Timeline mesmo sem preparar arquivos. (Prepare arquivos para habilitar Upload / Comments.)
                         </AlertDescription>
                     </Alert>
                 )}
             </div>
-
-            {/* Alert movido para baixo quando não há staged paths */}
-            {!stagedPaths && (
-                <Alert className="border-primary/20 bg-primary/5">
-                    <AlertDescription className="text-sm">
-                        Após preparar os arquivos, você poderá configurar quais ações executar: Upload, Share, Comment, Status e Hours.
-                    </AlertDescription>
-                </Alert>
-            )}
         </div>
     );
 }

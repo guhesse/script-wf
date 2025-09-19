@@ -46,7 +46,7 @@ export class TimelineService {
         private readonly statusService: StatusAutomationService,
         private readonly hoursService: HoursAutomationService,
         private readonly commentService: CommentService,
-    ) {}
+    ) { }
 
     /**
      * Executar workflow customizado de ações sequenciais
@@ -86,8 +86,8 @@ export class TimelineService {
                 await page.waitForTimeout(3500);
                 frame = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
                 // fechar sidebar se existir
-                try { await (this.shareService as any).closeSidebarIfOpen(frame, page); } catch {}
-            } catch (e:any) {
+                try { await (this.shareService as any).closeSidebarIfOpen(frame, page); } catch { }
+            } catch (e: any) {
                 this.logger.error('❌ Falha ao preparar sessão única: ' + e?.message);
                 // fallback: session mode desabilitado
                 browser = null; page = null; frame = null;
@@ -96,7 +96,7 @@ export class TimelineService {
 
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
-            
+
             if (!step.enabled) {
                 this.logger.log(`⏭️ [${i + 1}/${steps.length}] Pulando: ${step.action}`);
                 skipped++;
@@ -108,7 +108,10 @@ export class TimelineService {
 
             try {
                 let result: { success: boolean; message?: string };
-                if (browser && page && frame && [WorkflowAction.UPLOAD, WorkflowAction.SHARE, WorkflowAction.COMMENT].includes(step.action)) {
+                if (
+                    browser && page && frame &&
+                    [WorkflowAction.UPLOAD, WorkflowAction.SHARE, WorkflowAction.COMMENT, WorkflowAction.STATUS].includes(step.action) // <-- adiciona STATUS
+                ) {
                     result = await this.executeStepInSession(projectUrl, step, { page, frame, headless });
                 } else {
                     result = await this.executeStep(projectUrl, step, headless);
@@ -140,7 +143,7 @@ export class TimelineService {
             } catch (error: any) {
                 const duration = Date.now() - startTime;
                 failed++;
-                
+
                 results.push({
                     action: step.action,
                     success: false,
@@ -149,7 +152,7 @@ export class TimelineService {
                 });
 
                 this.logger.error(`❌ Erro ao executar ${step.action}: ${error?.message}`);
-                
+
                 if (stopOnError) {
                     this.logger.warn('⛔ Parando workflow devido a erro');
                     break;
@@ -171,7 +174,7 @@ export class TimelineService {
         }
 
         // Encerrar sessão única
-        if (browser) { try { await browser.close(); } catch {} }
+        if (browser) { try { await browser.close(); } catch { } }
 
         this.logger.log('📊 === WORKFLOW FINALIZADO ===');
         this.logger.log(`✅ Sucessos: ${successful}`);
@@ -193,23 +196,23 @@ export class TimelineService {
         step: WorkflowStep,
         headless: boolean
     ): Promise<{ success: boolean; message?: string }> {
-        
+
         switch (step.action) {
             case WorkflowAction.SHARE:
                 return await this.executeShareStep(projectUrl, step.params, headless);
-            
+
             case WorkflowAction.UPLOAD:
                 return await this.executeUploadStep(projectUrl, step.params, headless);
-            
+
             case WorkflowAction.COMMENT:
                 return await this.executeCommentStep(projectUrl, step.params, headless);
-            
+
             case WorkflowAction.STATUS:
                 return await this.executeStatusStep(projectUrl, step.params, headless);
-            
+
             case WorkflowAction.HOURS:
                 return await this.executeHoursStep(projectUrl, step.params, headless);
-            
+
             default:
                 return { success: false, message: `Ação desconhecida: ${step.action}` };
         }
@@ -236,7 +239,7 @@ export class TimelineService {
 
     private async executeUploadStep(projectUrl: string, params: any, headless: boolean) {
         const { assetZipPath, finalMaterialPaths, selectedUser = 'carol' } = params || {};
-        
+
         if (!assetZipPath && (!finalMaterialPaths || finalMaterialPaths.length === 0)) {
             return { success: false, message: 'Nenhum arquivo para upload' };
         }
@@ -257,7 +260,7 @@ export class TimelineService {
 
     private async executeCommentStep(projectUrl: string, params: any, headless: boolean) {
         const { folder, fileName, commentType, selectedUser = 'carol', commentMode, rawHtml } = params || {};
-        
+
         if (!folder || !fileName) {
             return { success: false, message: 'Pasta e arquivo são obrigatórios para comentário' };
         }
@@ -295,6 +298,8 @@ export class TimelineService {
                 return await this.shareInSession(projectUrl, step.params, ctx);
             case WorkflowAction.COMMENT:
                 return await this.commentInSession(projectUrl, step.params, ctx);
+            case WorkflowAction.STATUS: // <-- novo
+                return await this.statusInSession(projectUrl, step.params, ctx);
             default:
                 return { success: false, message: 'Ação não suportada em sessão' };
         }
@@ -320,7 +325,7 @@ export class TimelineService {
                 }
             }
             return { success: true, message: 'Upload(s) concluído(s) em sessão' };
-        } catch (e:any) {
+        } catch (e: any) {
             return { success: false, message: e?.message || 'Falha no upload em sessão' };
         }
     }
@@ -331,7 +336,7 @@ export class TimelineService {
         try {
             const out = await this.shareService.shareSelectionsInOpenSession({ page: ctx.page, frame: ctx.frame, projectUrl, selections, selectedUser });
             return { success: out.summary.errors === 0, message: `${out.summary.success} ok / ${out.summary.errors} erros` };
-        } catch (e:any) { return { success: false, message: e?.message }; }
+        } catch (e: any) { return { success: false, message: e?.message }; }
     }
 
     private async commentInSession(projectUrl: string, params: any, ctx: { page: Page; frame: any; headless: boolean }) {
@@ -345,7 +350,23 @@ export class TimelineService {
             await this.shareService.selectDocument(ctx.frame, ctx.page, fileName);
             const result = await this.commentService.addCommentUsingOpenPage({ frameLocator: ctx.frame, page: ctx.page, folderName: folder, fileName, commentType: this.normalizeCommentType(commentType), selectedUser, commentMode, rawHtml });
             return { success: result.success, message: result.message };
-        } catch (e:any) { return { success: false, message: e?.message || 'Falha comentário' }; }
+        } catch (e: any) { return { success: false, message: e?.message || 'Falha comentário' }; }
+    }
+
+    private async statusInSession(projectUrl: string, params: any, ctx: { page: Page; frame: any; headless: boolean }) {
+        const { deliverableStatus } = params || {};
+        if (!deliverableStatus) return { success: false, message: 'deliverableStatus obrigatório' };
+        try {
+            const out = await this.statusService.updateDeliverableStatusInSession({
+                page: ctx.page,
+                frame: ctx.frame,
+                projectUrl,
+                deliverableStatus
+            });
+            return { success: out.success, message: out.message };
+        } catch (e: any) {
+            return { success: false, message: e?.message || 'Falha status sessão' };
+        }
     }
 
     private normalizeCommentType(raw: string | undefined): CommentType {
@@ -369,26 +390,100 @@ export class TimelineService {
     }
 
     private async uploadThroughDialog(frame: any, page: Page, filePaths: string[]) {
-        // Abrir menu Add new
-        const addSelectors = ['button[data-testid="add-new"]', 'button.add-new-react-button', 'button:has-text("Add new")', 'button[id="add-new-button"]'];
+        if (page.isClosed()) throw new Error('Página já está fechada antes do upload');
+        this.logger.log(`📁 Iniciando upload de ${filePaths.length} arquivo(s)`);
+
+        // 1. Abrir menu "Add new"
+        const addSelectors = [
+            'button[data-testid="add-new"]',
+            'button.add-new-react-button',
+            'button:has-text("Add new")',
+            'button[id="add-new-button"]'
+        ];
         let opened = false;
         for (const sel of addSelectors) {
-            try { const btn = frame.locator(sel).first(); if ((await btn.count()) > 0 && await btn.isVisible()) { await btn.click(); await page.waitForTimeout(800); opened = true; break; } } catch {}
+            try {
+                const btn = frame.locator(sel).first();
+                if ((await btn.count()) > 0 && await btn.isVisible()) {
+                    await btn.click({ timeout: 3000 });
+                    await page.waitForTimeout(500);
+                    opened = true;
+                    break;
+                }
+            } catch { /* tenta próximo */ }
         }
-        if (!opened) throw new Error('Botão Add new não encontrado');
-        const docSelectors = ['li[data-test-id="upload-file"]', 'li.select-files-button', 'li:has-text("Document")', '[role="menuitem"]:has-text("Document")'];
+        if (!opened) {
+            throw new Error('Botão "Add new" não encontrado ou não visível');
+        }
+
+        // 2. Clicar em opção de upload (Document). Usar Promise.all para não perder o evento.
+        const docSelectors = [
+            'li[data-test-id="upload-file"]',
+            'li.select-files-button',
+            'li:has-text("Document")',
+            '[role="menuitem"]:has-text("Document")'
+        ];
+        let chooser = null;
         let clicked = false;
-        const chooserPromise = page.waitForEvent('filechooser');
-        for (const sel of docSelectors) { try { const it = frame.locator(sel).first(); if ((await it.count()) > 0 && await it.isVisible()) { await it.click(); clicked = true; break; } } catch {} }
-        if (!clicked) throw new Error('Opção de upload não encontrada');
-        const chooser = await chooserPromise;
-        await chooser.setFiles(filePaths);
-        await page.waitForTimeout(3500);
+
+        for (const sel of docSelectors) {
+            try {
+                const opt = frame.locator(sel).first();
+                if ((await opt.count()) > 0 && await opt.isVisible()) {
+                    this.logger.log(`🖱️ Clicando opção de upload (${sel})`);
+                    const result = await Promise.all([
+                        page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null),
+                        opt.click().then(() => true).catch(() => false)
+                    ]);
+                    chooser = result[0];
+                    clicked = result[1] as boolean;
+                    if (!clicked) continue;
+                    break;
+                }
+            } catch { /* tenta próximo */ }
+        }
+
+        if (page.isClosed()) {
+            throw new Error('Página foi fechada durante tentativa de abrir diálogo de upload');
+        }
+
+        // 3. Se não capturou filechooser tentar fallback localizar input[type=file]
+        if (!chooser) {
+            this.logger.warn('⚠️ filechooser não capturado; tentando fallback via input[type=file]');
+            // Pequeno delay para DOM injetar input
+            await page.waitForTimeout(1000);
+            // Escopo amplo (dentro do iframe ou página)
+            let fileInput = frame.locator('input[type="file"]:not([disabled])').first();
+            if ((await fileInput.count()) === 0) {
+                fileInput = page.locator('input[type="file"]:not([disabled])').first();
+            }
+            if ((await fileInput.count()) > 0) {
+                try {
+                    await fileInput.setInputFiles(filePaths);
+                    this.logger.log('✅ Upload disparado via setInputFiles fallback');
+                    await page.waitForTimeout(3500);
+                    return;
+                } catch (e:any) {
+                    throw new Error('Falha no fallback setInputFiles: ' + e?.message);
+                }
+            } else {
+                throw new Error('Não foi possível abrir diálogo de upload nem localizar input[type=file]');
+            }
+        } else {
+            // 4. Usar filechooser normal
+            try {
+                await chooser.setFiles(filePaths);
+                this.logger.log('✅ Arquivos enviados ao filechooser');
+                await page.waitForTimeout(3500);
+            } catch (e:any) {
+                throw new Error('Falha ao setar arquivos no filechooser: ' + e?.message);
+            }
+        }
     }
 
     private async executeStatusStep(projectUrl: string, params: any, headless: boolean) {
         const { deliverableStatus } = params || {};
-        
+
         if (!deliverableStatus) {
             return { success: false, message: 'deliverableStatus é obrigatório' };
         }
@@ -407,7 +502,7 @@ export class TimelineService {
 
     private async executeHoursStep(projectUrl: string, params: any, headless: boolean) {
         const { hours, note, taskName } = params || {};
-        
+
         if (!hours || hours <= 0) {
             return { success: false, message: 'Horas deve ser maior que 0' };
         }

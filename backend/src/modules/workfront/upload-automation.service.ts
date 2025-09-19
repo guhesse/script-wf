@@ -27,9 +27,9 @@ export class UploadAutomationService {
         success: boolean; message: string; results: Array<{ type: 'asset-release' | 'final-materials'; fileName: string; uploadSuccess: boolean; shareSuccess: boolean; commentSuccess: boolean; message?: string; error?: string }>;
         summary: { totalFiles: number; uploadSuccesses: number; shareSuccesses: number; commentSuccesses: number; errors: number }
     }> {
-    const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, headless = false } = params;
+        const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, headless = false } = params;
         this.logger.log('🚀 [UPLOAD] Iniciando plano');
-    const results: any[] = []; let uploadSuccesses = 0; let shareSuccesses = 0; let commentSuccesses = 0; let errors = 0;
+        const results: any[] = []; let uploadSuccesses = 0; let shareSuccesses = 0; let commentSuccesses = 0; let errors = 0;
         const browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
         try {
             const statePath = await this.ensureStateFile();
@@ -48,17 +48,17 @@ export class UploadAutomationService {
                 results.push({ type: 'asset-release', fileName: path.basename(assetZipPath), uploadSuccess: assetRes, shareSuccess: false, commentSuccess: false });
                 if (assetRes) uploadSuccesses++; else errors++;
                 if (assetRes) {
-                const assetFileName = this.getOriginalFileName(assetZipPath);
-                // Share automático do ZIP (opcional, manter para consistência)
-                try {
-                    const shareCtx = await this.shareService.openProjectAndSelectDocument(projectUrl, 'Asset Release', assetFileName, headless);
+                    const assetFileName = this.getOriginalFileName(assetZipPath);
+                    // Share automático do ZIP (opcional, manter para consistência)
                     try {
-                        await this.shareService.shareUsingOpenPage(shareCtx.frame, shareCtx.page, selectedUser as any);
-                        const idx = results.findIndex(r => r.type==='asset-release' && r.fileName===path.basename(assetZipPath));
-                        if (idx>=0) { results[idx].shareSuccess = true; shareSuccesses++; }
-                    } catch (e:any) { this.logger.warn('[UPLOAD][ASSET] Share falhou: ' + e?.message); }
-                    finally { try { await shareCtx.page.context().browser()?.close(); } catch {} }
-                } catch (e:any) { this.logger.warn('[UPLOAD][ASSET] Não foi possível preparar share: ' + e?.message); }
+                        const shareCtx = await this.shareService.openProjectAndSelectDocument(projectUrl, 'Asset Release', assetFileName, headless);
+                        try {
+                            await this.shareService.shareUsingOpenPage(shareCtx.frame, shareCtx.page, selectedUser as any);
+                            const idx = results.findIndex(r => r.type === 'asset-release' && r.fileName === path.basename(assetZipPath));
+                            if (idx >= 0) { results[idx].shareSuccess = true; shareSuccesses++; }
+                        } catch (e: any) { this.logger.warn('[UPLOAD][ASSET] Share falhou: ' + e?.message); }
+                        finally { try { await shareCtx.page.context().browser()?.close(); } catch { } }
+                    } catch (e: any) { this.logger.warn('[UPLOAD][ASSET] Não foi possível preparar share: ' + e?.message); }
                     // (Comentário não é usual para o ZIP; pulado para evitar ruído)
                 }
             } else {
@@ -84,9 +84,9 @@ export class UploadAutomationService {
                     try {
                         await this.shareService.shareUsingOpenPage(shareCtx.frame, shareCtx.page, selectedUser as any);
                         entry.shareSuccess = true; shareSuccesses++;
-                    } catch (e:any) { this.logger.warn(`[UPLOAD][FINALS] Share falhou para ${baseName}: ${e?.message}`); }
-                    finally { try { await shareCtx.page.context().browser()?.close(); } catch {} }
-                } catch (e:any) { this.logger.warn(`[UPLOAD][FINALS] Não conseguiu preparar share para ${baseName}: ${e?.message}`); }
+                    } catch (e: any) { this.logger.warn(`[UPLOAD][FINALS] Share falhou para ${baseName}: ${e?.message}`); }
+                    finally { try { await shareCtx.page.context().browser()?.close(); } catch { } }
+                } catch (e: any) { this.logger.warn(`[UPLOAD][FINALS] Não conseguiu preparar share para ${baseName}: ${e?.message}`); }
 
                 if (isPdf) await page.waitForTimeout(1500); // leve espaçamento
             }
@@ -103,8 +103,8 @@ export class UploadAutomationService {
                         if (idx >= 0) { results[idx].commentSuccess = cRes.success; results[idx].message = cRes.message; }
                         if (cRes.success) commentSuccesses++; else errors++;
                     } catch (e: any) { this.logger.warn('Comentário Final Materials falhou: ' + e?.message); errors++; }
-                    finally { try { await commentCtx.page.context().browser()?.close(); } catch {} }
-                } catch (e:any) { this.logger.warn('Comentário Final Materials (prep) falhou: ' + e?.message); errors++; }
+                    finally { try { await commentCtx.page.context().browser()?.close(); } catch { } }
+                } catch (e: any) { this.logger.warn('Comentário Final Materials (prep) falhou: ' + e?.message); errors++; }
             }
 
             const totalFiles = (assetZipPath && assetZipPath.trim() ? 1 : 0) + finalMaterialPaths.length;

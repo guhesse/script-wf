@@ -30,7 +30,7 @@ export class WorkfrontService {
         private readonly workfrontRepository: WorkfrontRepository,
         private readonly shareAutomation: ShareAutomationService,
         private readonly commentService: CommentService,
-    ) {}
+    ) { }
 
     async healthCheck(): Promise<any> {
         try {
@@ -291,11 +291,11 @@ export class WorkfrontService {
                     }
 
                     // fechar navegador dessa iteração
-                    try { await opened.page.context().browser()?.close(); } catch {}
+                    try { await opened.page.context().browser()?.close(); } catch { }
                 } catch (err: any) {
                     // Falha ao abrir/selecionar
                     res.share = { success: false, error: err?.message || 'Erro ao preparar página' };
-                    res.comment = { success: false, error: 'Comentário não executado (falha na preparação)'};
+                    res.comment = { success: false, error: 'Comentário não executado (falha na preparação)' };
                 }
 
                 if (res.share.success && res.comment.success) { projSuccess++; totalSuccess++; } else { projErrors++; totalErrors++; }

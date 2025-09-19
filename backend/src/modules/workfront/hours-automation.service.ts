@@ -14,8 +14,8 @@ export class HoursAutomationService {
   private frameLocator(page:any){ return page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first(); }
   private async closeSidebarIfOpen(frameLocator:any, page:any){ try { const sb = frameLocator.locator('#page-sidebar [data-testid="minix-container"]').first(); if((await sb.count())>0 && await sb.isVisible()){ const closeBtn = frameLocator.locator('button[data-testid="minix-header-close-btn"]').first(); if((await closeBtn.count())>0){ await closeBtn.click(); await page.waitForTimeout(600);} } } catch{} }
 
-  async logHours(params: { projectUrl: string; hours: number; note?: string; taskName?: string; headless?: boolean }): Promise<{ success:boolean; message:string; loggedHours?:number }> {
-    const { projectUrl, hours, note, taskName, headless = false } = params;
+  async logHours(params: { projectUrl: string; hours: number; note?: string; taskName?: string; headless?: boolean; fast?: boolean }): Promise<{ success:boolean; message:string; loggedHours?:number }> {
+    const { projectUrl, hours, note, taskName, headless = false, fast = true } = params;
     if(hours <= 0) return { success:false, message:'Horas deve ser > 0' };
     this.logger.log(`⏱️ Lançando ${hours}h${taskName ? ' na tarefa '+taskName: ''}`);
 
@@ -24,6 +24,7 @@ export class HoursAutomationService {
     try {
       const statePath = await this.ensureStateFile();
       const context = await browser.newContext({ storageState: statePath, viewport: null });
+      if (fast) await this.applyFastNetworkRouting(context); // NOVO
       const page = await context.newPage();
       await page.goto(url, { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(5000);
@@ -77,5 +78,16 @@ export class HoursAutomationService {
       this.logger.error(`❌ Erro ao lançar horas: ${e?.message}`);
       return { success:false, message: e?.message || 'Falha ao lançar horas' };
     } finally { try { await browser.close(); } catch{} }
+  }
+  private async applyFastNetworkRouting(context:any){ // NOVO
+    const BLOCK_TYPES = new Set(['image','media','font','stylesheet']);
+    const BLOCK_DOMAINS = ['google-analytics','doubleclick','facebook.net','googletagmanager','hotjar','optimizely'];
+    await context.route('**/*', r=>{
+      const req = r.request();
+      if (BLOCK_TYPES.has(req.resourceType())) return r.abort();
+      const url = req.url();
+      if (BLOCK_DOMAINS.some(d=>url.includes(d))) return r.abort();
+      return r.continue();
+    });
   }
 }
