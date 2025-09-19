@@ -26,13 +26,16 @@ import { CommentService } from '../pdf/comment.service';
 import { ExtractionService } from '../pdf/extraction.service';
 import {
   CreateProjectDto,
-  ProjectResponseDto,
   ProjectHistoryQueryDto,
   ProjectHistoryResponseDto,
   ShareDocumentsDto,
   ShareDocumentsResponseDto,
   DashboardStatsDto,
+  ProjectResponseDto,
 } from './dto/workfront.dto';
+import { StatusAutomationService } from './status-automation.service';
+import { HoursAutomationService } from './hours-automation.service';
+import { UpdateWorkStatusDto, LogHoursDto } from './dto/work-status-hours.dto';
 import {
   ExecuteUploadDto,
   UploadExecutionResponseDto,
@@ -58,7 +61,9 @@ import { Observable } from 'rxjs';
 import { BulkProgressService } from '../pdf/bulk-progress.service';
 import { DocumentBulkDownloadService } from '../../download/document-bulk-download.service';
 import { ShareAutomationService } from './share-automation.service';
+import { UploadAutomationService } from './upload-automation.service';
 import { spawnSync } from 'child_process';
+import { TimelineService } from './timeline.service';
 
 @ApiTags('Projetos')
 @Controller('api')
@@ -68,11 +73,15 @@ export class WorkfrontController {
   constructor(
     private readonly workfrontService: WorkfrontService,
     private readonly shareAutomationService: ShareAutomationService,
+    private readonly uploadAutomationService: UploadAutomationService,
     private readonly pdfService: PdfService,
     private readonly commentService: CommentService,
     private readonly extractionService: ExtractionService,
     private readonly progressService: BulkProgressService,
     private readonly bulkService: DocumentBulkDownloadService,
+    private readonly statusAutomation: StatusAutomationService,
+    private readonly hoursAutomation: HoursAutomationService,
+    private readonly timelineService: TimelineService,
   ) { }
 
   @Get('health')
@@ -775,7 +784,7 @@ export class WorkfrontController {
 
       this.logger.log(`🚀 Executando upload automation: ${assetZipPath} + ${finalMaterialPaths.length} finals`);
 
-      const result = await this.shareAutomationService.executeUploadPlan({
+      const result = await this.uploadAutomationService.executeUploadPlan({
         projectUrl,
         selectedUser,
         assetZipPath,
@@ -787,6 +796,117 @@ export class WorkfrontController {
     } catch (error) {
       if (error instanceof HttpException) throw error;
       throw new HttpException({ success: false, message: (error as Error).message }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // ===== NOVOS ENDPOINTS: STATUS & HORAS =====
+  @Post('work/update-status')
+  @ApiOperation({ summary: 'Atualizar status (Loc | Status) do projeto' })
+  async updateStatus(@Body() body: UpdateWorkStatusDto) {
+    try {
+  const res = await this.statusAutomation.updateWorkStatus({ projectUrl: body.projectUrl, statusLabel: body.statusLabel });
+      return { success: res.success, message: res.message };
+    } catch (e: any) {
+      throw new HttpException({ success: false, message: e?.message || 'Falha ao atualizar status' }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('work/log-hours')
+  @ApiOperation({ summary: 'Lançar horas em uma tarefa (primeira ou pelo nome)' })
+  async logHours(@Body() body: LogHoursDto) {
+    try {
+      return await this.hoursAutomation.logHours({ projectUrl: body.projectUrl, hours: body.hours, note: body.note, taskName: body.taskName, headless: body.headless });
+    } catch (e: any) {
+      throw new HttpException({ success: false, message: e?.message || 'Falha ao lançar horas' }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // ===== NOVO ENDPOINT: TIMELINE/WORKFLOW =====
+  @Post('workflow/execute')
+  @ApiOperation({ summary: 'Executar workflow customizado de ações' })
+  @ApiResponse({
+    status: 200,
+    description: 'Workflow executado',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        results: { type: 'array' },
+        summary: { type: 'object' }
+      }
+    }
+  })
+  async executeWorkflow(@Body() body: any) {
+    try {
+      const { projectUrl, steps, headless, stopOnError } = body;
+      
+      if (!projectUrl) {
+        throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
+      }
+      
+      if (!steps || !Array.isArray(steps) || steps.length === 0) {
+        throw new HttpException('steps deve ser um array não vazio', HttpStatus.BAD_REQUEST);
+      }
+
+      const result = await this.timelineService.executeWorkflow({
+        projectUrl,
+        steps,
+        headless: headless || false,
+        stopOnError: stopOnError || false
+      });
+
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        {
+          success: false,
+          message: (error as Error).message,
+          timestamp: new Date().toISOString(),
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('workflow/preview')
+  @ApiOperation({ summary: 'Preview de workflow antes de executar' })
+  async previewWorkflow(@Body() body: any) {
+    try {
+      const { type, projectUrl, params } = body;
+      
+      let config;
+      if (type === 'share-comment') {
+        config = this.timelineService.createShareAndCommentWorkflow(
+          projectUrl,
+          params.selections,
+          params.selectedUser
+        );
+      } else if (type === 'upload') {
+        config = this.timelineService.createUploadWorkflow(
+          projectUrl,
+          params.assetZipPath,
+          params.finalMaterialPaths,
+          params.selectedUser
+        );
+      } else {
+        throw new HttpException('Tipo de workflow inválido', HttpStatus.BAD_REQUEST);
+      }
+
+      return {
+        success: true,
+        config,
+        message: 'Preview do workflow gerado'
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        {
+          success: false,
+          message: (error as Error).message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

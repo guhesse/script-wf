@@ -16,6 +16,7 @@ import {
     Link,
 } from 'lucide-react';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
+import TimelineSection from './TimelineSection';
 
 type TeamKey = 'carol' | 'giovana' | 'test';
 
@@ -256,7 +257,16 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                 </CardContent>
             </Card>
 
-            {/* Ações */}
+            {/* Timeline Section - aparece após preparar arquivos */}
+            {stagedPaths && (
+                <TimelineSection
+                    projectUrl={projectUrl}
+                    selectedUser={selectedUser}
+                    stagedPaths={stagedPaths}
+                />
+            )}
+
+            {/* Ações - modificado */}
             <div className="space-y-4">
                 {/* Etapa 1: Preparar arquivos */}
                 <div className="flex items-center gap-3">
@@ -269,31 +279,25 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     <Button variant="outline" onClick={clearAll} disabled={submitting || executing}>Limpar</Button>
                 </div>
 
-                {/* Etapa 2: Executar automação (só aparece após etapa 1) */}
+                {/* Mensagem informativa quando arquivos estão preparados */}
                 {stagedPaths && (
-                    <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded">
-                        <div className="flex-1">
-                            <div className="text-sm font-medium text-foreground">Arquivos preparados com sucesso!</div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                                ZIP: {stagedPaths.assetZip ? 'OK' : 'Erro'} | Finals: {stagedPaths.finalMaterials?.length || 0} arquivo(s)
-                            </div>
-                        </div>
-                        <Button
-                            onClick={executeAutomation}
-                            disabled={executing}
-                            className="bg-primary hover:bg-primary/90"
-                        >
-                            {executing ? 'Executando...' : 'Executar Automação no Workfront'}
-                        </Button>
-                    </div>
+                    <Alert className="border-primary/20 bg-primary/5">
+                        <AlertDescription className="text-sm">
+                            ✅ Arquivos preparados! Use a Timeline acima para configurar e executar as ações desejadas.
+                            Você pode habilitar/desabilitar cada etapa individualmente.
+                        </AlertDescription>
+                    </Alert>
                 )}
             </div>
 
-            <Alert className="border-primary/20 bg-primary/5">
-                <AlertDescription className="text-sm">
-                    Após esta etapa, a automação irá: 1) fazer upload do ZIP (Asset Release) e comentar com o texto padrão da equipe escolhida; 2) fazer upload dos Final Materials e comentar no PDF. Esta tela já envia os arquivos e salva seus caminhos para o fluxo automático.
-                </AlertDescription>
-            </Alert>
+            {/* Alert movido para baixo quando não há staged paths */}
+            {!stagedPaths && (
+                <Alert className="border-primary/20 bg-primary/5">
+                    <AlertDescription className="text-sm">
+                        Após preparar os arquivos, você poderá configurar quais ações executar: Upload, Share, Comment, Status e Hours.
+                    </AlertDescription>
+                </Alert>
+            )}
         </div>
     );
 }

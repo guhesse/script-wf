@@ -40,7 +40,7 @@ const USERS_CONFIG: Record<string, Array<{ name: string; email: string; id?: str
 const COMMENT_TEMPLATES: Record<CommentType, { text: string; mentions: boolean }> = {
     [CommentType.ASSET_RELEASE]: { text: 'segue a pasta com os assets finais da tarefa.', mentions: true },
     [CommentType.FINAL_MATERIALS]: { text: 'segue os materiais finais da tarefa.', mentions: true },
-    [CommentType.APPROVAL]: { text: 'for your approval.', mentions: false },
+    [CommentType.APPROVAL]: { text: 'for your approval.', mentions: true },
 };
 
 @Injectable()
@@ -67,6 +67,9 @@ export class CommentService {
                 : allUsers;
             const mentionedUsers = template.mentions ? users.length : 0;
 
+            // Gerar HTML completo para o comentário
+            const rawHtml = this.generateCommentHtml(commentType, selectedUser);
+
             const auto = await this.performDocumentComment({
                 projectUrl,
                 folderName: folderName || 'root',
@@ -74,6 +77,8 @@ export class CommentService {
                 commentText: template.text,
                 users,
                 headless: headless === true ? true : false,
+                commentMode: 'raw', // Sempre usar modo raw para HTML completo
+                rawHtml,
             });
 
             return {
@@ -96,6 +101,8 @@ export class CommentService {
         fileName: string;
         commentType: CommentType;
         selectedUser: UserTeam;
+        commentMode?: 'plain' | 'raw';
+        rawHtml?: string;
     }): Promise<{ success: boolean; message: string }> {
         const { frameLocator, page, folderName, fileName, commentType, selectedUser } = params;
 
@@ -110,7 +117,9 @@ export class CommentService {
             ? [this.getLeadUserForTeam(selectedUser) || allUsers[0]].filter(Boolean)
             : allUsers;
         const testMode = selectedUser.toString() === 'test';
-        const textToUse = testMode ? 'teste' : template.text;
+
+        // Gerar HTML completo
+        const rawHtml = testMode ? '<p>teste</p>' : this.generateCommentHtml(commentType, selectedUser);
 
         try {
             // 1. Garantir iframe presente
@@ -127,8 +136,8 @@ export class CommentService {
             // 4. Abrir painel de comentários
             await this.openCommentPanel(frameLocator, page);
 
-            // 5. Adicionar comentário
-            await this.addCommentToField(frameLocator, page, template, users, textToUse);
+            // 5. Adicionar comentário usando HTML completo
+            await this.addCommentToField(frameLocator, page, template, users, '', { commentMode: 'raw', rawHtml });
 
             // 6. Submeter comentário
             await this.submitComment(frameLocator, page);
@@ -141,6 +150,42 @@ export class CommentService {
             await this.debugShot(page, 'comment_error');
             throw error;
         }
+    }
+
+    // ===== Novo método para gerar HTML completo =====
+    private generateCommentHtml(commentType: CommentType, selectedUser: UserTeam): string {
+        const teamKey = selectedUser.toString();
+        const users = this.getUsersForTeam(selectedUser);
+        const template = COMMENT_TEMPLATES[commentType];
+
+        // Approval: líder do time + SM team
+        if (commentType === CommentType.APPROVAL) {
+            const leader = this.getLeadUserForTeam(selectedUser);
+            if (!leader) return `<p>for your approval.</p>`;
+
+            // HTML compacto sem quebras de linha
+            return `<p class="mb-0"><a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/${leader.id}" class="mention" data-mention="${leader.id}" data-lexical-mention="true" target="_blank" rel="noopener noreferrer">@${leader.name}</a> <span> </span><a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66abd595000d58f156ae2cce417fd0a4" class="mention" data-mention="USER_66abd595000d58f156ae2cce417fd0a4" data-lexical-mention="true" target="_blank" rel="noopener noreferrer">@Avidesh Bind</a> <span> </span><a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66ab9d50000ead1d50a66758735c020b" class="mention" data-mention="USER_66ab9d50000ead1d50a66758735c020b" data-lexical-mention="true" target="_blank" rel="noopener noreferrer">@Saish Kadam</a> <span> </span><a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/66a7e9b200333682efc3e680ca25bde8" class="mention" data-mention="USER_66a7e9b200333682efc3e680ca25bde8" data-lexical-mention="true" target="_blank" rel="noopener noreferrer">@Jogeshkumar Vishwakarma</a>, ${template.text}</p>`;
+        }
+
+        // Asset Release: equipe completa
+        if (commentType === CommentType.ASSET_RELEASE) {
+            // Construir mentions de forma compacta com espaços corretos
+            const mentionsHtml = users.map(user =>
+                `<a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/${user.id}" class="mention" data-mention="${user.id}" data-lexical-mention="true" target="_blank" rel="noopener noreferrer">@${user.name}</a>`
+            ).join(' <span> </span>');
+
+            return `<p class="mb-0">${mentionsHtml}, ${template.text}</p>`;
+        }
+
+        // Final Materials: apenas líder
+        if (commentType === CommentType.FINAL_MATERIALS) {
+            const leader = this.getLeadUserForTeam(selectedUser);
+            if (!leader) return `<p>${template.text}</p>`;
+
+            return `<p class="mb-0"><a href="https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/${leader.id}" class="mention" data-mention="${leader.id}" data-lexical-mention="true" target="_blank" rel="noopener noreferrer">@${leader.name}</a>, ${template.text}</p>`;
+        }
+
+        return `<p>${template.text}</p>`;
     }
 
     // ===== Métodos auxiliares refatorados =====
@@ -173,7 +218,7 @@ export class CommentService {
                 if (await element.count() > 0) {
                     this.logger.log(`💬 [Comment] Clicando pasta via seletor: ${selector}`);
                     await element.click();
-                    await page.waitForTimeout(2000);
+                    await page.waitForTimeout(1500);
                     this.logger.log('💬 [Comment] Pasta ✅ encontrada');
                     return;
                 }
@@ -255,7 +300,8 @@ export class CommentService {
         page: Page,
         template: any,
         users: any[],
-        textToUse: string
+        textToUse: string,
+        options?: { commentMode?: 'plain' | 'raw'; rawHtml?: string }
     ): Promise<void> {
         // Encontrar campo de comentário
         const field = await this.findCommentField(frameLocator, page);
@@ -270,23 +316,39 @@ export class CommentService {
         this.logger.log(`💬 [Comment] Campo: tag=${fieldInfo.tag} | contentEditable=${fieldInfo.isContentEditable} | omega-action=${fieldInfo.omegaAction}`);
 
         // Processar campo baseado no tipo
-        if (fieldInfo.tag === 'input' && fieldInfo.omegaAction === 'toggle-RTE-mode') {
-            await this.handleRTEInput(frameLocator, page, commentField, template, users, textToUse);
-        } else if (fieldInfo.isContentEditable) {
-            await this.handleContentEditable(frameLocator, page, commentField, template, users, textToUse);
-        } else if (fieldInfo.tag === 'input') {
-            await this.handleSimpleInput(page, commentField, textToUse);
-        } else {
-            // Fallback
-            await commentField.insertText(textToUse);
+        if (options?.commentMode === 'raw' && options?.rawHtml) {
+            this.logger.log('💬 [Comment] 🎯 Modo RAW ativado - injetando HTML diretamente');
+
+            // Se for input que vira RTE, ativar primeiro
+            if (fieldInfo.tag === 'input' && fieldInfo.omegaAction === 'toggle-RTE-mode') {
+                this.logger.log('💬 [Comment] 🔄 Ativando RTE para injeção Raw...');
+                await commentField.click();
+                await page.waitForTimeout(1500);
+
+                const rteField = await this.findRTEEditor(frameLocator);
+                if (rteField) {
+                    await this.injectRawHtml(page, rteField, options.rawHtml, { tag: 'div', isContentEditable: true, omegaAction: null });
+                } else {
+                    throw new Error('RTE não foi ativado para modo Raw');
+                }
+            } else {
+                // Usar campo atual diretamente
+                await this.injectRawHtml(page, commentField, options.rawHtml, fieldInfo);
+            }
+
+            this.logger.log('💬 [Comment] ✅ HTML bruto injetado - finalizando');
+            return;
         }
+
+        // Remover métodos antigos, sempre usar raw
+        throw new Error('Modo plain não suportado - use raw mode');
     }
 
     private async findCommentField(frameLocator: any, page: Page): Promise<{ locator: any; selector: string } | null> {
         this.logger.log('💬 [Comment] Procurando campo de comentário...');
 
         // Aguardar carregamento
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1000);
 
         const selectors = [
             'input[data-omega-element="add-comment-input"]',
@@ -329,7 +391,8 @@ export class CommentService {
         inputField: any,
         template: any,
         users: any[],
-        textToUse: string
+        textToUse: string,
+        options?: { commentMode?: 'plain' | 'raw'; rawHtml?: string }
     ): Promise<void> {
         this.logger.log('💬 [Comment] 🔄 Ativando editor RTE...');
 
@@ -344,7 +407,7 @@ export class CommentService {
         }
 
         // Usar o editor
-        await this.typeInRTEEditor(page, rteField, template, users, textToUse);
+        await this.typeInRTEEditor(page, rteField, template, users, textToUse, options);
     }
 
     private async findRTEEditor(frameLocator: any): Promise<any> {
@@ -374,55 +437,58 @@ export class CommentService {
         field: any,
         template: any,
         users: any[],
-        textToUse: string
+        textToUse: string,
+        options?: { commentMode?: 'plain' | 'raw'; rawHtml?: string }
     ): Promise<void> {
         // Focar e limpar
         await field.click();
         await page.waitForTimeout(500);
         await page.keyboard.press('Control+A');
         await page.keyboard.press('Delete');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(300);
+
+        // Raw mode é tratado antes de chegar aqui - só processa typing normal
 
         // Adicionar mentions se necessário
-        if (template.mentions && users.length > 0) {
-            for (let i = 0; i < users.length; i++) {
-                await this.addMention(page, field, users[i]);
-                if (i < users.length - 1) {
-                    await page.keyboard.insertText(' ');
-                }
-            }
+        // if (template.mentions && users.length > 0) {
+        //     for (let i = 0; i < users.length; i++) {
+        //         await this.addMention(page, field, users[i]);
+        //         if (i < users.length - 1) {
+        //             await page.keyboard.insertText(' ');
+        //         }
+        //     }
 
-            if (textToUse) {
-                await page.keyboard.insertText(' ' + textToUse);
-            }
-        } else {
-            await page.keyboard.insertText(textToUse);
-        }
+        //     if (textToUse) {
+        //         await page.keyboard.insertText(' ' + textToUse);
+        //     }
+        // } else {
+        //     await page.keyboard.insertText(textToUse);
+        // }
 
         this.logger.log('💬 [Comment] ✅ Texto inserido');
     }
 
-    private async addMention(page: Page, frameLocator: any, user: any): Promise<void> {
-        this.logger.log(`💬 [Comment] 👤 Adicionando @${user.name}`);
+    // private async addMention(page: Page, frameLocator: any, user: any): Promise<void> {
+    //     this.logger.log(`💬 [Comment] 👤 Adicionando @${user.name}`);
 
-        await page.keyboard.insertText('@' + user.name);
-        await page.waitForTimeout(800);
+    //     await page.keyboard.insertText('@' + user.name);
+    //     await page.waitForTimeout(800);
 
-        // Tentar selecionar do dropdown
-        try {
-            const option = frameLocator.locator(`[role="option"]:has-text("${user.name}")`).first();
-            if (await option.count() > 0) {
-                await option.click();
-                this.logger.log(`💬 [Comment] ✅ Mention selecionado`);
-            } else {
-                await page.keyboard.press('Enter');
-            }
-        } catch {
-            await page.keyboard.press('Enter');
-        }
+    //     // Tentar selecionar do dropdown
+    //     try {
+    //         const option = frameLocator.locator(`[role="option"]:has-text("${user.name}")`).first();
+    //         if (await option.count() > 0) {
+    //             await option.click();
+    //             this.logger.log(`💬 [Comment] ✅ Mention selecionado`);
+    //         } else {
+    //             await page.keyboard.press('Enter');
+    //         }
+    //     } catch {
+    //         await page.keyboard.press('Enter');
+    //     }
 
-        await page.waitForTimeout(300);
-    }
+    //     await page.waitForTimeout(500);
+    // }
 
     private async handleContentEditable(
         frameLocator: any,
@@ -430,10 +496,11 @@ export class CommentService {
         field: any,
         template: any,
         users: any[],
-        textToUse: string
+        textToUse: string,
+        options?: { commentMode?: 'plain' | 'raw'; rawHtml?: string }
     ): Promise<void> {
         // Similar ao RTE mas o campo já está pronto
-        await this.typeInRTEEditor(page, field, template, users, textToUse);
+        await this.typeInRTEEditor(page, field, template, users, textToUse, options);
     }
 
     private async handleSimpleInput(page: Page, field: any, text: string): Promise<void> {
@@ -461,27 +528,141 @@ export class CommentService {
     private async submitComment(frameLocator: any, page: Page): Promise<void> {
         this.logger.log('💬 [Comment] 📤 Submetendo comentário...');
 
+        // Aguardar um pouco para garantir que o conteúdo foi processado
+        await page.waitForTimeout(500);
+
         const submitSelectors = [
             'button[data-omega-action="submit"]',
             'button[data-omega-element="submit"]',
             'button:has-text("Submit")',
+            'button[aria-label="Submit"]',
+            'button.spectrum-Button--primary:has-text("Submit")',
+            'button[type="submit"]:has-text("Submit")',
         ];
 
-        for (const selector of submitSelectors) {
-            try {
-                const button = frameLocator.locator(selector).first();
-                if (await button.count() > 0 && await button.isVisible()) {
-                    await button.click();
-                    this.logger.log('💬 [Comment] ✅ Comentário submetido');
-                    await page.waitForTimeout(2000);
-                    return;
-                }
-            } catch {
-                // Continuar
+        let submitted = false;
+
+        // Primeiro, tentar encontrar todos os botões visíveis para debug
+        const visibleButtons = await frameLocator.locator('button:visible').all();
+        this.logger.log(`💬 [Comment] Encontrados ${visibleButtons.length} botões visíveis`);
+
+        // Listar textos dos botões para debug
+        for (const btn of visibleButtons.slice(0, 5)) { // Apenas os primeiros 5 para não poluir o log
+            const text = await btn.textContent().catch(() => '');
+            const ariaLabel = await btn.getAttribute('aria-label').catch(() => '');
+            const dataOmega = await btn.getAttribute('data-omega-action').catch(() => '');
+            if (text || ariaLabel || dataOmega) {
+                this.logger.log(`💬 [Comment] Botão: text="${text?.trim()}" | aria="${ariaLabel}" | omega="${dataOmega}"`);
             }
         }
 
-        throw new Error('Botão de submit não encontrado');
+        // Tentar cada seletor
+        for (const selector of submitSelectors) {
+            try {
+                const button = frameLocator.locator(selector).first();
+                const count = await button.count();
+
+                if (count > 0) {
+                    const isVisible = await button.isVisible();
+                    const isEnabled = await button.isEnabled();
+
+                    this.logger.log(`💬 [Comment] Tentando seletor: ${selector} | visible=${isVisible} | enabled=${isEnabled}`);
+
+                    if (isVisible && isEnabled) {
+                        // Scroll até o botão se necessário
+                        await button.scrollIntoViewIfNeeded().catch(() => { });
+
+                        // Tentar clicar
+                        await button.click({ timeout: 5000 });
+                        submitted = true;
+                        this.logger.log('💬 [Comment] ✅ Botão clicado com sucesso!');
+                        break;
+                    }
+                }
+            } catch (e: any) {
+                this.logger.warn(`💬 [Comment] Falha com seletor ${selector}: ${e.message}`);
+                // Continuar tentando próximo seletor
+            }
+        }
+
+        // Se ainda não submeteu, tentar método alternativo
+        if (!submitted) {
+            this.logger.log('💬 [Comment] Tentando método alternativo: Enter key');
+
+            // Tentar pressionar Enter no campo de comentário
+            try {
+                // Focar no campo de comentário novamente
+                const field = await this.findCommentField(frameLocator, page);
+                if (field) {
+                    await field.locator.focus();
+                    await page.waitForTimeout(200);
+
+                    // Tentar Ctrl+Enter (comum em muitos sistemas de comentário)
+                    await page.keyboard.press('Control+Enter');
+                    await page.waitForTimeout(1000);
+
+                    // Verificar se o comentário foi enviado
+                    const stillHasContent = await field.locator.evaluate((el: HTMLElement) => {
+                        return el.innerHTML.length > 10 || el.textContent?.length > 10;
+                    }).catch(() => false);
+
+                    if (!stillHasContent) {
+                        submitted = true;
+                        this.logger.log('💬 [Comment] ✅ Comentário enviado via Ctrl+Enter!');
+                    }
+                }
+            } catch (e: any) {
+                this.logger.warn(`💬 [Comment] Ctrl+Enter falhou: ${e.message}`);
+            }
+        }
+
+        // Se ainda não submeteu, tentar encontrar botão por proximidade
+        if (!submitted) {
+            this.logger.log('💬 [Comment] Tentando encontrar botão próximo ao campo...');
+
+            try {
+                // Buscar botões próximos ao campo de comentário
+                const nearbyButton = frameLocator.locator('button').filter({
+                    hasText: /submit|post|send|comment/i
+                }).first();
+
+                if (await nearbyButton.count() > 0 && await nearbyButton.isVisible()) {
+                    await nearbyButton.click();
+                    submitted = true;
+                    this.logger.log('💬 [Comment] ✅ Botão próximo clicado!');
+                }
+            } catch (e: any) {
+                this.logger.warn(`💬 [Comment] Busca por botão próximo falhou: ${e.message}`);
+            }
+        }
+
+        if (submitted) {
+            // Aguardar o comentário ser processado
+            await page.waitForTimeout(2000);
+            this.logger.log('💬 [Comment] ✅ Comentário submetido com sucesso!');
+
+            // Verificar se o campo foi limpo (indicação de sucesso)
+            try {
+                const field = await this.findCommentField(frameLocator, page);
+                if (field) {
+                    const isEmpty = await field.locator.evaluate((el: HTMLElement) => {
+                        return !el.innerHTML || el.innerHTML === '' || el.innerHTML === '<p></p>' || el.innerHTML === '<br>';
+                    }).catch(() => true);
+
+                    if (isEmpty) {
+                        this.logger.log('💬 [Comment] ✅ Campo limpo - comentário confirmado!');
+                    } else {
+                        this.logger.warn('💬 [Comment] ⚠️ Campo ainda tem conteúdo - verificar se foi enviado');
+                    }
+                }
+            } catch {
+                // Ignorar erros de verificação
+            }
+        } else {
+            // Tirar screenshot para debug
+            await this.debugShot(page, 'submit_button_not_found');
+            throw new Error('Botão de submit não encontrado ou não clicável');
+        }
     }
 
     // ===== Utilidades =====
@@ -613,8 +794,10 @@ export class CommentService {
         commentText: string;
         users: Array<{ name: string; email: string; id?: string }>;
         headless: boolean;
+        commentMode: 'plain' | 'raw';
+        rawHtml?: string;
     }): Promise<{ success: boolean; message?: string }> {
-        const { projectUrl, folderName, fileName, commentText, users, headless } = params;
+        const { projectUrl, folderName, fileName, commentText, users, headless, commentMode, rawHtml } = params;
         const browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
         try {
             const statePath = await this.ensureStateFile();
@@ -682,92 +865,36 @@ export class CommentService {
             await field.click();
             await page.waitForTimeout(200);
 
-            if (tag === 'input') {
-                // Primeiro, tentar detectar se este input ativa o editor RTE (para suportar mentions)
-                let toggledToRTE = false;
-                try {
+            if (commentMode === 'raw' && rawHtml) {
+                this.logger.log('💬 [Comment] 🎯 Modo RAW standalone ativado');
+
+                if (tag === 'input') {
                     const omegaAction = await field.evaluate((el: any) => el.getAttribute('data-omega-action'));
                     if (omegaAction === 'toggle-RTE-mode') {
-                        // Clicar para ativar o RTE
                         await field.click({ force: true });
                         await page.waitForTimeout(600);
                         const rteField = await this.findRTEEditor(frameLocator);
                         if (rteField) {
-                            await this.typeInRTEEditor(page, rteField, { mentions: true }, users, commentText);
-                            toggledToRTE = true;
+                            await this.injectRawHtml(page, rteField, rawHtml, { tag: 'div', isContentEditable: true, omegaAction: null });
+                        } else {
+                            throw new Error('RTE não foi ativado para modo Raw');
                         }
+                    } else {
+                        throw new Error('Input não suporta modo Raw (não é RTE)');
                     }
-                } catch { }
-
-                if (!toggledToRTE) {
-                    // Sem RTE disponível: fallback para texto simples (mentions podem não ser suportadas)
-                    try { await field.scrollIntoViewIfNeeded(); } catch { }
-                    try { await field.focus(); } catch { }
-                    let finalValue = '';
-                    let filledOk = false;
-                    try {
-                        const handle = await field.elementHandle({ timeout: 800 }).catch(() => null);
-                        if (handle) {
-                            await handle.evaluate((el: HTMLInputElement, v: string) => {
-                                el.focus();
-                                el.value = '';
-                                el.dispatchEvent(new Event('input', { bubbles: true }));
-                                el.dispatchEvent(new Event('change', { bubbles: true }));
-                                el.value = v;
-                                el.dispatchEvent(new Event('input', { bubbles: true }));
-                                el.dispatchEvent(new Event('change', { bubbles: true }));
-                            }, commentText);
-                            await page.waitForTimeout(60);
-                            finalValue = await field.inputValue().catch(() => '');
-                            filledOk = !!finalValue && finalValue.includes(commentText);
-                        }
-                    } catch { }
-                    if (!filledOk) {
-                        try {
-                            await field.click({ force: true });
-                            await page.waitForTimeout(20);
-                            await page.keyboard.press('Control+A');
-                            await page.keyboard.press('Delete');
-                            await page.keyboard.insertText(commentText);
-                            await page.waitForTimeout(80);
-                            finalValue = await field.inputValue().catch(() => '');
-                            filledOk = !!finalValue && finalValue.includes(commentText);
-                        } catch { }
-                    }
-                    if (!filledOk) {
-                        try {
-                            await field.fill('', { timeout: 600 });
-                            await field.fill(commentText, { timeout: 1000 });
-                            finalValue = await field.inputValue().catch(() => '');
-                            filledOk = !!finalValue && finalValue.includes(commentText);
-                        } catch { }
-                    }
-                    if (!filledOk) throw new Error('Falha ao preencher o campo de comentário (input)');
+                } else if (isCE) {
+                    await this.injectRawHtml(page, field, rawHtml, { tag, isContentEditable: true, omegaAction: null });
+                } else {
+                    throw new Error('Campo não suporta modo Raw');
                 }
-            } else if (isCE) {
-                await field.fill('');
-                for (let i = 0; i < users.length; i++) {
-                    const u = users[i];
-                    await field.insertText('@' + u.name); await page.waitForTimeout(400);
-                    try { const opt = frameLocator.locator('[role="option"]').filter({ hasText: u.name }).first(); if ((await opt.count()) > 0) await opt.click(); } catch { }
-                    if (i < users.length - 1) await field.insertText(' ');
-                }
-                if (commentText) await field.insertText(`, ${commentText}`);
-            } else { await field.insertText(commentText); }
 
-            const submitSelectors = [
-                'button[data-omega-action="submit"]',
-                'button[data-omega-element="submit"]',
-                'button:has-text("Submit")',
-                'button[data-variant="accent"]:has-text("Submit")',
-                '.o7Xu8a_spectrum-Button:has-text("Submit")',
-            ];
-            let submitted = false;
-            for (const sel of submitSelectors) {
-                try { const btn = frameLocator.locator(sel).first(); if ((await btn.count()) > 0 && (await btn.isVisible())) { await btn.click(); submitted = true; break; } } catch { }
+                this.logger.log('💬 [Comment] ✅ Raw standalone concluído');
+            } else {
+                throw new Error('Modo plain não suportado - use raw mode');
             }
+
+            await this.submitComment(frameLocator, page);
             await page.waitForTimeout(800);
-            if (!submitted) throw new Error('Botão de submit não encontrado');
 
             return { success: true, message: `Comentário adicionado ao documento "${fileName}"` };
         } catch (error: any) {
@@ -785,5 +912,151 @@ export class CommentService {
 
     private frameLocator(page: Page): any {
         return page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
+    }
+
+    // ===== Injeção de HTML bruto =====
+    private async injectRawHtml(page: Page, field: any, rawHtml: string, fieldInfo: { tag: string; isContentEditable: boolean; omegaAction: any }) {
+        this.logger.log('💬 [RAW] Iniciando injeção HTML via Clipboard API...');
+
+        const htmlToInject = rawHtml;
+        this.logger.log(`💬 [RAW] HTML a injetar: ${htmlToInject.substring(0, 200)}...`);
+
+        // Focar no campo
+        await field.click({ force: true });
+        await page.waitForTimeout(300);
+
+        // Limpar campo completamente
+        await page.keyboard.press('Control+A');
+        await page.keyboard.press('Delete');
+        await page.waitForTimeout(300);
+
+        // Verificar se campo está realmente vazio
+        const isEmpty = await field.evaluate((el: HTMLElement) => {
+            return el.innerHTML === '' || el.innerHTML === '<p></p>' || el.innerHTML === '<br>';
+        });
+
+        if (!isEmpty) {
+            this.logger.log('💬 [RAW] Campo não estava vazio, limpando novamente...');
+            await field.evaluate((el: HTMLElement) => {
+                el.innerHTML = '';
+                el.textContent = '';
+            });
+            await page.waitForTimeout(200);
+        }
+
+        // Copiar para clipboard e colar
+        try {
+            // Injeta o HTML no clipboard do navegador
+            const clipboardSuccess = await page.evaluate(async (html) => {
+                try {
+                    // Cria um elemento temporário com o HTML
+                    const temp = document.createElement('div');
+                    temp.innerHTML = html;
+                    temp.style.position = 'absolute';
+                    temp.style.left = '-9999px';
+                    document.body.appendChild(temp);
+
+                    // Seleciona o conteúdo
+                    const range = document.createRange();
+                    range.selectNodeContents(temp);
+                    const selection = window.getSelection();
+                    selection?.removeAllRanges();
+                    selection?.addRange(range);
+
+                    // Copia para o clipboard usando execCommand
+                    const copySuccess = document.execCommand('copy');
+
+                    // Remove o elemento temporário
+                    document.body.removeChild(temp);
+                    selection?.removeAllRanges();
+
+                    return copySuccess;
+                } catch (e) {
+                    console.error('Clipboard copy failed:', e);
+                    return false;
+                }
+            }, htmlToInject);
+
+            if (clipboardSuccess) {
+                this.logger.log('💬 [RAW] HTML copiado para clipboard, colando...');
+
+                // Focar no campo novamente
+                await field.click({ force: true });
+                await page.waitForTimeout(100);
+
+                // Cola usando Ctrl+V
+                await page.keyboard.press('Control+V');
+                await page.waitForTimeout(1500); // Aguarda o paste ser processado
+
+                // Verifica se o conteúdo foi colado corretamente
+                const pasteCheck = await field.evaluate((el: HTMLElement) => {
+                    // Busca por diferentes tipos de elementos que indicam mentions
+                    const links = el.querySelectorAll('a');
+                    const mentions = el.querySelectorAll('.mention, a[data-mention], [data-lexical-mention], span[data-mention]');
+                    const atMentions = (el.textContent || '').match(/@\w+/g) || [];
+                    
+                    return {
+                        html: el.innerHTML,
+                        text: el.textContent || '',
+                        linksCount: links.length,
+                        mentionsCount: mentions.length,
+                        atMentionsCount: atMentions.length,
+                        hasContent: el.innerHTML.length > 10,
+                        hasTextContent: (el.textContent || '').length > 10,
+                        // Verifica se há duplicação
+                        hasDuplicateContent: (el.textContent || '').includes('for your approvalfor your approval') ||
+                            (el.textContent || '').includes('segue a pasta com os assets finais da tarefasegue a pasta') ||
+                            (el.textContent || '').includes('segue os materiais finais da tarefasegue os materiais')
+                    };
+                });
+
+                this.logger.log(`💬 [RAW] Após paste: links=${pasteCheck.linksCount} | mentions=${pasteCheck.mentionsCount} | @mentions=${pasteCheck.atMentionsCount} | hasContent=${pasteCheck.hasContent} | text="${pasteCheck.text?.substring(0, 50)}..."`);
+
+                // Se detectar duplicação, limpar e tentar novamente
+                if (pasteCheck.hasDuplicateContent) {
+                    this.logger.warn('💬 [RAW] ⚠️ Duplicação detectada! Limpando e abortando...');
+                    await field.evaluate((el: HTMLElement) => {
+                        el.innerHTML = '';
+                    });
+                    throw new Error('Conteúdo duplicado detectado');
+                }
+
+                // SUCESSO: Se tem mentions OU tem @mentions OU tem conteúdo significativo
+                const isSuccess = (pasteCheck.mentionsCount > 0 || 
+                                 pasteCheck.atMentionsCount > 0 || 
+                                 pasteCheck.linksCount > 0 ||
+                                 (pasteCheck.hasContent && pasteCheck.text.includes('@'))) &&
+                                 pasteCheck.hasTextContent;
+
+                if (isSuccess) {
+                    this.logger.log('💬 [RAW] ✅ Conteúdo inserido com sucesso! Mentions detectadas ou texto com @');
+                    
+                    // Aguardar um pouco para garantir que o Workfront processou
+                    await page.waitForTimeout(500);
+                    
+                    return; // Sucesso - retorna para prosseguir com submit
+                }
+
+                // Se não teve sucesso completo mas tem algum conteúdo, ainda considerar sucesso
+                if (pasteCheck.hasContent && pasteCheck.hasTextContent) {
+                    this.logger.warn('💬 [RAW] ⚠️ Conteúdo inserido mas sem mentions detectadas. Prosseguindo mesmo assim...');
+                    return; // Prossegue mesmo assim
+                }
+
+                // Só falhar se realmente não tiver conteúdo
+                throw new Error(`Paste não funcionou: links=${pasteCheck.linksCount}, mentions=${pasteCheck.mentionsCount}, content=${pasteCheck.hasContent}`);
+            } else {
+                throw new Error('Falha ao copiar HTML para clipboard');
+            }
+        } catch (e: any) {
+            // Se o erro for sobre mentions mas tem conteúdo, não propagar o erro
+            if (e.message.includes('Paste não funcionou') && e.message.includes('content=true')) {
+                this.logger.warn(`💬 [RAW] ⚠️ ${e.message} - mas prosseguindo pois tem conteúdo`);
+                return; // Prossegue mesmo com aviso
+            }
+            
+            this.logger.error(`💬 [RAW] Erro no método clipboard: ${e.message}`);
+            throw e;
+        }
     }
 }

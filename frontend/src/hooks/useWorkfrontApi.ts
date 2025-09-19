@@ -10,6 +10,8 @@ import type {
   WorkfrontProject
 } from '@/types';
 
+const API_URL = 'http://localhost:3000/api';
+
 export const useWorkfrontApi = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -322,6 +324,8 @@ export const useWorkfrontApi = () => {
     commentType?: 'assetRelease' | 'finalMaterials' | 'approval';
     selectedUser?: 'carol' | 'giovana' | 'test';
     headless?: boolean;
+    commentMode?: 'plain' | 'raw';
+    rawHtml?: string;
   }): Promise<{ success: boolean; message: string; commentText?: string }> => {
     setIsLoading(true);
     setLoadingMessage('Adicionando comentário no documento...');
@@ -338,7 +342,9 @@ export const useWorkfrontApi = () => {
           fileName: params.fileName,
           commentType: params.commentType || 'assetRelease',
           selectedUser: params.selectedUser || 'test',
-          headless: params.headless !== false
+          headless: params.headless !== false,
+          commentMode: params.commentMode || 'plain',
+          rawHtml: params.rawHtml
         })
       });
 
@@ -472,6 +478,59 @@ export const useWorkfrontApi = () => {
     }
   }, []);
 
+  const executeWorkflow = useCallback(async (config: {
+    projectUrl: string;
+    steps: any[];
+    headless?: boolean;
+    stopOnError?: boolean;
+  }) => {
+    try {
+      const mappedSteps = (config.steps || []).map((s: any) => {
+        if (!s) return s;
+        const base = { enabled: s.enabled !== false, params: s.params || {} };
+        switch (s.action) {
+          case 'upload_asset':
+          case 'upload_finals':
+            return { action: 'upload', ...base, params: { ...base.params, ...s.params } };
+          case 'share_asset':
+            return { action: 'share', ...base, params: { ...base.params, selections: s.params?.selections || s.params?.selectionsAsset } };
+          case 'comment_asset':
+          case 'comment_finals':
+            return { action: 'comment', ...base, params: { ...base.params, folder: s.params?.folder, fileName: s.params?.fileName, commentType: s.params?.commentType, commentMode: s.params?.commentMode, rawHtml: s.params?.rawHtml } };
+          case 'status':
+            return { action: 'status', ...base, params: { deliverableStatus: s.params?.deliverableStatus } };
+          case 'hours':
+            return { action: 'hours', ...base, params: { hours: s.params?.hours, note: s.params?.note, taskName: s.params?.taskName } };
+          default:
+            return s;
+        }
+      });
+
+      const response = await fetch('/api/workflow/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectUrl: config.projectUrl,
+          steps: mappedSteps,
+          headless: config.headless || false,
+          stopOnError: config.stopOnError || false,
+        })
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        toast.error(data.message || 'Workflow falhou');
+      } else {
+        toast.success('Workflow executado');
+      }
+      return data;
+    } catch (error) {
+      console.error('Erro ao executar workflow:', error);
+      toast.error('Erro de conexão durante workflow');
+      throw error;
+    }
+  }, []);
+
   return {
     isLoading,
     loadingMessage,
@@ -488,5 +547,6 @@ export const useWorkfrontApi = () => {
     getCommentPreview,
     prepareUploadPlan,
     executeUploadAutomation,
+    executeWorkflow,
   };
 };
