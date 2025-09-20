@@ -4,13 +4,11 @@ import {
   LogOut,
   UserCheck,
   FolderOpen,
-  MessageSquare,
   History,
   FolderDown,
   FileText
 } from 'lucide-react';
 import { ProjectHistory } from './ProjectHistory';
-import { CommentSection } from './CommentSection';
 import UploadSection from './UploadSection';
 import BulkDownload from './BulkDownload';
 import BriefingContentViewer from './BriefingContentViewer';
@@ -27,7 +25,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'comment' | 'bulk-download' | 'briefing-content' | 'history'>('upload');
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history'>('upload');
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
@@ -116,15 +114,13 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 <button
                   type="button"
                   onClick={() => setFastMode(f => !f)}
-                  className={`h-6 w-11 rounded-full relative transition ${
-                    fastMode ? 'bg-green-500' : 'bg-muted'
-                  }`}
+                  className={`h-6 w-11 rounded-full relative transition ${fastMode ? 'bg-green-500' : 'bg-muted'
+                    }`}
                   title="Ativa bloqueio de imagens / fonts / media no Playwright"
                 >
                   <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
-                      fastMode ? 'right-0.5' : 'left-0.5'
-                    }`}
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${fastMode ? 'right-0.5' : 'left-0.5'
+                      }`}
                   />
                 </button>
               </div>
@@ -168,18 +164,9 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                   }`}
               >
                 <FolderOpen className="h-5 w-5" />
-                <span className="font-medium">Upload (Novo Fluxo)</span>
+                <span className="font-medium">Asset Release</span>
               </button>
-              <button
-                // onClick={() => setActiveSection('comment')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150  ${activeSection === 'comment'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-              >
-                <MessageSquare className="h-5 w-5" />
-                <span className="font-medium">Comentários</span>
-              </button>
+
               <button
                 onClick={() => setActiveSection('bulk-download')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'bulk-download'
@@ -222,15 +209,6 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 setProjectUrl={setProjectUrl}
                 selectedUser={selectedUser}
                 setSelectedUser={setSelectedUser}
-                currentProject={currentProject}
-              />
-            )}
-
-            {/* Comments Section */}
-            {activeSection === 'comment' && (
-              <CommentSection
-                projectUrl={projectUrl}
-                folders={folders}
                 currentProject={currentProject}
               />
             )}

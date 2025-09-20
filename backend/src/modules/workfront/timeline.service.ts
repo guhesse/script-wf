@@ -62,10 +62,15 @@ export class TimelineService {
         let failed = 0;
         let skipped = 0;
 
-        // Detectar se podemos rodar em sessão única para ações de documentos
-        const docActions = steps.filter(s => s.enabled && [WorkflowAction.UPLOAD, WorkflowAction.SHARE, WorkflowAction.COMMENT].includes(s.action));
-        const metaActions = steps.filter(s => s.enabled && [WorkflowAction.STATUS, WorkflowAction.HOURS].includes(s.action));
-        const useSessionMode = docActions.length > 0; // primeira fase
+        // Detectar se podemos rodar em sessão única (qualquer ação que interaja com a UI do projeto)
+        const sessionActions = steps.filter(s => s.enabled && [
+            WorkflowAction.UPLOAD,
+            WorkflowAction.SHARE,
+            WorkflowAction.COMMENT,
+            WorkflowAction.STATUS,
+            WorkflowAction.HOURS
+        ].includes(s.action));
+        const useSessionMode = sessionActions.length > 0;
 
         let browser: Browser | null = null; let page: Page | null = null; let frame: any = null;
 
@@ -73,9 +78,9 @@ export class TimelineService {
         this.logger.log(`📍 Projeto: ${projectUrl}`);
         this.logger.log(`📋 Total de steps: ${steps.length}`);
 
-        if (useSessionMode) {
+    if (useSessionMode) {
             try {
-                this.logger.log('🧩 Abrindo browser de sessão única para ações de documentos (upload/share/comment)');
+        this.logger.log('🧩 Abrindo browser de sessão única para ações: ' + sessionActions.map(a => a.action).join(', '));
                 browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
                 // Reusa state file através de shareService utilitário (garante login)
                 // Aproveitamos ensureStateFile indiretamente chamando openProjectAndSelectDocument? Melhor abrir manualmente.
@@ -108,10 +113,13 @@ export class TimelineService {
 
             try {
                 let result: { success: boolean; message?: string };
-                if (
-                    browser && page && frame &&
-                    [WorkflowAction.UPLOAD, WorkflowAction.SHARE, WorkflowAction.COMMENT, WorkflowAction.STATUS].includes(step.action) // <-- adiciona STATUS
-                ) {
+                if (browser && page && frame && [
+                    WorkflowAction.UPLOAD,
+                    WorkflowAction.SHARE,
+                    WorkflowAction.COMMENT,
+                    WorkflowAction.STATUS,
+                    WorkflowAction.HOURS
+                ].includes(step.action)) {
                     result = await this.executeStepInSession(projectUrl, step, { page, frame, headless });
                 } else {
                     result = await this.executeStep(projectUrl, step, headless);
@@ -167,11 +175,7 @@ export class TimelineService {
             skipped
         };
 
-        // Segunda fase (meta actions) se não rodaram ainda com sessão aberta e abrimos browser só para elas
-        if (metaActions.length > 0 && (browser || !useSessionMode)) {
-            // Se já processamos meta actions no loop acima nada a fazer; elas já passaram no loop normal.
-            // Caso queira otimização futura de abrir segundo browser somente após doc phase, poderia mover.
-        }
+        // (Mantido para futura otimização: poderíamos separar fases caso necessário)
 
         // Encerrar sessão única
         if (browser) { try { await browser.close(); } catch { } }
@@ -300,6 +304,8 @@ export class TimelineService {
                 return await this.commentInSession(projectUrl, step.params, ctx);
             case WorkflowAction.STATUS: // <-- novo
                 return await this.statusInSession(projectUrl, step.params, ctx);
+            case WorkflowAction.HOURS: // <-- novo para horas em sessão
+                return await this.hoursInSession(projectUrl, step.params, ctx);
             default:
                 return { success: false, message: 'Ação não suportada em sessão' };
         }
@@ -354,18 +360,39 @@ export class TimelineService {
     }
 
     private async statusInSession(projectUrl: string, params: any, ctx: { page: Page; frame: any; headless: boolean }) {
-        const { deliverableStatus } = params || {};
+        const { deliverableStatus, maxAttempts, retryDelay } = params || {};
         if (!deliverableStatus) return { success: false, message: 'deliverableStatus obrigatório' };
         try {
             const out = await this.statusService.updateDeliverableStatusInSession({
                 page: ctx.page,
                 frame: ctx.frame,
                 projectUrl,
-                deliverableStatus
+                deliverableStatus,
+                maxAttempts,
+                retryDelay
             });
             return { success: out.success, message: out.message };
         } catch (e: any) {
             return { success: false, message: e?.message || 'Falha status sessão' };
+        }
+    }
+
+    private async hoursInSession(projectUrl: string, params: any, ctx: { page: Page; frame: any; headless: boolean }) {
+        const { hours = 0.3, note, taskName, maxAttempts, retryDelay } = params || {};
+        try {
+            const out = await this.hoursService.logHoursInOpenSession({
+                page: ctx.page,
+                frame: ctx.frame,
+                projectUrl,
+                hours,
+                note,
+                taskName,
+                maxAttempts,
+                retryDelay
+            });
+            return { success: out.success, message: out.message };
+        } catch (e: any) {
+            return { success: false, message: e?.message || 'Falha horas sessão' };
         }
     }
 
@@ -390,10 +417,8 @@ export class TimelineService {
     }
 
     private async uploadThroughDialog(frame: any, page: Page, filePaths: string[]) {
-        if (page.isClosed()) throw new Error('Página já está fechada antes do upload');
-        this.logger.log(`📁 Iniciando upload de ${filePaths.length} arquivo(s)`);
+        this.logger.log(`📁 Upload simples de ${filePaths.length} arquivo(s)`);
 
-        // 1. Abrir menu "Add new"
         const addSelectors = [
             'button[data-testid="add-new"]',
             'button.add-new-react-button',
@@ -405,80 +430,42 @@ export class TimelineService {
             try {
                 const btn = frame.locator(sel).first();
                 if ((await btn.count()) > 0 && await btn.isVisible()) {
-                    await btn.click({ timeout: 3000 });
-                    await page.waitForTimeout(500);
+                    await btn.click();
+                    await page.waitForTimeout(1000); // espera ajustada
                     opened = true;
                     break;
                 }
-            } catch { /* tenta próximo */ }
+            } catch { }
         }
-        if (!opened) {
-            throw new Error('Botão "Add new" não encontrado ou não visível');
-        }
+        if (!opened) throw new Error('Botão Add new não encontrado');
 
-        // 2. Clicar em opção de upload (Document). Usar Promise.all para não perder o evento.
         const docSelectors = [
             'li[data-test-id="upload-file"]',
             'li.select-files-button',
             'li:has-text("Document")',
             '[role="menuitem"]:has-text("Document")'
         ];
-        let chooser = null;
         let clicked = false;
-
+        const chooserPromise = page.waitForEvent('filechooser');
         for (const sel of docSelectors) {
             try {
-                const opt = frame.locator(sel).first();
-                if ((await opt.count()) > 0 && await opt.isVisible()) {
-                    this.logger.log(`🖱️ Clicando opção de upload (${sel})`);
-                    const result = await Promise.all([
-                        page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null),
-                        opt.click().then(() => true).catch(() => false)
-                    ]);
-                    chooser = result[0];
-                    clicked = result[1] as boolean;
-                    if (!clicked) continue;
+                const it = frame.locator(sel).first();
+                if ((await it.count()) > 0 && await it.isVisible()) {
+                    await it.click();
+                    clicked = true;
                     break;
                 }
-            } catch { /* tenta próximo */ }
+            } catch { }
         }
+        if (!clicked) throw new Error('Opção de upload não encontrada');
 
-        if (page.isClosed()) {
-            throw new Error('Página foi fechada durante tentativa de abrir diálogo de upload');
-        }
+        const chooser = await chooserPromise;
+        await chooser.setFiles(filePaths);
 
-        // 3. Se não capturou filechooser tentar fallback localizar input[type=file]
-        if (!chooser) {
-            this.logger.warn('⚠️ filechooser não capturado; tentando fallback via input[type=file]');
-            // Pequeno delay para DOM injetar input
-            await page.waitForTimeout(1000);
-            // Escopo amplo (dentro do iframe ou página)
-            let fileInput = frame.locator('input[type="file"]:not([disabled])').first();
-            if ((await fileInput.count()) === 0) {
-                fileInput = page.locator('input[type="file"]:not([disabled])').first();
-            }
-            if ((await fileInput.count()) > 0) {
-                try {
-                    await fileInput.setInputFiles(filePaths);
-                    this.logger.log('✅ Upload disparado via setInputFiles fallback');
-                    await page.waitForTimeout(3500);
-                    return;
-                } catch (e:any) {
-                    throw new Error('Falha no fallback setInputFiles: ' + e?.message);
-                }
-            } else {
-                throw new Error('Não foi possível abrir diálogo de upload nem localizar input[type=file]');
-            }
-        } else {
-            // 4. Usar filechooser normal
-            try {
-                await chooser.setFiles(filePaths);
-                this.logger.log('✅ Arquivos enviados ao filechooser');
-                await page.waitForTimeout(3500);
-            } catch (e:any) {
-                throw new Error('Falha ao setar arquivos no filechooser: ' + e?.message);
-            }
-        }
+        // Tempo de espera pós-seleção (dinâmico)
+        const waitMs = 2500 + (filePaths.length * 1200);
+        this.logger.log(`⏳ Aguardando ${waitMs}ms para processamento inicial dos arquivos...`);
+        await page.waitForTimeout(waitMs);
     }
 
     private async executeStatusStep(projectUrl: string, params: any, headless: boolean) {
