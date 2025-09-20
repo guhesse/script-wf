@@ -43,8 +43,10 @@ export class StatusAutomationService {
         projectUrl: string;
         deliverableStatus: string;
         headless?: boolean;
+        maxAttempts?: number;
+        retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-        const { projectUrl, headless = false } = params;
+        const { projectUrl, headless = false, maxAttempts = 4, retryDelay = 3500 } = params;
         const deliverableStatus = FORCE_STATUS; // ignora param externo
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
@@ -62,17 +64,31 @@ export class StatusAutomationService {
             const statePath = await this.ensureStateFile();
             const context = await browser.newContext({ storageState: statePath, viewport: null });
             const page = await context.newPage();
-            await page.goto(url, { waitUntil: 'domcontentloaded' });
-            await page.waitForTimeout(7000);
-
-            const frame = this.frameLocator(page);
-            await this.closeSidebarIfOpen(frame, page);
-
-            // NOVO: reutiliza método central
-            await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
-
-            this.logger.log(`✅ Status atualizado para '${deliverableStatus}'`);
-            return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}'` };
+            let attempt = 0; let lastErr: any = null; let frame: any = null; let success = false;
+            while (attempt < maxAttempts && !success) {
+                attempt++;
+                this.logger.log(`⏳ (Status) Tentativa ${attempt}/${maxAttempts} para atualizar status...`);
+                try {
+                    await page.goto(url, { waitUntil: 'domcontentloaded' });
+                    await page.waitForTimeout(5500);
+                    frame = this.frameLocator(page);
+                    await this.closeSidebarIfOpen(frame, page);
+                    await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
+                    this.logger.log(`✅ Status atualizado para '${deliverableStatus}' (tentativa ${attempt})`);
+                    success = true;
+                    return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}'` };
+                } catch (e:any) {
+                    lastErr = e;
+                    this.logger.error(`❌ Tentativa ${attempt} falhou: ${e?.message}`);
+                    if (attempt < maxAttempts) {
+                        this.logger.log(`🔁 Recarregando página e aguardando ${retryDelay}ms antes de nova tentativa...`);
+                        await page.waitForTimeout(300);
+                        try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch {}
+                        await page.waitForTimeout(retryDelay);
+                    }
+                }
+            }
+            throw lastErr || new Error('Falha ao alterar status após múltiplas tentativas');
         } catch (e: any) {
             this.logger.error(`❌ Erro ao alterar status: ${e?.message}`);
             return { success: false, message: e?.message || 'Falha ao alterar status' };
@@ -87,8 +103,10 @@ export class StatusAutomationService {
         frame: any;
         projectUrl: string;
         deliverableStatus: string;
+        maxAttempts?: number;
+        retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-        const { page, frame, projectUrl } = params;
+        const { page, frame, projectUrl, maxAttempts = 4, retryDelay = 3000 } = params;
         const deliverableStatus = FORCE_STATUS;
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
@@ -99,19 +117,29 @@ export class StatusAutomationService {
         }
 
         const url = this.ensureOverviewUrl(projectUrl);
-        try {
-            // Garante que estamos na página correta (caso esteja em outra aba de documentos)
-            if (!page.url().startsWith(url)) {
-                await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => { });
-                await page.waitForTimeout(2500);
+        let attempt = 0; let lastErr: any = null;
+        while (attempt < maxAttempts) {
+            attempt++;
+            this.logger.log(`⏳ (Status sessão) Tentativa ${attempt}/${maxAttempts}...`);
+            try {
+                if (!page.url().startsWith(url)) {
+                    await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => { });
+                    await page.waitForTimeout(2500);
+                }
+                await this.closeSidebarIfOpen(frame, page);
+                await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
+                return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}' (sessão reutilizada)` };
+            } catch (e:any) {
+                lastErr = e;
+                this.logger.error(`❌ Erro in-session tentativa ${attempt}: ${e?.message}`);
+                if (attempt < maxAttempts) {
+                    this.logger.log(`🔁 (sessão) reload + espera ${retryDelay}ms antes de retry`);
+                    try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch {}
+                    await page.waitForTimeout(retryDelay);
+                }
             }
-            await this.closeSidebarIfOpen(frame, page);
-            await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
-            return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}' (sessão reutilizada)` };
-        } catch (e: any) {
-            this.logger.error(`❌ Erro in-session: ${e?.message}`);
-            return { success: false, message: e?.message || 'Falha ao alterar status (sessão)' };
         }
+        return { success: false, message: (lastErr?.message || 'Falha ao alterar status (sessão)') + ' após múltiplas tentativas' };
     }
 
     // NOVO: lógica central compartilhada
