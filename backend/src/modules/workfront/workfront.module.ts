@@ -8,11 +8,13 @@ import { StatusAutomationService } from './status-automation.service';
 import { HoursAutomationService } from './hours-automation.service';
 import { UploadAutomationService } from './upload-automation.service';
 import { TimelineService } from './timeline.service';
+import { ProgressService } from './progress.service';
+import { WorkflowProgressController } from './progress.controller';
 
 @Module({
   imports: [forwardRef(() => PdfModule)],
-  controllers: [WorkfrontController],
-  providers: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService],
-  exports: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService],
+  controllers: [WorkfrontController, WorkflowProgressController],
+  providers: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService, ProgressService],
+  exports: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService, ProgressService],
 })
-export class WorkfrontModule {}
+export class WorkfrontModule { }

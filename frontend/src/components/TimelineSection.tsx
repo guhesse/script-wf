@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -6,7 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlayCircle, Settings, Upload, Share2, MessageSquare, Activity, Clock, ChevronDown, ChevronUp, FolderOpen } from 'lucide-react';
+import { PlayCircle, Settings, Upload, Share2, MessageSquare, Activity, Clock, ChevronDown, ChevronUp, FolderOpen, Loader2, CheckCircle2, XCircle, SkipForward } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useWorkflowProgress } from '@/hooks/useWorkflowProgress';
+import { Switch } from '@/components/ui/switch';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 
 type TeamKey = 'carol' | 'giovana' | 'test';
@@ -58,8 +62,6 @@ const WORKFLOW_ICONS: Record<WorkflowAction, React.ComponentType<{ className?: s
 
 const ALLOWED_STATUS = ['Round 1 Review', 'Round 2 Review', 'Extra Round Review', 'Delivered'] as const;
 type AllowedStatus = typeof ALLOWED_STATUS[number];
-// Substitui constante antiga (mantém se usada em outro lugar)
-const DELIVERABLE_STATUS_OPTIONS = ALLOWED_STATUS;
 
 export default function TimelineSection({ projectUrl, selectedUser, stagedPaths }: TimelineSectionProps) {
     // Passos base sempre presentes (params podem ser preenchidos depois)
@@ -77,7 +79,10 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
     const [executing, setExecuting] = useState(false);
     const [results, setResults] = useState<{ success?: boolean; summary?: { successful: number; failed: number; skipped: number }; message?: string } | null>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showHeadless, setShowHeadless] = useState(true); // true = headless, false = mostrar navegador
+    const [showEvents, setShowEvents] = useState(false);
     const { executeWorkflow } = useWorkfrontApi();
+    const progress = useWorkflowProgress({ projectUrl });
 
     // Preenche params quando staging disponível
     useEffect(() => {
@@ -132,7 +137,9 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
         setSteps(prev => prev.map((s, idx) => {
             if (idx !== i) return s;
             if (!s.params || typeof s.params !== 'object') return s;
-            return { ...s, params: { ...(s.params as any), [key]: value } };
+            const clone: Record<string, unknown> = { ...(s.params as Record<string, unknown>) };
+            clone[key] = value;
+            return { ...s, params: clone };
         }));
 
     // Valida se um passo tem params suficientes para execução
@@ -159,7 +166,7 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
             const result = await executeWorkflow({
                 projectUrl,
                 steps: readyEnabledSteps, // envia só os válidos
-                headless: false,
+                headless: showHeadless,
                 stopOnError: false
             });
             setResults(result);
@@ -180,6 +187,81 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
 
     return (
         <div className="space-y-6">
+            {/* Barra de Progresso Global */}
+            <Card className="border-l-primary bg-card border-border">
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-between text-card-foreground">
+                        <div className="flex items-center gap-3">
+                            <Activity className="w-4 h-4 text-primary" /> Execução (tempo real)
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>{progress.currentAction ? `${progress.currentAction} · ${progress.currentPhase}` : 'Aguardando'}</span>
+                                <Badge variant="outline">{progress.percent}%</Badge>
+                                <Button size="sm" variant="ghost" onClick={() => setShowEvents(s => !s)}>{showEvents ? 'Logs ▲' : 'Logs ▼'}</Button>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground">Headless</span>
+                                <Switch checked={showHeadless} onCheckedChange={(v: boolean) => setShowHeadless(!!v)} />
+                            </div>
+                        </div>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <Progress value={progress.percent} className="h-2" />
+                    {progress.lastMessage && (
+                        <div className="text-[11px] text-muted-foreground truncate" title={progress.lastMessage}>{progress.lastMessage}</div>
+                    )}
+                    {/* Lista de tasks lineares (usando id/display) */}
+                    {progress.tasks && progress.tasks.length > 0 && (
+                        <div className="flex flex-col gap-1 pt-1">
+                            {progress.tasks
+                                .slice()
+                                .sort((a, b) => a.stepIndex - b.stepIndex)
+                                .map(t => {
+                                    const Icon = t.action === 'upload' ? Upload : t.action === 'share' ? Share2 : t.action === 'comment' ? MessageSquare : t.action === 'status' ? Activity : Clock;
+                                    const baseColor = t.status === 'success' ? 'text-emerald-500' : t.status === 'error' ? 'text-destructive' : t.status === 'skip' ? 'text-amber-500' : t.status === 'running' ? 'text-primary' : 'text-muted-foreground';
+                                    const bg = t.status === 'running' ? 'bg-primary/5' : t.status === 'success' ? 'bg-emerald-500/5' : t.status === 'error' ? 'bg-destructive/10' : t.status === 'skip' ? 'bg-amber-500/10' : 'bg-muted/10';
+                                    const statusIcon = t.status === 'running' ? <Loader2 className="w-3 h-3 animate-spin" /> : t.status === 'success' ? <CheckCircle2 className="w-3 h-3" /> : t.status === 'error' ? <XCircle className="w-3 h-3" /> : t.status === 'skip' ? <SkipForward className="w-3 h-3" /> : null;
+                                    const title = `${t.display} • ${t.status}` + (t.durationMs ? ` • ${progress.formatDuration(t.durationMs)}` : '') + (t.message ? `\n${t.message}` : '');
+                                    return (
+                                        <div key={t.id} className={`flex items-center gap-3 border rounded px-3 py-2 ${bg}`} title={title}>
+                                            <Icon className={`w-4 h-4 ${baseColor}`} />
+                                            <div className="flex-1 text-xs flex flex-col gap-0.5">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-medium lowercase tracking-wide">{t.display}</span>
+                                                    <span className={`flex items-center gap-1 text-[10px] ${baseColor}`}>
+                                                        {statusIcon}{t.status}
+                                                        {t.durationMs && t.status === 'success' && <span className="text-muted-foreground">{progress.formatDuration(t.durationMs)}</span>}
+                                                    </span>
+                                                </div>
+                                                {t.message && <div className="text-[10px] text-muted-foreground truncate" >{t.message}</div>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    )}
+                    {showEvents && (
+                        <ScrollArea className="h-48 border rounded p-2 bg-muted/30">
+                            <ul className="space-y-1">
+                                {progress.events.slice(-150).reverse().map((e, i) => (
+                                    <li key={e.timestamp + '-' + i} className="text-[11px] font-mono">
+                                        <span className={
+                                            e.phase === 'error' ? 'text-destructive' :
+                                                e.phase === 'success' ? 'text-emerald-600' :
+                                                    e.phase === 'delay' ? 'text-amber-600' :
+                                                        'text-muted-foreground'
+                                        }>
+                                            {new Date(e.timestamp).toLocaleTimeString()} {e.phase.toUpperCase()} {e.action && `[${e.action}]`} - {e.message}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </ScrollArea>
+                    )}
+                </CardContent>
+            </Card>
             <Card className="border-l-primary bg-card border-border">
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between text-card-foreground">
