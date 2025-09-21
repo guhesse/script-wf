@@ -8,6 +8,7 @@ import { CommentType } from '../pdf/dto/pdf.dto';
 import { Browser, Page } from 'playwright';
 import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
 import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
+import { ProgressService } from './progress.service';
 
 export enum WorkflowAction {
     SHARE = 'share',
@@ -53,6 +54,7 @@ export class TimelineService {
         private readonly statusService: StatusAutomationService,
         private readonly hoursService: HoursAutomationService,
         private readonly commentService: CommentService,
+        private readonly progress: ProgressService,
     ) { }
 
     /**
@@ -63,7 +65,8 @@ export class TimelineService {
         results: WorkflowResult[];
         summary: { total: number; successful: number; failed: number; skipped: number };
     }> {
-        const { projectUrl, steps, headless = false, stopOnError = false } = config;
+    const envHeadless = (process.env.WF_HEADLESS_DEFAULT || 'true').toLowerCase() === 'true';
+    const { projectUrl, steps, headless = envHeadless, stopOnError = false } = config;
         const results: WorkflowResult[] = [];
         let successful = 0;
         let failed = 0;
@@ -83,9 +86,15 @@ export class TimelineService {
     let lastUploadCompletedAt: number | null = null; // timestamp fim do último upload
     let lastUploadPlannedDelay: number = 0;          // atraso planejado calculado
 
-        this.logger.log('🎬 === INICIANDO WORKFLOW DE AÇÕES ===');
+    this.logger.log('🎬 === INICIANDO WORKFLOW DE AÇÕES ===');
+    this.progress.publish({ phase: 'start', action: 'workflow', message: 'Iniciando workflow', projectUrl, extra: { total: steps.length } });
         this.logger.log(`📍 Projeto: ${projectUrl}`);
         this.logger.log(`📋 Total de steps: ${steps.length}`);
+
+        // Construir plano simples de tasks (ações habilitadas)
+        const tasks = steps.map((s, idx) => s.enabled ? ({ action: s.action, stepIndex: idx }) : null)
+            .filter(Boolean) as { action: WorkflowAction; stepIndex: number }[];
+        this.progress.publish({ phase: 'plan', action: 'workflow', message: 'Plano de workflow calculado', projectUrl, extra: { tasks, totalTasks: tasks.length } });
 
         if (useSessionMode) {
             try {
@@ -108,6 +117,7 @@ export class TimelineService {
 
             if (!step.enabled) {
                 this.logger.log(`⏭️ [${i + 1}/${steps.length}] Pulando: ${step.action}`);
+                this.progress.publish({ phase: 'skip', action: step.action, stepIndex: i, totalSteps: steps.length, message: 'Step pulado', projectUrl });
                 skipped++;
                 continue;
             }
@@ -118,11 +128,13 @@ export class TimelineService {
                 if (elapsed < lastUploadPlannedDelay) {
                     const remaining = lastUploadPlannedDelay - elapsed;
                     this.logger.log(`⏳ Aguardando ${remaining}ms (estabilização pós upload: planejado ${lastUploadPlannedDelay}ms, decorrido ${elapsed}ms)`);
+                    this.progress.publish({ phase: 'delay', action: step.action, stepIndex: i, totalSteps: steps.length, message: `Aguardando estabilização pós upload (${remaining}ms)`, projectUrl, extra: { remaining, planned: lastUploadPlannedDelay } });
                     try { await (page ?? { waitForTimeout: (ms:number)=>new Promise(r=>setTimeout(r,ms)) }).waitForTimeout(remaining); } catch { await new Promise(r => setTimeout(r, remaining)); }
                 }
             }
 
             this.logger.log(`🎯 [${i + 1}/${steps.length}] Executando: ${step.action}`);
+            this.progress.publish({ phase: 'start', action: step.action, stepIndex: i, totalSteps: steps.length, message: 'Iniciando step', projectUrl, extra: { params: step.params } });
             const startTime = Date.now();
 
             try {
@@ -150,6 +162,7 @@ export class TimelineService {
                 if (result.success) {
                     successful++;
                     this.logger.log(`✅ ${step.action} concluído em ${duration}ms`);
+                    this.progress.publish({ phase: 'success', action: step.action, stepIndex: i, totalSteps: steps.length, message: 'Step concluído', projectUrl, durationMs: duration, extra: { message: result.message } });
                     if (step.action === WorkflowAction.UPLOAD) {
                         lastUploadCompletedAt = Date.now();
                         const fileCount = this.estimateUploadFileCount(step);
@@ -159,12 +172,15 @@ export class TimelineService {
                         );
                         lastUploadPlannedDelay = planned;
                         this.logger.log(`🕒 Upload finalizado. Arquivos estimados=${fileCount}. Delay planejado para estabilização: ${planned}ms`);
+                        this.progress.publish({ phase: 'info', action: 'upload', stepIndex: i, totalSteps: steps.length, message: 'Upload finalizado - aguardará estabilização', projectUrl, extra: { fileCount, plannedDelay: planned } });
                     }
                 } else {
                     failed++;
                     this.logger.error(`❌ ${step.action} falhou: ${result.message}`);
+                    this.progress.publish({ phase: 'error', action: step.action, stepIndex: i, totalSteps: steps.length, message: result.message || 'Erro', projectUrl, durationMs: duration });
                     if (stopOnError) {
                         this.logger.warn('⛔ Parando workflow devido a erro');
+                        this.progress.publish({ phase: 'error', action: 'workflow', stepIndex: i, totalSteps: steps.length, message: 'Interrompido por erro', projectUrl });
                         break;
                     }
                 }
@@ -204,7 +220,8 @@ export class TimelineService {
         // Encerrar sessão única
     if (browser) { try { await browser.close(); } catch { } }
 
-        this.logger.log('📊 === WORKFLOW FINALIZADO ===');
+    this.logger.log('📊 === WORKFLOW FINALIZADO ===');
+    this.progress.publish({ phase: 'success', action: 'workflow', message: 'Workflow finalizado', projectUrl, extra: { summary } });
         this.logger.log(`✅ Sucessos: ${successful}`);
         this.logger.log(`❌ Falhas: ${failed}`);
         this.logger.log(`⏭️ Pulados: ${skipped}`);
@@ -364,6 +381,7 @@ export class TimelineService {
                     await this.navigateAndUploadSingle(ctx.frame, ctx.page, 'Final Materials', pdf);
                 }
             }
+            this.progress.publish({ phase: 'info', action: 'upload', message: 'Uploads concluídos', projectUrl });
             return { success: true, message: 'Upload(s) concluído(s) em sessão' };
         } catch (e: any) {
             return { success: false, message: e?.message || 'Falha no upload em sessão' };
@@ -374,7 +392,9 @@ export class TimelineService {
         const { selections, selectedUser = 'carol' } = params || {};
         if (!selections || selections.length === 0) return { success: false, message: 'Nenhum arquivo para compartilhar' };
         try {
+            this.progress.publish({ phase: 'info', action: 'share', message: `Iniciando compartilhamento de ${selections.length} arquivo(s)`, projectUrl });
             const out = await this.shareService.shareSelectionsInOpenSession({ page: ctx.page, frame: ctx.frame, projectUrl, selections, selectedUser });
+            this.progress.publish({ phase: 'success', action: 'share', message: `Compartilhamento concluído (${out.summary.success} ok / ${out.summary.errors} erros)`, projectUrl, extra: out.summary });
             return { success: out.summary.errors === 0, message: `${out.summary.success} ok / ${out.summary.errors} erros` };
         } catch (e: any) { return { success: false, message: e?.message }; }
     }
@@ -383,12 +403,16 @@ export class TimelineService {
         const { folder, fileName, commentType, selectedUser = 'carol', commentMode, rawHtml } = params || {};
         if (!folder || !fileName) return { success: false, message: 'Dados insuficientes para comentário' };
         try {
+            this.progress.publish({ phase: 'info', action: 'comment', message: `Preparando comentário ${fileName}`, projectUrl });
             // navegar para pasta + selecionar doc (reusa shareService helpers)
             if (folder && folder !== 'root') {
+                this.progress.publish({ phase: 'info', action: 'comment', message: `Navegando para pasta ${folder}`, projectUrl });
                 await this.shareService.navigateToFolder(ctx.frame, ctx.page, folder);
             }
+            this.progress.publish({ phase: 'info', action: 'comment', message: `Selecionando documento ${fileName}`, projectUrl });
             await this.shareService.selectDocument(ctx.frame, ctx.page, fileName);
             const result = await this.commentService.addCommentUsingOpenPage({ frameLocator: ctx.frame, page: ctx.page, folderName: folder, fileName, commentType: this.normalizeCommentType(commentType), selectedUser, commentMode, rawHtml });
+            this.progress.publish({ phase: result.success ? 'success' : 'error', action: 'comment', message: result.message, projectUrl });
             return { success: result.success, message: result.message };
         } catch (e: any) { return { success: false, message: e?.message || 'Falha comentário' }; }
     }
@@ -397,6 +421,7 @@ export class TimelineService {
         const { deliverableStatus, maxAttempts, retryDelay } = params || {};
         if (!deliverableStatus) return { success: false, message: 'deliverableStatus obrigatório' };
         try {
+            this.progress.publish({ phase: 'info', action: 'status', message: 'Atualizando status (sessão)', projectUrl });
             const out = await this.statusService.updateDeliverableStatusInSession({
                 page: ctx.page,
                 frame: ctx.frame,
@@ -405,6 +430,7 @@ export class TimelineService {
                 maxAttempts,
                 retryDelay
             });
+            this.progress.publish({ phase: out.success ? 'success' : 'error', action: 'status', message: out.message, projectUrl });
             return { success: out.success, message: out.message };
         } catch (e: any) {
             return { success: false, message: e?.message || 'Falha status sessão' };
@@ -414,6 +440,7 @@ export class TimelineService {
     private async hoursInSession(projectUrl: string, params: any, ctx: { page: Page; frame: any; headless: boolean }) {
         const { hours = 0.3, note, taskName, maxAttempts, retryDelay } = params || {};
         try {
+            this.progress.publish({ phase: 'info', action: 'hours', message: 'Lançando horas (sessão)', projectUrl });
             const out = await this.hoursService.logHoursInOpenSession({
                 page: ctx.page,
                 frame: ctx.frame,
@@ -424,6 +451,7 @@ export class TimelineService {
                 maxAttempts,
                 retryDelay
             });
+            this.progress.publish({ phase: out.success ? 'success' : 'error', action: 'hours', message: out.message, projectUrl });
             return { success: out.success, message: out.message };
         } catch (e: any) {
             return { success: false, message: e?.message || 'Falha horas sessão' };
@@ -452,6 +480,7 @@ export class TimelineService {
 
     private async uploadThroughDialog(frame: any, page: Page, filePaths: string[]) {
         this.logger.log(`📁 Upload simples de ${filePaths.length} arquivo(s)`);
+        this.progress.publish({ phase: 'info', action: 'upload', message: `Iniciando sub-etapa: localizar botão Add new (${filePaths.length} arquivo[s])` });
 
         const addSelectors = [
             'button[data-testid="add-new"]',
@@ -464,9 +493,11 @@ export class TimelineService {
             try {
                 const btn = frame.locator(sel).first();
                 if ((await btn.count()) > 0 && await btn.isVisible()) {
+                    this.progress.publish({ phase: 'start', action: 'upload', message: `Clicando botão Add new (selector=${sel})` });
                     await btn.click();
                     await page.waitForTimeout(1000); // espera ajustada
                     opened = true;
+                    this.progress.publish({ phase: 'success', action: 'upload', message: 'Botão Add new aberto' });
                     break;
                 }
             } catch { }
@@ -481,10 +512,12 @@ export class TimelineService {
         ];
         let clicked = false;
         const chooserPromise = page.waitForEvent('filechooser');
+        this.progress.publish({ phase: 'info', action: 'upload', message: 'Procurando opção de upload de documento' });
         for (const sel of docSelectors) {
             try {
                 const it = frame.locator(sel).first();
                 if ((await it.count()) > 0 && await it.isVisible()) {
+                    this.progress.publish({ phase: 'start', action: 'upload', message: `Abrindo diálogo de seleção (selector=${sel})` });
                     await it.click();
                     clicked = true;
                     break;
@@ -493,13 +526,16 @@ export class TimelineService {
         }
         if (!clicked) throw new Error('Opção de upload não encontrada');
 
-        const chooser = await chooserPromise;
-        await chooser.setFiles(filePaths);
+    const chooser = await chooserPromise;
+    this.progress.publish({ phase: 'info', action: 'upload', message: 'Definindo arquivos no file chooser' });
+    await chooser.setFiles(filePaths);
 
         // Tempo de espera pós-seleção (dinâmico)
         const waitMs = 2500 + (filePaths.length * 1200);
         this.logger.log(`⏳ Aguardando ${waitMs}ms para processamento inicial dos arquivos...`);
+        this.progress.publish({ phase: 'delay', action: 'upload', message: `Esperando processamento inicial (${waitMs}ms)`, extra: { fileCount: filePaths.length, waitMs } });
         await page.waitForTimeout(waitMs);
+        this.progress.publish({ phase: 'success', action: 'upload', message: `Processamento inicial concluído (${filePaths.length} arquivo[s])` });
     }
 
     private async executeStatusStep(projectUrl: string, params: any, headless: boolean) {
