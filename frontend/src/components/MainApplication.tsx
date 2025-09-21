@@ -29,8 +29,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
-  // NOVO: modo rápido Playwright
-  const [fastMode, setFastMode] = useState<boolean>(true);
+
 
   const { extractDocuments, clearCache, getProjectByUrl } = useWorkfrontApi();
 
@@ -86,8 +85,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
     try {
       setShowProgress(true);
-      // ALTERADO: passa options com fast
-      const extractedFolders = await extractDocuments(urlToExtract, { fast: fastMode });
+      const extractedFolders = await extractDocuments(urlToExtract);
       setFolders(extractedFolders);
       setSelectedFiles(new Set());
       setShowProgress(false);
@@ -108,22 +106,6 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
               <h1 className="text-xl font-semibold tracking-tight text-card-foreground">VML Workfront Manager</h1>
             </div>
             <div className="flex items-center space-x-4">
-              {/* NOVO: Toggle Fast Mode */}
-              <div className="flex items-center space-x-2">
-                <label className="text-xs font-medium text-muted-foreground">Modo Rápido</label>
-                <button
-                  type="button"
-                  onClick={() => setFastMode(f => !f)}
-                  className={`h-6 w-11 rounded-full relative transition ${fastMode ? 'bg-green-500' : 'bg-muted'
-                    }`}
-                  title="Ativa bloqueio de imagens / fonts / media no Playwright"
-                >
-                  <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${fastMode ? 'right-0.5' : 'left-0.5'
-                      }`}
-                  />
-                </button>
-              </div>
               <div className="flex items-center space-x-2">
                 <UserCheck className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">Conectado</span>

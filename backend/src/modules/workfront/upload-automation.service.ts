@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { chromium, Page } from 'playwright';
+import { Page, Browser } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
+import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
 import { CommentService } from '../pdf/comment.service';
 import { ShareAutomationService } from './share-automation.service';
 import { CommentType } from '../pdf/dto/pdf.dto';
@@ -58,20 +60,18 @@ export class UploadAutomationService {
             if (e) this.logger.log(` • ${path.basename(f)} => ${e.est}s (acumulado ${e.cumulative}s)`);
         });
 
-        const browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
+        const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
         try {
-            const statePath = await this.ensureStateFile();
-            const context = await browser.newContext({ storageState: statePath, viewport: null });
             const page = await context.newPage();
             await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
-            await page.waitForTimeout(4000);
-            await this.waitForWorkfrontFrame(page);
-            const frame = this.frameLocator(page);
-            await this.closeSidebarIfOpen(frame, page);
+            await page.waitForTimeout(3000);
+            try { await page.waitForSelector('iframe[src*="workfront"], iframe[src*="experience"]', { timeout: 10000 }); } catch { }
+            const frame = WorkfrontDomHelper.frameLocator(page);
+            await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
 
             // Asset Release
             if (assetZipPath && assetZipPath.trim()) {
-                await this.navigateToFolder(frame, page, 'Asset Release');
+                await WorkfrontDomHelper.navigateToFolder(frame, page, 'Asset Release');
                 const assetRes = await this.uploadSingleFile(frame, page, assetZipPath);
                 const baseName = path.basename(assetZipPath);
                 const est = estimates.perFile[baseName];
@@ -102,7 +102,7 @@ export class UploadAutomationService {
             }
 
             // Final Materials
-            await this.navigateToFolder(frame, page, 'Final Materials');
+            await WorkfrontDomHelper.navigateToFolder(frame, page, 'Final Materials');
             const pdfs = finalMaterialPaths.filter(f => f.toLowerCase().endsWith('.pdf'));
             const others = finalMaterialPaths.filter(f => !f.toLowerCase().endsWith('.pdf'));
 
@@ -182,7 +182,7 @@ export class UploadAutomationService {
                     estimatedTotalSeconds: results.length ? results[results.length - 1].cumulativeEstimatedSeconds : 0
                 }
             };
-        } finally { try { await browser.close(); } catch { } }
+        } finally { try { await disposeBrowser(undefined, browser as Browser); } catch { } }
     }
 
     // NOVO: cálculo de estimativas
@@ -213,13 +213,9 @@ export class UploadAutomationService {
     }
 
     // Helpers reutilizados (extraídos)
-    private async ensureStateFile() { const p = path.resolve(process.cwd(), STATE_FILE); try { await fs.access(p); return p; } catch { throw new Error('Sessão não encontrada. Faça login.'); } }
-    private frameLocator(page: Page) { return page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first(); }
-    private async closeSidebarIfOpen(frame: any, page: Page) { try { const sb = frame.locator('#page-sidebar [data-testid="minix-container"]').first(); if ((await sb.count()) > 0 && await sb.isVisible()) { const btn = frame.locator('button[data-testid="minix-header-close-btn"]').first(); if ((await btn.count()) > 0) { await btn.click(); await page.waitForTimeout(600); } } } catch { } }
-    private async waitForWorkfrontFrame(page: Page) { try { await page.waitForSelector('iframe[src*="workfront"], iframe[src*="experience"], iframe', { timeout: 10000 }); await page.waitForTimeout(2500); } catch { } }
+    // Removidos: ensureStateFile, frameLocator, closeSidebarIfOpen, waitForWorkfrontFrame (agora em helpers)
     private getOriginalFileName(filePath: string) { const base = path.basename(filePath); const m = base.match(/^[0-9]+_[a-z0-9]+__(.+)$/); return m ? m[1] : base; }
-    private async selectDocumentInPage(frame: any, page: Page, fileName: string) { try { await this.closeSidebarIfOpen(frame, page); await page.waitForTimeout(800); const found = await frame.locator('body').evaluate((body, target) => { const out: any[] = []; body.querySelectorAll('.doc-detail-view').forEach((el: any, i: number) => { const aria = el.getAttribute('aria-label') || ''; const txt = (el.textContent || '').toLowerCase(); if (aria.includes(target) || txt.includes(target.toLowerCase())) out.push({ index: i, ariaLabel: aria, isVisible: el.offsetWidth > 0 && el.offsetHeight > 0 }); }); return out; }, fileName); if (!found || found.length === 0) return false; const target = found.find(f => f.isVisible) || found[0]; if (target.ariaLabel) await frame.locator(`[aria-label="${target.ariaLabel}"]`).first().click(); else await frame.locator(`.doc-detail-view:nth-of-type(${target.index + 1})`).click(); await page.waitForTimeout(1200); return true; } catch { return false; } }
-    private async navigateToFolder(frame: any, page: Page, folderName: string) { try { await this.closeSidebarIfOpen(frame, page); await page.waitForTimeout(1000); const sels = [`button:has-text("13. ${folderName}")`, `button:has-text("14. ${folderName}")`, `button:has-text("15. ${folderName}")`, `button:has-text("${folderName}")`, `a:has-text("${folderName}")`, `[role="button"]:has-text("${folderName}")`, `*[data-testid*="item"]:has-text("${folderName}")`]; for (const sel of sels) { try { const el = frame.locator(sel).first(); if ((await el.count()) > 0 && await el.isVisible()) { await el.click(); await page.waitForTimeout(2500); return true; } } catch { } } return false; } catch { return false; } }
+    // Removidos métodos locais de navegação/seleção em favor do WorkfrontDomHelper
     private async uploadSingleFile(frame: any, page: Page, filePath: string) {
         try {
             await fs.access(filePath); const addSel = ['button[data-testid="add-new"]', 'button.add-new-react-button', 'button:has-text("Add new")', 'button[id="add-new-button"]']; let opened = false; for (const sel of addSel) { try { const b = frame.locator(sel).first(); if ((await b.count()) > 0 && await b.isVisible()) { await b.click(); await page.waitForTimeout(1200); opened = true; break; } } catch { } } if (!opened) return false; const docSels = ['li[data-test-id="upload-file"]', 'li.select-files-button', 'li:has-text("Document")', '[role="menuitem"]:has-text("Document")']; const original = this.getOriginalFileName(filePath); let uploadPath = filePath; if (path.basename(filePath) !== original) { const tmpDir = path.resolve(process.cwd(), 'Downloads', 'staging', '.tmp_uploads'); await fs.mkdir(tmpDir, { recursive: true }); const tmp = path.resolve(tmpDir, original); try { await fs.unlink(tmp); } catch { } await fs.copyFile(filePath, tmp); uploadPath = tmp; }
