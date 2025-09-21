@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { chromium, Page, Locator } from 'playwright';
-import * as path from 'path';
-import * as fs from 'fs/promises';
+import { Page, Locator, Browser } from 'playwright';
+import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
+import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
 
-const STATE_FILE = 'wf_state.json';
 
 // Novos status permitidos
 const ALLOWED_DELIVERABLE_STATUSES = [
@@ -19,11 +18,6 @@ type AllowedStatus = typeof ALLOWED_DELIVERABLE_STATUSES[number];
 export class StatusAutomationService {
     private readonly logger = new Logger(StatusAutomationService.name);
 
-    private async ensureStateFile(): Promise<string> {
-        const statePath = path.resolve(process.cwd(), STATE_FILE);
-        try { await fs.access(statePath); return statePath; } catch { throw new Error('Sessão não encontrada. Faça login em /api/login'); }
-    }
-
     private ensureOverviewUrl(url: string): string {
         if (/\/overview/.test(url)) return url;
         if (/\/tasks/.test(url)) return url.replace(/\/tasks.*/, '/overview');
@@ -31,9 +25,7 @@ export class StatusAutomationService {
         if (/\/project\/[a-f0-9]+$/i.test(url)) return url + '/overview';
         return url;
     }
-
-    private frameLocator(page: any) { return page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first(); }
-    private async closeSidebarIfOpen(frameLocator: any, page: any) { try { const sb = frameLocator.locator('#page-sidebar [data-testid="minix-container"]').first(); if ((await sb.count()) > 0 && await sb.isVisible()) { const closeBtn = frameLocator.locator('button[data-testid="minix-header-close-btn"]').first(); if ((await closeBtn.count()) > 0) { await closeBtn.click(); await page.waitForTimeout(600); } } } catch { } }
+    // frameLocator e closeSidebar agora via WorkfrontDomHelper
 
     /**
      * Atualiza custom field "loc | Status" com robustez extra para o novo layout.
@@ -58,11 +50,9 @@ export class StatusAutomationService {
 
         this.logger.log(`📦 Alterando status do Deliverable para '${deliverableStatus}' (forçado)`);
         const url = this.ensureOverviewUrl(projectUrl);
-        const browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
+    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
 
         try {
-            const statePath = await this.ensureStateFile();
-            const context = await browser.newContext({ storageState: statePath, viewport: null });
             const page = await context.newPage();
             let attempt = 0; let lastErr: any = null; let frame: any = null; let success = false;
             while (attempt < maxAttempts && !success) {
@@ -71,8 +61,8 @@ export class StatusAutomationService {
                 try {
                     await page.goto(url, { waitUntil: 'domcontentloaded' });
                     await page.waitForTimeout(5500);
-                    frame = this.frameLocator(page);
-                    await this.closeSidebarIfOpen(frame, page);
+                    frame = WorkfrontDomHelper.frameLocator(page);
+                    await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
                     await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
                     this.logger.log(`✅ Status atualizado para '${deliverableStatus}' (tentativa ${attempt})`);
                     success = true;
@@ -93,7 +83,7 @@ export class StatusAutomationService {
             this.logger.error(`❌ Erro ao alterar status: ${e?.message}`);
             return { success: false, message: e?.message || 'Falha ao alterar status' };
         } finally {
-            try { await browser.close(); } catch { }
+            try { await disposeBrowser(undefined, browser as Browser); } catch { }
         }
     }
 
@@ -126,7 +116,7 @@ export class StatusAutomationService {
                     await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => { });
                     await page.waitForTimeout(2500);
                 }
-                await this.closeSidebarIfOpen(frame, page);
+                await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
                 await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
                 return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}' (sessão reutilizada)` };
             } catch (e:any) {

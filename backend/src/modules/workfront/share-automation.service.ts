@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { chromium, Browser, Page } from 'playwright';
+import { Browser, Page } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
+import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
 
 const STATE_FILE = 'wf_state.json';
 
@@ -44,6 +46,8 @@ const TEST_TEAM = [
 export class ShareAutomationService {
     private readonly logger = new Logger(ShareAutomationService.name);
 
+    // (Retries migraram para WorkfrontDomHelper – manter apenas se precisarmos overrides futuros)
+
     /**
      * Compartilhar documentos selecionados
      */
@@ -54,10 +58,9 @@ export class ShareAutomationService {
         headless = false,
     ): Promise<{ results: ShareResult[]; summary: { total: number; success: number; errors: number } }> {
         this.validateShareInputs(projectUrl, selections);
-        const statePath = await this.ensureStateFile();
-        const browser: Browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
-        const context = await browser.newContext({ storageState: statePath, viewport: null });
-        const page = await context.newPage();
+    const statePath = await this.ensureStateFile();
+    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: statePath, viewport: { width: 1366, height: 900 } });
+    const page = await context.newPage();
         const results: ShareResult[] = [];
         let successCount = 0; let errorCount = 0;
 
@@ -91,7 +94,7 @@ export class ShareAutomationService {
             }
             return { results, summary: { total: selections.length, success: successCount, errors: errorCount } };
         } finally {
-            try { await browser.close(); } catch { }
+            try { await disposeBrowser(undefined, browser as Browser); } catch { }
         }
     }
 
@@ -104,10 +107,8 @@ export class ShareAutomationService {
         fileName: string,
         headless = false,
     ): Promise<{ browser: Browser; page: Page; frame: any }> {
-        const browser: Browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
-        const statePath = await this.ensureStateFile();
-        const context = await browser.newContext({ storageState: statePath, viewport: null });
-        const page = await context.newPage();
+    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
+    const page = await context.newPage();
 
         this.logger.log('🌍 Abrindo projeto...');
         await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
@@ -151,11 +152,9 @@ export class ShareAutomationService {
         selectedUser: TeamKey = 'carol',
         headless = false,
     ): Promise<{ success: boolean; message?: string }> {
-        const browser: Browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
+    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
 
         try {
-            const statePath = await this.ensureStateFile();
-            const context = await browser.newContext({ storageState: statePath, viewport: null });
             const page = await context.newPage();
 
             await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
@@ -174,62 +173,15 @@ export class ShareAutomationService {
             await this.saveShare(frameLocator, page);
 
             return { success: true, message: `Documento "${fileName}" compartilhado com sucesso` };
-        } finally {
-            await browser.close();
-        }
+        } finally { try { await disposeBrowser(undefined, browser as Browser); } catch { } }
     }
 
     public async navigateToFolder(frameLocator: any, page: Page, folderName: string): Promise<void> {
-        await page.waitForTimeout(2000);
-        const strategies = [
-            `button:has-text("13. ${folderName}")`,
-            `button:has-text("14. ${folderName}")`,
-            `button:has-text("${folderName}")`,
-            `a:has-text("${folderName}")`,
-            `[role="button"]:has-text("${folderName}")`,
-            `*[data-testid*="item"]:has-text("${folderName}")`,
-        ];
-
-        for (const sel of strategies) {
-            try {
-                const el = frameLocator.locator(sel).first();
-                if ((await el.count()) > 0) {
-                    await el.click();
-                    await page.waitForTimeout(4000);
-                    return;
-                }
-            } catch { }
-        }
-        throw new Error(`Pasta "${folderName}" não encontrada`);
+        return WorkfrontDomHelper.navigateToFolder(frameLocator, page, folderName);
     }
 
     public async selectDocument(frameLocator: any, page: Page, fileName: string): Promise<void> {
-        await this.closeSidebarIfOpen(frameLocator, page);
-        await page.waitForTimeout(3000);
-        const docCandidates = await frameLocator.locator('body').evaluate((body, target: string) => {
-            const found: any[] = [];
-            const els = body.querySelectorAll('.doc-detail-view');
-            els.forEach((el: any, idx: number) => {
-                const aria = el.getAttribute('aria-label') || '';
-                const txt = (el.textContent || '').toLowerCase();
-                if (aria.includes(target) || txt.includes(target.toLowerCase())) {
-                    found.push({ index: idx, ariaLabel: aria, isVisible: (el.offsetWidth > 0 && el.offsetHeight > 0) });
-                }
-            });
-            return found;
-        }, fileName);
-
-        if (!docCandidates || docCandidates.length === 0) {
-            throw new Error(`Documento não encontrado: ${fileName}`);
-        }
-
-        const target = docCandidates.find((d: any) => d.isVisible) || docCandidates[0];
-        if (target?.ariaLabel) {
-            await frameLocator.locator(`[aria-label="${target.ariaLabel}"]`).first().click();
-        } else {
-            await frameLocator.locator(`.doc-detail-view:nth-of-type(${(target.index || 0) + 1})`).click();
-        }
-        await page.waitForTimeout(1500);
+        return WorkfrontDomHelper.selectDocument(frameLocator, page, fileName);
     }
 
     public async openShareModal(frameLocator: any, page: Page, opts: { ensureFresh?: boolean } = {}): Promise<void> {
@@ -404,32 +356,10 @@ export class ShareAutomationService {
         return new Promise(r => setTimeout(r, ms));
     }
 
-    private async ensureStateFile() {
-        const statePath = path.resolve(process.cwd(), STATE_FILE);
-        try {
-            await fs.access(statePath);
-            return statePath;
-        } catch {
-            throw new Error('Sessão não encontrada. Faça login primeiro.');
-        }
-    }
-
-    private frameLocator(page: Page) {
-        return page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
-    }
-
-    private async closeSidebarIfOpen(frameLocator: any, page: Page) {
-        try {
-            const sidebar = frameLocator.locator('#page-sidebar [data-testid="minix-container"]').first();
-            if ((await sidebar.count()) > 0 && await sidebar.isVisible()) {
-                const closeBtn = frameLocator.locator('button[data-testid="minix-header-close-btn"]').first();
-                if ((await closeBtn.count()) > 0) {
-                    await closeBtn.click();
-                    await page.waitForTimeout(600);
-                }
-            }
-        } catch { }
-    }
+    // Delegações para manter compatibilidade
+    private async ensureStateFile() { return WorkfrontDomHelper.ensureStateFile(); }
+    private frameLocator(page: Page) { return WorkfrontDomHelper.frameLocator(page); }
+    private async closeSidebarIfOpen(frameLocator: any, page: Page) { return WorkfrontDomHelper.closeSidebarIfOpen(frameLocator, page); }
 
     /**
      * Reutiliza página e frame já abertos para compartilhar vários arquivos (sem abrir novo browser)
@@ -448,22 +378,31 @@ export class ShareAutomationService {
         for (let i = 0; i < selections.length; i++) {
             const { folder, fileName } = selections[i];
             this.logger.log(`📄 [SESSION][${i + 1}/${selections.length}] Share: ${fileName} (${folder})`);
-            try {
-                if (folder && folder !== 'root') {
-                    await this.navigateToFolder(frame, page, folder);
+            let attempt = 0; const maxAttempts = 5; let shared = false; let lastErr: any = null;
+            while (attempt < maxAttempts && !shared) {
+                attempt++;
+                try {
+                    if (folder && folder !== 'root') {
+                        await this.navigateToFolder(frame, page, folder);
+                    }
+                    await this.selectDocument(frame, page, fileName);
+                    await this.openShareModal(frame, page, { ensureFresh: attempt > 1 });
+                    await this.addUsersToShare(frame, page, this.getTeamUsers(selectedUser));
+                    await this.saveShare(frame, page);
+                    results.push({ folder, fileName, success: true, message: `Compartilhado (tentativa ${attempt})` });
+                    success++; shared = true; break;
+                } catch (e: any) {
+                    lastErr = e;
+                    this.logger.warn(`⚠️ Share tentativa ${attempt} falhou para ${fileName}: ${e?.message}`);
+                    if (attempt < maxAttempts) {
+                        // pequeno reload suave do frame (scroll) + pausa
+                        try { await frame.locator('body').evaluate(() => window.scrollBy(0, 300)); } catch { }
+                        await page.waitForTimeout(700);
+                    }
                 }
-                await this.selectDocument(frame, page, fileName);
-                await this.openShareModal(frame, page, { ensureFresh: true });
-                await this.addUsersToShare(frame, page, this.getTeamUsers(selectedUser));
-                await this.saveShare(frame, page);
-                results.push({ folder, fileName, success: true, message: 'Compartilhado' });
-                success++;
-            } catch (e: any) {
-                this.logger.error(`Share falhou para ${fileName}: ${e?.message}`);
-                results.push({ folder, fileName, success: false, error: e?.message || 'Erro' });
-                errors++;
             }
-            await page.waitForTimeout(500);
+            if (!shared) { results.push({ folder, fileName, success: false, error: lastErr?.message || 'Erro' }); errors++; }
+            await page.waitForTimeout(350);
         }
         return { results, summary: { total: selections.length, success, errors } };
     }

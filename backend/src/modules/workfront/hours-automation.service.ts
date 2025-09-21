@@ -1,19 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { chromium } from 'playwright';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-
-const STATE_FILE = 'wf_state.json';
+import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
+import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
 
 @Injectable()
 export class HoursAutomationService {
   private readonly logger = new Logger(HoursAutomationService.name);
   // Valor fixo de horas lançadas por tarefa. Se quiser tornar configurável, mover para variáveis de ambiente.
   static readonly FORCED_HOURS_PER_TASK = 0.3;
-  private async ensureStateFile(): Promise<string> { const p = path.resolve(process.cwd(), STATE_FILE); try { await fs.access(p); return p; } catch { throw new Error('Sessão não encontrada. Faça login em /api/login'); } }
-  private ensureTasksUrl(url: string): string { if (/\/tasks/.test(url)) return url; if (/\/overview/.test(url)) return url.replace(/\/overview.*/, '/tasks'); if (/\/documents/.test(url)) return url.replace(/\/documents.*/, '/tasks'); if (/\/project\/[a-f0-9]+$/i.test(url)) return url + '/tasks'; return url + '/tasks'; }
-  private frameLocator(page: any) { return page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first(); }
-  private async closeSidebarIfOpen(frameLocator: any, page: any) { try { const sb = frameLocator.locator('#page-sidebar [data-testid="minix-container"]').first(); if ((await sb.count()) > 0 && await sb.isVisible()) { const closeBtn = frameLocator.locator('button[data-testid="minix-header-close-btn"]').first(); if ((await closeBtn.count()) > 0) { await closeBtn.click(); await page.waitForTimeout(600); } } } catch { } }
+  // Métodos utilitários agora centralizados em WorkfrontDomHelper
 
   // NOVO: formata horas (usa vírgula como solicitado)
   private formatHoursValue(hours: number) {
@@ -312,17 +306,15 @@ export class HoursAutomationService {
   // NOVO: utilitário de mapa completo da página de tasks
   async mapTasksPage(params: { projectUrl: string; headless?: boolean }): Promise<{ success: boolean; message: string; data?: any }> {
     const { projectUrl, headless = true } = params;
-    const tasksUrl = this.ensureTasksUrl(projectUrl);
+  const tasksUrl = WorkfrontDomHelper.ensureTasksUrl(projectUrl);
     this.logger.log(`🗺️ Iniciando mapeamento da página: ${tasksUrl}`);
-    const browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
+  const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile() });
     try {
-      const statePath = await this.ensureStateFile();
-      const context = await browser.newContext({ storageState: statePath, viewport: null });
       const page = await context.newPage();
       await page.goto(tasksUrl, { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(7000);
-      const frame = this.frameLocator(page);
-      await this.closeSidebarIfOpen(frame, page);
+  const frame = WorkfrontDomHelper.frameLocator(page);
+  await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
 
       const data = await this.collectPageMap(frame);
       this.logger.log('📌 Resumo do mapa:');
@@ -337,7 +329,7 @@ export class HoursAutomationService {
     } catch (e: any) {
       this.logger.error('❌ Falha ao mapear: ' + e?.message);
       return { success: false, message: e?.message || 'Erro ao mapear página' };
-    } finally { try { await browser.close(); } catch { } }
+    } finally { try { await disposeBrowser(undefined, browser); } catch { } }
   }
 
   // NOVO: coleta estruturada
@@ -387,22 +379,19 @@ export class HoursAutomationService {
     const { projectUrl, note, taskName, headless = false, fast = true, debugMap = false } = params;
     // Ignora params.hours e força 0.3
     const forcedHours = HoursAutomationService.FORCED_HOURS_PER_TASK;
-    const tasksUrl = this.ensureTasksUrl(projectUrl);
+  const tasksUrl = WorkfrontDomHelper.ensureTasksUrl(projectUrl);
     this.logger.log(`🚀 Iniciando fluxo de Log Time em: ${tasksUrl}`);
     this.logger.log(`ℹ️ Forçando lançamento de ${forcedHours}h por tarefa (valor recebido ignorado).`);
 
-    const browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
+  const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile() });
     let page: any; let frame: any;
     try {
-      const statePath = await this.ensureStateFile();
-      const context = await browser.newContext({ storageState: statePath, viewport: null });
-      if (fast) await this.applyFastNetworkRouting(context);
       page = await context.newPage();
       this.logger.log('🌐 Carregando página de tasks...');
       await page.goto(tasksUrl, { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(8000);
-      frame = this.frameLocator(page);
-      await this.closeSidebarIfOpen(frame, page);
+  frame = WorkfrontDomHelper.frameLocator(page);
+  await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
 
       let collectedMap: any | undefined;
       if (debugMap) {
@@ -437,7 +426,7 @@ export class HoursAutomationService {
       this.logger.error(`❌ Erro geral no fluxo de horas: ${e?.message}`);
       return { success: false, message: e?.message || 'Falha no fluxo de horas' };
     } finally {
-      try { await browser.close(); } catch { }
+      try { await disposeBrowser(undefined, browser); } catch { }
     }
   }
 
@@ -445,7 +434,7 @@ export class HoursAutomationService {
   async logHoursInOpenSession(params: { page: any; frame: any; projectUrl: string; hours: number; note?: string; taskName?: string; debugMap?: boolean; maxAttempts?: number; retryDelay?: number }): Promise<{ success: boolean; message: string; loggedHours?: number; map?: any }> {
     const { page, frame, projectUrl, note, taskName, debugMap = false, maxAttempts = 3, retryDelay = 2500 } = params;
     const forcedHours = HoursAutomationService.FORCED_HOURS_PER_TASK;
-    const tasksUrl = this.ensureTasksUrl(projectUrl);
+  const tasksUrl = WorkfrontDomHelper.ensureTasksUrl(projectUrl);
     try {
       // Navega para /tasks se necessário
       if (!/\/tasks(\?|$)/.test(page.url())) {
@@ -453,7 +442,7 @@ export class HoursAutomationService {
         await page.goto(tasksUrl, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(6000);
       }
-      await this.closeSidebarIfOpen(frame, page);
+  await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
 
       let collectedMap: any | undefined;
       if (debugMap) {
@@ -474,10 +463,10 @@ export class HoursAutomationService {
           try {
             const accordion = frame.locator('[data-testid*="accordion"], .accordion, .MuiAccordion-root').first();
             if ((await accordion.count()) > 0) {
-              await accordion.click({ timeout: 2000 }).catch(() => {});
+              await accordion.click({ timeout: 2000 }).catch(() => { });
               this.logger.log('🪗 Clique no accordion realizado para forçar renderização.');
             }
-          } catch {}
+          } catch { }
           const r = await this.processTaskHours(page, frame, tasksUrl, t, forcedHours, note);
           ok = r.success;
           lastMsg = r.message;
@@ -485,7 +474,7 @@ export class HoursAutomationService {
             this.logger.warn(`⚠️ Falha ao lançar horas para "${t}" (tentativa ${attempt}): ${lastMsg}. Recarregando página e tentando novamente em ${retryDelay}ms...`);
             await page.reload({ waitUntil: 'domcontentloaded' });
             await page.waitForTimeout(retryDelay);
-            await this.closeSidebarIfOpen(frame, page);
+            await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
           }
         }
         results.push({ task: t, success: ok, message: lastMsg });
@@ -506,15 +495,5 @@ export class HoursAutomationService {
     }
   }
 
-  private async applyFastNetworkRouting(context: any) { // NOVO
-    const BLOCK_TYPES = new Set(['image', 'media', 'font']);
-    const BLOCK_DOMAINS = ['google-analytics', 'doubleclick', 'facebook.net', 'googletagmanager', 'hotjar', 'optimizely'];
-    await context.route('**/*', r => {
-      const req = r.request();
-      if (BLOCK_TYPES.has(req.resourceType())) return r.abort();
-      const url = req.url();
-      if (BLOCK_DOMAINS.some(d => url.includes(d))) return r.abort();
-      return r.continue();
-    });
-  }
+  // applyFastNetworkRouting removida (substituída por otimização global em createOptimizedContext)
 }

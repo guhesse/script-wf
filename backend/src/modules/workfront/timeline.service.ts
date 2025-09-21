@@ -5,7 +5,9 @@ import { StatusAutomationService } from './status-automation.service';
 import { HoursAutomationService } from './hours-automation.service';
 import { CommentService } from '../pdf/comment.service';
 import { CommentType } from '../pdf/dto/pdf.dto';
-import { chromium, Browser, Page } from 'playwright';
+import { Browser, Page } from 'playwright';
+import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
+import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
 
 export enum WorkflowAction {
     SHARE = 'share',
@@ -40,6 +42,11 @@ export interface TimelineConfig {
 export class TimelineService {
     private readonly logger = new Logger(TimelineService.name);
 
+    // Configuração de estabilização pós-upload (ajustável via ENV)
+    private readonly MIN_DELAY_AFTER_UPLOAD_MS = parseInt(process.env.WF_MIN_DELAY_AFTER_UPLOAD_MS || '8000', 10);
+    private readonly DELAY_PER_FILE_AFTER_UPLOAD_MS = parseInt(process.env.WF_DELAY_PER_FILE_MS || '1200', 10);
+    private readonly MAX_DELAY_AFTER_UPLOAD_MS = parseInt(process.env.WF_MAX_DELAY_AFTER_UPLOAD_MS || '20000', 10);
+
     constructor(
         private readonly shareService: ShareAutomationService,
         private readonly uploadService: UploadAutomationService,
@@ -72,29 +79,26 @@ export class TimelineService {
         ].includes(s.action));
         const useSessionMode = sessionActions.length > 0;
 
-        let browser: Browser | null = null; let page: Page | null = null; let frame: any = null;
+    let browser: Browser | null = null; let page: Page | null = null; let frame: any = null;
+    let lastUploadCompletedAt: number | null = null; // timestamp fim do último upload
+    let lastUploadPlannedDelay: number = 0;          // atraso planejado calculado
 
         this.logger.log('🎬 === INICIANDO WORKFLOW DE AÇÕES ===');
         this.logger.log(`📍 Projeto: ${projectUrl}`);
         this.logger.log(`📋 Total de steps: ${steps.length}`);
 
-    if (useSessionMode) {
+        if (useSessionMode) {
             try {
-        this.logger.log('🧩 Abrindo browser de sessão única para ações: ' + sessionActions.map(a => a.action).join(', '));
-                browser = await chromium.launch({ headless, args: headless ? [] : ['--start-maximized'] });
-                // Reusa state file através de shareService utilitário (garante login)
-                // Aproveitamos ensureStateFile indiretamente chamando openProjectAndSelectDocument? Melhor abrir manualmente.
-                const statePath = (this.shareService as any).ensureStateFile ? await (this.shareService as any).ensureStateFile() : 'wf_state.json';
-                const context = await browser.newContext({ storageState: statePath, viewport: null });
+                this.logger.log('🧩 Abrindo browser otimizado (sessão única) para ações: ' + sessionActions.map(a => a.action).join(', '));
+                const { browser: b, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
+                browser = b;
                 page = await context.newPage();
                 await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
-                await page.waitForTimeout(3500);
-                frame = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
-                // fechar sidebar se existir
-                try { await (this.shareService as any).closeSidebarIfOpen(frame, page); } catch { }
+                await page.waitForTimeout(3000);
+                frame = WorkfrontDomHelper.frameLocator(page);
+                await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
             } catch (e: any) {
-                this.logger.error('❌ Falha ao preparar sessão única: ' + e?.message);
-                // fallback: session mode desabilitado
+                this.logger.error('❌ Falha ao preparar sessão única otimizada: ' + e?.message);
                 browser = null; page = null; frame = null;
             }
         }
@@ -106,6 +110,16 @@ export class TimelineService {
                 this.logger.log(`⏭️ [${i + 1}/${steps.length}] Pulando: ${step.action}`);
                 skipped++;
                 continue;
+            }
+
+            // Aguarda estabilização pós upload antes de SHARE ou COMMENT se necessário
+            if (lastUploadCompletedAt && [WorkflowAction.SHARE, WorkflowAction.COMMENT].includes(step.action)) {
+                const elapsed = Date.now() - lastUploadCompletedAt;
+                if (elapsed < lastUploadPlannedDelay) {
+                    const remaining = lastUploadPlannedDelay - elapsed;
+                    this.logger.log(`⏳ Aguardando ${remaining}ms (estabilização pós upload: planejado ${lastUploadPlannedDelay}ms, decorrido ${elapsed}ms)`);
+                    try { await (page ?? { waitForTimeout: (ms:number)=>new Promise(r=>setTimeout(r,ms)) }).waitForTimeout(remaining); } catch { await new Promise(r => setTimeout(r, remaining)); }
+                }
             }
 
             this.logger.log(`🎯 [${i + 1}/${steps.length}] Executando: ${step.action}`);
@@ -136,6 +150,16 @@ export class TimelineService {
                 if (result.success) {
                     successful++;
                     this.logger.log(`✅ ${step.action} concluído em ${duration}ms`);
+                    if (step.action === WorkflowAction.UPLOAD) {
+                        lastUploadCompletedAt = Date.now();
+                        const fileCount = this.estimateUploadFileCount(step);
+                        const planned = Math.min(
+                            this.MIN_DELAY_AFTER_UPLOAD_MS + (fileCount * this.DELAY_PER_FILE_AFTER_UPLOAD_MS),
+                            this.MAX_DELAY_AFTER_UPLOAD_MS
+                        );
+                        lastUploadPlannedDelay = planned;
+                        this.logger.log(`🕒 Upload finalizado. Arquivos estimados=${fileCount}. Delay planejado para estabilização: ${planned}ms`);
+                    }
                 } else {
                     failed++;
                     this.logger.error(`❌ ${step.action} falhou: ${result.message}`);
@@ -178,7 +202,7 @@ export class TimelineService {
         // (Mantido para futura otimização: poderíamos separar fases caso necessário)
 
         // Encerrar sessão única
-        if (browser) { try { await browser.close(); } catch { } }
+    if (browser) { try { await browser.close(); } catch { } }
 
         this.logger.log('📊 === WORKFLOW FINALIZADO ===');
         this.logger.log(`✅ Sucessos: ${successful}`);
@@ -190,6 +214,16 @@ export class TimelineService {
             results,
             summary
         };
+    }
+
+    /** Calcula número de arquivos do step de upload para definir delay dinâmico pós-processamento */
+    private estimateUploadFileCount(step: WorkflowStep): number {
+        if (step.action !== WorkflowAction.UPLOAD) return 0;
+        const p = step.params || {};
+        let count = 0;
+        if (p.assetZipPath && String(p.assetZipPath).trim()) count += 1;
+        if (Array.isArray(p.finalMaterialPaths)) count += p.finalMaterialPaths.length;
+        return count;
     }
 
     /**
