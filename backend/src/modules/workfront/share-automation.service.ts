@@ -55,7 +55,7 @@ export class ShareAutomationService {
         projectUrl: string,
         selections: ShareSelection[],
         selectedUser: TeamKey = 'carol',
-        headless = false,
+    headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
     ): Promise<{ results: ShareResult[]; summary: { total: number; success: number; errors: number } }> {
         this.validateShareInputs(projectUrl, selections);
     const statePath = await this.ensureStateFile();
@@ -105,7 +105,7 @@ export class ShareAutomationService {
         projectUrl: string,
         folderName: string,
         fileName: string,
-        headless = false,
+    headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
     ): Promise<{ browser: Browser; page: Page; frame: any }> {
     const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
     const page = await context.newPage();
@@ -150,7 +150,7 @@ export class ShareAutomationService {
         folderName: string,
         fileName: string,
         selectedUser: TeamKey = 'carol',
-        headless = false,
+    headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
     ): Promise<{ success: boolean; message?: string }> {
     const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
 

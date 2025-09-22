@@ -65,8 +65,9 @@ export class TimelineService {
         results: WorkflowResult[];
         summary: { total: number; successful: number; failed: number; skipped: number };
     }> {
-    const envHeadless = (process.env.WF_HEADLESS_DEFAULT || 'true').toLowerCase() === 'true';
-    const { projectUrl, steps, headless = envHeadless, stopOnError = false } = config;
+    // Headless padrão controlado por variável de ambiente WF_HEADLESS_DEFAULT (default 'true')
+    const defaultHeadless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true';
+    const { projectUrl, steps, headless = defaultHeadless, stopOnError = false } = config;
         const results: WorkflowResult[] = [];
         let successful = 0;
         let failed = 0;

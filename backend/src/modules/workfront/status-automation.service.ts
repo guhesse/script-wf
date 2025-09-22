@@ -38,7 +38,7 @@ export class StatusAutomationService {
         maxAttempts?: number;
         retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-        const { projectUrl, headless = false, maxAttempts = 4, retryDelay = 3500 } = params;
+    const { projectUrl, headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true', maxAttempts = 4, retryDelay = 3500 } = params;
         const deliverableStatus = FORCE_STATUS; // ignora param externo
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
@@ -321,7 +321,7 @@ export class StatusAutomationService {
         return this.updateDeliverableStatus({
             projectUrl: params.projectUrl,
             deliverableStatus: params.statusLabel,
-            headless: params.headless
+            headless: params.headless ?? (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true'
         });
     }
 }

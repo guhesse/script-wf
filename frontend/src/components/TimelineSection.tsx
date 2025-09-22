@@ -66,13 +66,13 @@ type AllowedStatus = typeof ALLOWED_STATUS[number];
 export default function TimelineSection({ projectUrl, selectedUser, stagedPaths }: TimelineSectionProps) {
     // Passos base sempre presentes (params podem ser preenchidos depois)
     const baseSteps: WorkflowStep[] = [
-        { action: 'upload_asset',   enabled: false, params: { kind: 'upload_asset', assetZipPath: '' , selectedUser }, description: 'Upload do ZIP para Asset Release', folder: 'Asset Release', group: 'asset' },
-        { action: 'share_asset',    enabled: false, params: { kind: 'share_asset', selections: [], selectedUser },      description: 'Compartilhar ZIP',               folder: 'Asset Release', group: 'asset' },
-        { action: 'comment_asset',  enabled: false, params: { kind: 'comment_asset', folder: 'Asset Release', fileName: '', commentType: 'assetRelease', selectedUser }, description: 'Comentário Asset Release', folder: 'Asset Release', group: 'asset' },
-        { action: 'upload_finals',  enabled: false, params: { kind: 'upload_finals', finalMaterialPaths: [], selectedUser }, description: 'Upload de finais',          folder: 'Final Materials', group: 'finals' },
+        { action: 'upload_asset', enabled: false, params: { kind: 'upload_asset', assetZipPath: '', selectedUser }, description: 'Upload do ZIP para Asset Release', folder: 'Asset Release', group: 'asset' },
+        { action: 'share_asset', enabled: false, params: { kind: 'share_asset', selections: [], selectedUser }, description: 'Compartilhar ZIP', folder: 'Asset Release', group: 'asset' },
+        { action: 'comment_asset', enabled: false, params: { kind: 'comment_asset', folder: 'Asset Release', fileName: '', commentType: 'assetRelease', selectedUser }, description: 'Comentário Asset Release', folder: 'Asset Release', group: 'asset' },
+        { action: 'upload_finals', enabled: false, params: { kind: 'upload_finals', finalMaterialPaths: [], selectedUser }, description: 'Upload de finais', folder: 'Final Materials', group: 'finals' },
         { action: 'comment_finals', enabled: false, params: { kind: 'comment_finals', folder: 'Final Materials', fileName: '', commentType: 'finalMaterials', selectedUser }, description: 'Comentário PDF Final', folder: 'Final Materials', group: 'finals' },
-        { action: 'status',         enabled: false, params: { kind: 'status', deliverableStatus: 'Round 1 Review' }, description: 'Atualizar status', group: 'extra' },
-        { action: 'hours',          enabled: false, params: { kind: 'hours', hours: 1, note: '', taskName: '' },        description: 'Lançar horas',     group: 'extra' },
+        { action: 'status', enabled: false, params: { kind: 'status', deliverableStatus: 'Round 1 Review' }, description: 'Atualizar status', group: 'extra' },
+        { action: 'hours', enabled: false, params: { kind: 'hours', hours: 1, note: '', taskName: '' }, description: 'Lançar horas', group: 'extra' },
     ];
 
     const [steps, setSteps] = useState<WorkflowStep[]>(baseSteps);
@@ -145,13 +145,13 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
     // Valida se um passo tem params suficientes para execução
     const isParamReady = (step: WorkflowStep) => {
         if (!step.params) return false;
-        if (step.action === 'upload_asset')   return !!(step.params as UploadAssetParams).assetZipPath;
-        if (step.action === 'share_asset')    return (step.params as ShareAssetParams).selections?.length > 0;
-        if (step.action === 'comment_asset')  return !!(step.params as CommentParams).fileName;
-        if (step.action === 'upload_finals')  return (step.params as UploadFinalsParams).finalMaterialPaths?.length > 0;
+        if (step.action === 'upload_asset') return !!(step.params as UploadAssetParams).assetZipPath;
+        if (step.action === 'share_asset') return (step.params as ShareAssetParams).selections?.length > 0;
+        if (step.action === 'comment_asset') return !!(step.params as CommentParams).fileName;
+        if (step.action === 'upload_finals') return (step.params as UploadFinalsParams).finalMaterialPaths?.length > 0;
         if (step.action === 'comment_finals') return !!(step.params as CommentParams).fileName;
-        if (step.action === 'status')         return !!(step.params as StatusParams).deliverableStatus;
-        if (step.action === 'hours')          return (step.params as HoursParams).hours > 0;
+        if (step.action === 'status') return !!(step.params as StatusParams).deliverableStatus;
+        if (step.action === 'hours') return (step.params as HoursParams).hours > 0;
         return false;
     };
 
@@ -178,10 +178,10 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
     };
 
     // Presets
-    const presetAssetOnly   = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'asset' })));
-    const presetFinalsOnly  = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'finals' })));
-    const presetFullFlow    = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'asset' || s.group === 'finals' })));
-    const presetStatusOnly  = () => setSteps(p => p.map(s => ({ ...s, enabled: s.action === 'status' })));
+    const presetAssetOnly = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'asset' })));
+    const presetFinalsOnly = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'finals' })));
+    const presetFullFlow = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'asset' || s.group === 'finals' })));
+    const presetStatusOnly = () => setSteps(p => p.map(s => ({ ...s, enabled: s.action === 'status' })));
     const presetStatusHours = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'extra' })));
 
 
@@ -408,21 +408,21 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                                                         <div className="flex items-center gap-3">
                                                             <Label className="text-xs w-24">Horas:</Label>
                                                             <Input type="number" min={0.25} step={0.25} className="h-8 w-32"
-                                                                   value={(step.params as HoursParams).hours ?? ''}
-                                                                   onChange={e => updateStepParam(idx, 'hours', parseFloat(e.target.value))} />
+                                                                value={(step.params as HoursParams).hours ?? ''}
+                                                                onChange={e => updateStepParam(idx, 'hours', parseFloat(e.target.value))} />
                                                         </div>
                                                         <div className="flex items-center gap-3">
                                                             <Label className="text-xs w-24">Nota:</Label>
                                                             <Input className="h-8"
-                                                                   value={(step.params as HoursParams).note ?? ''}
-                                                                   onChange={e => updateStepParam(idx, 'note', e.target.value)} />
+                                                                value={(step.params as HoursParams).note ?? ''}
+                                                                onChange={e => updateStepParam(idx, 'note', e.target.value)} />
                                                         </div>
                                                         <div className="flex items-center gap-3">
                                                             <Label className="text-xs w-24">Tarefa:</Label>
                                                             <Input className="h-8"
-                                                                   value={(step.params as HoursParams).taskName ?? ''}
-                                                                   onChange={e => updateStepParam(idx, 'taskName', e.target.value)}
-                                                                   placeholder="(opcional)" />
+                                                                value={(step.params as HoursParams).taskName ?? ''}
+                                                                onChange={e => updateStepParam(idx, 'taskName', e.target.value)}
+                                                                placeholder="(opcional)" />
                                                         </div>
                                                     </div>
                                                 )}
