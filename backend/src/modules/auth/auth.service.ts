@@ -54,7 +54,7 @@ export class AuthService {
     this.logger.log('🔐 === FAZENDO LOGIN NO WORKFRONT ===');
 
     const browser = await chromium.launch({
-      headless: false, // Login sempre visível para autenticação manual
+      headless: false,
       args: ['--start-maximized'],
     });
 
@@ -68,14 +68,31 @@ export class AuthService {
       this.logger.log('🌍 Abrindo Experience Cloud...');
       await page.goto('https://experience.adobe.com/', { waitUntil: 'domcontentloaded' });
 
-      this.logger.log('👤 Complete o login SSO/MFA nos próximos 90 segundos...');
-      await page.waitForTimeout(90000);
+      this.logger.log('👤 Complete o login SSO/MFA. Aguardando até 90s ou fechamento manual...');
+
+      // Aguardar com checagem periódica se o contexto foi fechado
+      const maxWait = 90000;
+      const interval = 3000;
+      let waited = 0;
+      while (waited < maxWait) {
+        if (page.isClosed()) {
+          this.logger.warn('⚠️ Página fechada antes do tempo. Tentando salvar estado assim mesmo.');
+          break;
+        }
+        await page.waitForTimeout(interval);
+        waited += interval;
+      }
 
       // Salvar estado da sessão
       await context.storageState({ path: this.STATE_FILE });
       this.logger.log(`✅ Sessão salva em ${this.STATE_FILE}`);
+    } catch (e: any) {
+      this.logger.error('Erro durante login interativo', e.message);
+      throw e;
     } finally {
-      await browser.close();
+      if (browser.isConnected()) {
+        await browser.close();
+      }
     }
   }
 

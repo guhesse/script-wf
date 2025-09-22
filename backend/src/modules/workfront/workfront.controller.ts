@@ -780,7 +780,7 @@ export class WorkfrontController {
   })
   async executeUpload(@Body() executeDto: ExecuteUploadDto): Promise<UploadExecutionResponseDto> {
     try {
-      const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, headless } = executeDto;
+  const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths } = executeDto;
 
       this.logger.log(`🚀 Executando upload automation: ${assetZipPath} + ${finalMaterialPaths.length} finals`);
 
@@ -789,7 +789,7 @@ export class WorkfrontController {
         selectedUser,
         assetZipPath,
         finalMaterialPaths,
-        headless: headless || false,
+  headless: (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
       });
 
       return result;
@@ -815,7 +815,7 @@ export class WorkfrontController {
   @ApiOperation({ summary: 'Lançar horas em uma tarefa (primeira ou pelo nome)' })
   async logHours(@Body() body: LogHoursDto) {
     try {
-      return await this.hoursAutomation.logHours({ projectUrl: body.projectUrl, hours: body.hours, note: body.note, taskName: body.taskName, headless: body.headless });
+  return await this.hoursAutomation.logHours({ projectUrl: body.projectUrl, hours: body.hours, note: body.note, taskName: body.taskName, headless: (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true' });
     } catch (e: any) {
       throw new HttpException({ success: false, message: e?.message || 'Falha ao lançar horas' }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -838,7 +838,7 @@ export class WorkfrontController {
   })
   async executeWorkflow(@Body() body: any) {
     try {
-      const { projectUrl, steps, headless, stopOnError } = body;
+  const { projectUrl, steps, stopOnError } = body;
       
       if (!projectUrl) {
         throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
@@ -851,7 +851,7 @@ export class WorkfrontController {
       const result = await this.timelineService.executeWorkflow({
         projectUrl,
         steps,
-        headless: headless || false,
+  headless: (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
         stopOnError: stopOnError || false
       });
 

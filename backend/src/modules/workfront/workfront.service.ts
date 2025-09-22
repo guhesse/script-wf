@@ -173,7 +173,7 @@ export class WorkfrontService {
      */
     async shareDocuments(shareData: ShareDocumentsDto): Promise<ShareDocumentsResponseDto> {
         try {
-            const { projectUrl, selections, selectedUser = 'carol', userAgent, ipAddress, headless = false } = shareData;
+            const { projectUrl, selections, selectedUser = 'carol', userAgent, ipAddress, headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true' } = shareData;
 
             // 1. Buscar ou criar projeto
             let project = await this.workfrontRepository.findByUrl(projectUrl);
@@ -231,7 +231,7 @@ export class WorkfrontService {
      * Fluxo combinado: Compartilhar + Comentar (por arquivo) com suporte a múltiplas URLs
      */
     async shareAndComment(payload: ShareAndCommentDto): Promise<ShareAndCommentResponseDto> {
-        const headless = payload.headless === true;
+    const headless = payload.headless === true ? true : (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true';
         const selectedUser = (payload.selectedUser || UserTeam.CAROL) as UserTeam;
         const commentType = (payload.commentType || CommentType.ASSET_RELEASE) as CommentType;
 

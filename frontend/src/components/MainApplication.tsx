@@ -6,13 +6,15 @@ import {
   FolderOpen,
   History,
   FolderDown,
-  FileText
+  FileText,
+  GalleryHorizontal
 } from 'lucide-react';
 import { ProjectHistory } from './ProjectHistory';
 import UploadSection from './UploadSection';
 import BulkDownload from './BulkDownload';
 import BriefingContentViewer from './BriefingContentViewer';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
+import MastersGallery from './MastersGallery';
 import type { WorkfrontFolder } from '@/types';
 
 interface MainApplicationProps {
@@ -25,7 +27,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history'>('upload');
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters'>('upload');
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
@@ -179,6 +181,16 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 <History className="h-5 w-5" />
                 <span className="font-medium">Histórico</span>
               </button>
+                <button
+                  onClick={() => setActiveSection('masters')}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'masters'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                >
+                  <GalleryHorizontal className="h-5 w-5" />
+                  <span className="font-medium">Masters</span>
+                </button>
             </nav>
           </div>
 
@@ -210,6 +222,9 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
               <ProjectHistory
                 onLoadProject={handleLoadProjectFromHistory}
               />
+            )}
+            {activeSection === 'masters' && (
+              <MastersGallery />
             )}
           </div>
         </div>

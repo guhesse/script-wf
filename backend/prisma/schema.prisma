@@ -160,3 +160,66 @@ enum DownloadStatus {
   FAILED
   PARTIAL
 }
+
+// =============================
+// Masters (Arquivos principais)
+// =============================
+
+/// Tipo de arquivo master (extensão/base)
+enum MasterFileType {
+  PSD
+  AI
+  AE
+  HTML
+  PDF
+  JPG
+  PNG
+  MP4
+  OTHER
+}
+
+/// Tipo de editável (como será reutilizado)
+enum MasterEditableType {
+  STATIC
+  WIREFRAME
+  ANIMATED
+  HTML
+  VIDEO
+  TEMPLATE
+  DOCUMENT
+  OTHER
+}
+
+/// Registro de master assets armazenados no Bunny CDN
+model MasterAsset {
+  id             String             @id @default(cuid())
+  title          String
+  brand          String?            // Nome da marca
+  description    String?
+  fileName       String             // Nome do arquivo original
+  fileType       MasterFileType     // Tipo do arquivo (PSD, AI, etc)
+  editableType   MasterEditableType // Classificação de uso
+  fileSize       BigInt             // Em bytes
+  frameCount     Int?               // Quantidade de frames (se aplicável - animações / vídeos)
+  width          Int?               // Largura em px (quando aplicável)
+  height         Int?               // Altura em px (quando aplicável)
+  aspectRatio    String?            // Ex: 16:9, 1:1
+  checksum       String?            @unique // Hash (MD5/SHA1) p/ deduplicação
+  bunnyPath      String             // Caminho relativo na storage do Bunny
+  bunnyCdnUrl    String             // URL CDN pública
+  previewImageUrl String?           // Miniatura gerada (armazenada também no Bunny)
+  tags           String[]           // Tags livres
+  version        Int                @default(1)
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  archivedAt     DateTime?
+
+  // Índices auxiliares
+  @@index([brand])
+  @@index([fileType])
+  @@index([editableType])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("master_assets")
+}

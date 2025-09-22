@@ -102,3 +102,38 @@ export interface ProjectHistoryResponse {
 }
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+// Masters (assets principais)
+export type MasterFileType = 'PSD' | 'AI' | 'INDD' | 'XD' | 'FIGMA' | 'PDF' | 'JPG' | 'PNG' | 'MP4' | 'OTHER';
+export type MasterEditableType = 'STATIC' | 'ANIMATED' | 'VIDEO' | 'TEMPLATE' | 'DOCUMENT' | 'OTHER';
+
+export interface MasterAsset {
+  id: string;
+  title: string;
+  brand?: string;
+  description?: string;
+  fileName: string;
+  fileType: MasterFileType;
+  editableType: MasterEditableType;
+  fileSize: number;
+  frameCount?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: string;
+  checksum?: string;
+  bunnyPath: string;
+  bunnyCdnUrl: string;
+  previewImageUrl?: string;
+  tags: string[];
+  version: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt?: string;
+}
+
+export interface ListMastersResponse {
+  success: boolean;
+  items: MasterAsset[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+}
