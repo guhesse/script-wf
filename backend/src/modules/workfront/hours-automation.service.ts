@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
 import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
+import { resolveHeadless } from './utils/headless.util';
 
 @Injectable()
 export class HoursAutomationService {
@@ -305,7 +306,7 @@ export class HoursAutomationService {
 
   // NOVO: utilitário de mapa completo da página de tasks
   async mapTasksPage(params: { projectUrl: string; headless?: boolean }): Promise<{ success: boolean; message: string; data?: any }> {
-  const { projectUrl, headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true' } = params;
+  const { projectUrl, headless = resolveHeadless() } = params;
   const tasksUrl = WorkfrontDomHelper.ensureTasksUrl(projectUrl);
     this.logger.log(`🗺️ Iniciando mapeamento da página: ${tasksUrl}`);
   const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile() });
@@ -376,7 +377,7 @@ export class HoursAutomationService {
 
   // ALTERADO: logHours suporta debugMap
   async logHours(params: { projectUrl: string; hours: number; note?: string; taskName?: string; headless?: boolean; fast?: boolean; debugMap?: boolean }): Promise<{ success: boolean; message: string; loggedHours?: number; map?: any }> {
-  const { projectUrl, note, taskName, headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true', fast = true, debugMap = false } = params;
+  const { projectUrl, note, taskName, headless = resolveHeadless(), fast = true, debugMap = false } = params;
     // Ignora params.hours e força 0.3
     const forcedHours = HoursAutomationService.FORCED_HOURS_PER_TASK;
   const tasksUrl = WorkfrontDomHelper.ensureTasksUrl(projectUrl);

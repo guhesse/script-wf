@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Page, Locator, Browser } from 'playwright';
 import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
 import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
+import { resolveHeadless } from './utils/headless.util';
 
 
 // Novos status permitidos
@@ -38,7 +39,7 @@ export class StatusAutomationService {
         maxAttempts?: number;
         retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-    const { projectUrl, headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true', maxAttempts = 4, retryDelay = 3500 } = params;
+    const { projectUrl, headless = resolveHeadless(), maxAttempts = 4, retryDelay = 3500 } = params;
         const deliverableStatus = FORCE_STATUS; // ignora param externo
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
