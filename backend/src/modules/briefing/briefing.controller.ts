@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Delete, Query, Body } from '@nestjs/common';
+import { BriefingPptService } from './briefing-ppt.service';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { BriefingService } from './briefing.service';
 import { BriefingCommentsAnalysisResponseDto } from './dto/briefing-comments-analysis.dto';
@@ -14,7 +15,7 @@ import {
 @ApiTags('Briefing')
 @Controller('api/briefing')
 export class BriefingController {
-  constructor(private readonly briefingService: BriefingService) {}
+  constructor(private readonly briefingService: BriefingService, private readonly pptService: BriefingPptService) {}
 
   @Get('health')
   @ApiOperation({ summary: 'Health check para o serviço de briefing' })
@@ -75,5 +76,38 @@ export class BriefingController {
     @Query('dsid') dsid?: string,
   ): Promise<BriefingCommentsAnalysisResponseDto> {
     return this.briefingService.analyzeComments({ projectId, downloadId, dsid });
+  }
+
+  @Get('ppt/mock')
+  @ApiOperation({ summary: 'Gerar PPT de 1 slide mockado (salva em disco temporário)' })
+  async generateMockPpt() {
+    const mockData = {
+      dsid: '5479874',
+      structuredData: {
+        week: 'W10',
+        liveDate: 'Oct 10 – Oct 31',
+        vf: 'Microsoft JMA',
+        headline: 'WIREFRAME – AWARD WINNING INNOVATION',
+        copy: 'Explore breakthrough solutions that drive measurable impact across your organization.',
+        description: 'This campaign highlights key differentiators and value props with a clean visual hierarchy.',
+        cta: 'Learn More',
+      },
+      taskName: 'FY26Q3W10_CSG_CON_5479874_R1'
+    };
+    const os = await import('os');
+    const path = await import('path');
+    const tmpDir = path.join(os.tmpdir(), 'wf-ppt-mock');
+    const result = await this.pptService.generateBriefingPpt({
+      dsid: mockData.dsid,
+      structuredData: mockData.structuredData,
+      taskName: mockData.taskName,
+      headline: mockData.structuredData.headline,
+      copy: mockData.structuredData.copy,
+      description: mockData.structuredData.description,
+      cta: mockData.structuredData.cta,
+      vf: mockData.structuredData.vf,
+      liveDate: mockData.structuredData.liveDate
+    }, { outputDir: tmpDir });
+    return { success: true, mock: true, ppt: { fileName: result.fileName, path: result.path, sizeBytes: result.sizeBytes } };
   }
 }

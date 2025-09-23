@@ -13,6 +13,7 @@ export interface BulkDownloadOptions {
     organizeByDSID?: boolean;
     concurrency?: number;
     mode?: 'pm' | 'studio';
+    generatePpt?: boolean;
 }
 
 export interface BulkDownloadResult {
@@ -40,6 +41,7 @@ export interface BulkDownloadResult {
             hasTextExtraction: boolean;
         };
         downloadDir?: string;
+        ppt?: { fileName: string; path?: string; testMode?: boolean };
     }>;
     failed: Array<{
         url: string;
@@ -64,7 +66,7 @@ export class DocumentBulkDownloadService {
         private readonly extraction: BriefingExtractionService,
         private readonly folders: FolderOrganizationService,
         private readonly progress: BulkProgressService,
-    ) {}
+    ) { }
 
     /**
      * Download em massa de briefings usando o serviço legado
@@ -73,7 +75,7 @@ export class DocumentBulkDownloadService {
         projectUrls: string[],
         options: BulkDownloadOptions = {}
     ): Promise<BulkDownloadResult> {
-    const headless = options.headless !== false;
+        const headless = options.headless !== false;
         const continueOnError = options.continueOnError !== false;
         const keepFiles = options.keepFiles !== false; // default manter pois vamos organizar
         const organizeByDSID = options.organizeByDSID !== false;
@@ -95,7 +97,7 @@ export class DocumentBulkDownloadService {
         };
 
         // Usar pipeline já existente que também persiste no banco
-    const pipeline: any = await this.extraction.processProjectsBriefings(projectUrls, { headless, continueOnError, keepFiles, concurrency });
+        const pipeline: any = await this.extraction.processProjectsBriefings(projectUrls, { headless, continueOnError, keepFiles, concurrency, generatePpt: options.generatePpt });
 
         // Mapear falhas primeiro
         for (const fail of pipeline.downloadResults?.failed || []) {
@@ -129,6 +131,20 @@ export class DocumentBulkDownloadService {
                 }
             }
 
+            // Mover PPT se existir e não testMode
+            if (success.ppt && success.ppt.path && projectFolder) {
+                try {
+                    const pptFolder = path.join(projectFolder, 'ppt');
+                    await fs.mkdir(pptFolder, { recursive: true });
+                    const dest = path.join(pptFolder, path.basename(success.ppt.path));
+                    await fs.rename(success.ppt.path, dest).catch(async () => {
+                        await fs.copyFile(success.ppt.path, dest);
+                        await fs.unlink(success.ppt.path).catch(() => void 0);
+                    });
+                    success.ppt.path = dest;
+                } catch { /* ignore move errors para não falhar bulk */ }
+            }
+
             result.successful.push({
                 url,
                 projectNumber,
@@ -137,7 +153,8 @@ export class DocumentBulkDownloadService {
                 totalSize: totalSize || success.totalSize || 0,
                 files: success.files || [],
                 pdfProcessing: success.pdfProcessing || undefined,
-                downloadDir: projectFolder || success.downloadDir
+                downloadDir: projectFolder || success.downloadDir,
+                ppt: success.ppt ? { fileName: success.ppt.fileName, path: success.ppt.path, testMode: success.ppt.testMode } : undefined
             });
 
             result.summary.totalFiles += organizedCount || (success.filesDownloaded || 0);
@@ -160,9 +177,9 @@ export class DocumentBulkDownloadService {
         const continueOnError = options.continueOnError !== false;
         const keepFiles = options.keepFiles !== false;
         const organizeByDSID = options.organizeByDSID !== false;
-    const downloadPath = options.downloadPath || path.join(process.cwd(), 'downloads');
-    const concurrency = Math.max(1, Math.min(Number(options.concurrency) || 3, 5));
-    const mode = options.mode === 'studio' ? 'studio' : 'pm';
+        const downloadPath = options.downloadPath || path.join(process.cwd(), 'downloads');
+        const concurrency = Math.max(1, Math.min(Number(options.concurrency) || 3, 5));
+        const mode = options.mode === 'studio' ? 'studio' : 'pm';
 
         await fs.mkdir(downloadPath, { recursive: true });
         this.progress.create(operationId);
@@ -179,6 +196,11 @@ export class DocumentBulkDownloadService {
                     this.progress.emit(operationId, { type: 'project-fail', data: ev.data }); break;
                 case 'project-meta':
                     this.progress.emit(operationId, { type: 'project-meta', data: ev.data }); break;
+                case 'ppt-generated':
+                    // Encaminhar diretamente
+                    this.progress.emit(operationId, { type: 'ppt-generated', data: ev.data }); break;
+                case 'ppt-error':
+                    this.progress.emit(operationId, { type: 'ppt-error', data: ev.data }); break;
                 case 'completed':
                     this.progress.emit(operationId, { type: 'completed', data: ev.data }); break;
             }
@@ -186,10 +208,13 @@ export class DocumentBulkDownloadService {
 
         const pipeline: any = await this.extraction.processProjectsBriefings(projectUrls, {
             headless, continueOnError, keepFiles, concurrency, progress: progressHook, operationId,
-            isCanceled: (projectNumber: number) => this.progress.isCanceled(operationId, projectNumber)
+            isCanceled: (projectNumber: number) => this.progress.isCanceled(operationId, projectNumber),
+            generatePpt: options.generatePpt,
+            // pptTestMode removido
         });
 
         // Emit organização e término por projeto
+        let pptCount = 0;
         for (const success of pipeline.downloadResults?.successful || []) {
             const dsid = (this.extraction as any)['extractDSIDFromProjectName']?.call(this.extraction, success.projectName) || null;
             let projectFolder: string | undefined;
@@ -201,10 +226,32 @@ export class DocumentBulkDownloadService {
                     await this.folders.moveIntoProject(projectFolder, pdf.filePath, { organizeByDSID, keepFiles, mode });
                 }
             }
+            if (success.ppt) {
+                pptCount++;
+                // Se não for testMode e houver path, mover para subpasta /ppt
+                if (success.ppt.path && projectFolder) {
+                    try {
+                        const pptFolder = path.join(projectFolder, 'ppt');
+                        await fs.mkdir(pptFolder, { recursive: true });
+                        const dest = path.join(pptFolder, path.basename(success.ppt.path));
+                        await fs.rename(success.ppt.path, dest).catch(async () => {
+                            // fallback copiar e remover
+                            await fs.copyFile(success.ppt.path, dest);
+                            await fs.unlink(success.ppt.path).catch(() => void 0);
+                        });
+                        success.ppt.path = dest;
+                        (this.progress as any).emit(operationId, { type: 'ppt', data: { projectNumber: success.projectNumber, fileName: success.ppt.fileName, folder: dest, testMode: success.ppt.testMode } });
+                    } catch (e: any) {
+                        this.progress.emit(operationId, { type: 'ppt-error', data: { projectNumber: success.projectNumber, error: 'move-failed: ' + e.message } });
+                    }
+                } else {
+                    (this.progress as any).emit(operationId, { type: 'ppt', data: { projectNumber: success.projectNumber, fileName: success.ppt.fileName } });
+                }
+            }
             this.progress.emit(operationId, { type: 'project-success', data: { projectNumber: success.projectNumber, folder: projectFolder } });
         }
 
-        this.progress.emit(operationId, { type: 'completed', data: { successful: pipeline.successful, failed: pipeline.failed } });
+        this.progress.emit(operationId, { type: 'completed', data: { successful: pipeline.successful, failed: pipeline.failed, pptGenerated: pptCount } });
         this.progress.complete(operationId);
     }
 

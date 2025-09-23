@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { BriefingPptService } from './briefing-ppt.service';
 import { canonicalizeColorName, getColorMeta } from '../../common/colors/dell-colors';
 import { PrismaService } from '../database/prisma.service';
 import { WorkfrontService } from '../workfront/workfront.service';
@@ -64,6 +65,7 @@ export class BriefingExtractionService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly workfrontService: WorkfrontService,
+        private readonly pptService: BriefingPptService,
     ) {
         // Usar diretório temporário do sistema
         this.tempDownloadPath = path.join(os.tmpdir(), 'workfront-briefing-temp');
@@ -116,6 +118,9 @@ export class BriefingExtractionService {
                         results.results.processedProjects.push(processedProject);
                         results.summary.totalFiles += projectResult.filesDownloaded || 0;
                         results.summary.totalExtractions += processedProject.pdfExtractions || 0;
+                        if (processedProject.ppt?.fileName) {
+                            (results as any).summary.pptCount = ((results as any).summary.pptCount || 0) + 1;
+                        }
                         if (projectResult.pdfProcessing) {
                             results.summary.pdfProcessing.totalPdfs += projectResult.pdfProcessing.processed || 0;
                             results.summary.pdfProcessing.successfulExtractions += (projectResult.pdfProcessing.results || []).filter(p => p.hasContent).length;
@@ -201,13 +206,46 @@ export class BriefingExtractionService {
                 throw new Error('Operação cancelada pelo usuário');
             }
 
-            // Navegar para a pasta "05. Briefing"
+            // Navegar para a pasta "05. Briefing" com retries
             progress?.({ type: 'stage', data: { projectNumber, stage: 'navigating-briefing-folder' } });
-            await this.navigateToBriefingFolder(page);
+            await this.retryNavigateToBriefingFolder(page, {
+                attempts: this.toInt(options.briefingRetryCount, parseInt(process.env.WF_BRIEFING_RETRY_COUNT || '8', 10), 1, 20),
+                initialDelay: this.toInt(options.briefingRetryDelayMs, parseInt(process.env.WF_BRIEFING_RETRY_DELAY_MS || '1200', 10), 200, 20000),
+                maxDelay: this.toInt(options.briefingRetryMaxDelayMs, parseInt(process.env.WF_BRIEFING_RETRY_MAX_DELAY_MS || '8000', 10), 500, 60000),
+                progressiveFactor: this.toFloat(options.briefingRetryFactor, parseFloat(process.env.WF_BRIEFING_RETRY_FACTOR || '1.4'), 1.0, 3.0)
+            });
 
             // Simular download e processamento (implementação básica)
             progress?.({ type: 'stage', data: { projectNumber, stage: 'downloading-and-extracting' } });
             const downloadResult = await this.realDownloadAndProcessing(page, projectName, options);
+
+            // Gerar PPT se solicitado (generatePpt)
+            let pptMeta: any = null;
+            if (options.generatePpt) {
+                try {
+                    // Usar primeiro PDF processado para extrair structuredData
+                    const firstPdf = downloadResult?.pdfProcessing?.results?.[0];
+                    const structured = firstPdf?.structuredData || null;
+                    const dsidMeta = this.extractDSIDFromProjectName(projectName);
+                    const pptResult = await this.pptService.generateBriefingPpt({
+                        dsid: dsidMeta || undefined,
+                        structuredData: structured,
+                        taskName: projectName,
+                        headline: structured?.headline,
+                        copy: structured?.copy,
+                        description: structured?.description,
+                        cta: structured?.cta,
+                        vf: structured?.vf,
+                        liveDate: structured?.liveDate
+                    });
+                    pptMeta = { success: true, ...pptResult };
+                    progress?.({ type: 'ppt-generated', data: { projectNumber, fileName: pptResult.fileName, size: pptResult.sizeBytes } });
+                } catch (e: any) {
+                    this.logger.error(`❌ Falha ao gerar PPT para projeto ${projectNumber}: ${e.message}`);
+                    pptMeta = { success: false, error: e.message };
+                    progress?.({ type: 'ppt-error', data: { projectNumber, error: e.message } });
+                }
+            }
 
             return {
                 success: true,
@@ -218,7 +256,8 @@ export class BriefingExtractionService {
                 totalSize: downloadResult.totalSize,
                 files: downloadResult.files,
                 pdfProcessing: downloadResult.pdfProcessing,
-                downloadDir: (downloadResult as any).downloadDir
+                downloadDir: (downloadResult as any).downloadDir,
+                ppt: pptMeta
             };
 
         } catch (error) {
@@ -297,7 +336,7 @@ export class BriefingExtractionService {
             try {
                 const contentResult = await this.extractPdfContent(file.filePath);
                 pdfResults.push({
-                    fileName: file.fileName,
+                fileName: file.fileName,
                     filePath: file.filePath,
                     metadata: { pages: contentResult.metadata?.pages || 0, fileSize: file.size || 0 },
                     text: contentResult.text || '',
@@ -473,6 +512,13 @@ export class BriefingExtractionService {
             // Processar PDFs extraídos
             const pdfExtractions = await this.processPdfExtractions(projectResult, briefingDownload.id);
 
+            // Preparar metadado de PPT (se existente no projectResult.ppt)
+            const pptMeta = projectResult.ppt ? {
+                fileName: projectResult.ppt.fileName,
+                sizeBytes: projectResult.ppt.sizeBytes || null,
+                // testMode removido
+            } : null;
+
             return {
                 briefingDownloadId: briefingDownload.id,
                 projectId: project.id,
@@ -480,7 +526,8 @@ export class BriefingExtractionService {
                 dsid: dsid,
                 filesDownloaded: projectResult.filesDownloaded,
                 pdfExtractions: pdfExtractions.length,
-                extractionDetails: pdfExtractions
+                extractionDetails: pdfExtractions,
+                ppt: pptMeta
             };
 
         } catch (error) {
@@ -714,6 +761,50 @@ export class BriefingExtractionService {
         }
         if (!navigationSuccess) throw new Error('Pasta "05. Briefing" não encontrada');
         this.logger.log('✅ Navegação para Briefing concluída!');
+    }
+
+    /**
+     * Retry wrapper para navegação à pasta Briefing com backoff progressivo.
+     * Estratégia: N tentativas; após cada falha aguarda delay * factor (limitado a maxDelay).
+     */
+    private async retryNavigateToBriefingFolder(page: Page, cfg: { attempts: number; initialDelay: number; maxDelay: number; progressiveFactor: number }) {
+        const { attempts, initialDelay, maxDelay, progressiveFactor } = cfg;
+        let lastError: any = null;
+        let delay = initialDelay;
+        const startTs = Date.now();
+        for (let i = 1; i <= attempts; i++) {
+            try {
+                this.logger.log(`🔁 Tentativa ${i}/${attempts} para abrir pasta Briefing (delay atual=${delay}ms)`);
+                await this.navigateToBriefingFolder(page);
+                if (i > 1) {
+                    const total = ((Date.now() - startTs)/1000).toFixed(1);
+                    this.logger.log(`✅ Pasta Briefing acessada na tentativa ${i} (tempo total ${total}s)`);
+                }
+                return;
+            } catch (e) {
+                lastError = e;
+                this.logger.warn(`⚠️ Falha tentativa ${i}/${attempts} pasta Briefing: ${e.message}`);
+                if (i === attempts) break;
+                await new Promise(r => setTimeout(r, delay));
+                delay = Math.min(maxDelay, Math.round(delay * progressiveFactor));
+                // Pequena interação: tentar recarregar iframe / página para liberar elementos travados
+                try { await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 }); await page.waitForTimeout(2000); } catch { /* ignore */ }
+            }
+        }
+        this.logger.error('❌ Excedido número máximo de tentativas para abrir pasta Briefing');
+        throw lastError || new Error('Falha desconhecida ao abrir pasta Briefing');
+    }
+
+    // Utilitários de parsing seguro com limites
+    private toInt(val: any, fallback: number, min: number, max: number) {
+        const n = parseInt(String(val ?? ''), 10);
+        if (isNaN(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
+    }
+    private toFloat(val: any, fallback: number, min: number, max: number) {
+        const n = parseFloat(String(val ?? ''));
+        if (isNaN(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
     }
 
     /** Fechar sidebar summary que intercepta cliques (porta do legado) */

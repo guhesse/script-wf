@@ -172,6 +172,11 @@ export class BulkDownloadDto {
     @IsOptional()
     @IsEnum(['pm', 'studio'] as any)
     mode?: 'pm' | 'studio' = 'pm';
+
+    @ApiProperty({ description: 'Gerar PPT de briefing por projeto', required: false, default: false })
+    @IsOptional()
+    @IsBoolean()
+    generatePpt?: boolean = false;
 }
 
 // DTO para resposta de download em massa
@@ -229,7 +234,7 @@ export class ExtractPdfDto {
     pdfFilePath: string;
 }
 
-// DTO para resposta de extração de PDF
+// Resposta para extração de PDF (recriada após remoção acidental)
 export class ExtractPdfResponseDto {
     @ApiProperty()
     success: boolean;

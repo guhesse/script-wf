@@ -42,6 +42,9 @@ const BulkDownload: React.FC = () => {
   const [projectUrls, setProjectUrls] = useState<string[]>(['']);
   const [downloadPath, setDownloadPath] = useState('');
   const [headless] = useState(true);
+  // Novos estados para PPT
+  const [generatePpt, setGeneratePpt] = useState(false);
+  const [pptTestMode, setPptTestMode] = useState(false);
   // Opções avançadas removidas da UI por enquanto: continueOnError, keepFiles, organizeByDSID
   const [result, setResult] = useState<BulkDownloadResult | null>(null);
   interface ProgressItem {
@@ -52,6 +55,8 @@ const BulkDownload: React.FC = () => {
     dsid?: string;
     queueIndex?: number;
     dsidProvisional?: boolean;
+    pptFile?: string;
+    pptTestMode?: boolean;
   }
   const [progressList, setProgressList] = useState<ProgressItem[]>([]);
   // helper removido; usaremos placeholders pendentes e atualizaremos conforme eventos
@@ -61,9 +66,6 @@ const BulkDownload: React.FC = () => {
   const [operationId, setOperationId] = useState<string | null>(null);
   const [mode, setMode] = useState<'pm' | 'studio'>('pm');
 
-  const addUrlField = () => {
-    setProjectUrls([...projectUrls, '']);
-  };
 
   const addUrlFieldAfter = (index: number) => {
     const newUrls = [...projectUrls];
@@ -80,6 +82,40 @@ const BulkDownload: React.FC = () => {
     const newUrls = [...projectUrls];
     newUrls[index] = value;
     setProjectUrls(newUrls);
+  };
+
+  // Extrai múltiplas URLs de um texto colado
+  const parsePastedUrls = (text: string): string[] => {
+    if (!text) return [];
+    // Quebra por espaços, quebras de linha, vírgulas e ponto e vírgula
+    const rawParts = text.split(/\s+|,|;|\n|\r/g).map(s => s.trim()).filter(Boolean);
+    // Regex simples para URL Workfront (http/https + domínio + /project/ ou algo similar)
+    const urlRegex = /https?:\/\/[^\s]+/i;
+    const fromLines: string[] = [];
+    for (const part of rawParts) {
+      if (urlRegex.test(part)) fromLines.push(part);
+    }
+    return fromLines;
+  };
+
+  const handlePasteUrls = (e: React.ClipboardEvent<HTMLInputElement>, index: number) => {
+    const text = e.clipboardData.getData('text');
+    const urls = parsePastedUrls(text);
+    if (urls.length <= 1) return; // deixa comportamento normal para colar simples
+    e.preventDefault();
+    // Substitui campo atual pelo primeiro URL e insere o resto abaixo
+    const unique = new Set<string>();
+    const current = [...projectUrls];
+    // Inclui já existentes preservando ordem
+    for (const u of current) unique.add(u);
+    const toInsert: string[] = [];
+    urls.forEach(u => { if (!unique.has(u)) { unique.add(u); toInsert.push(u); } });
+    if (toInsert.length === 0) return;
+    current[index] = toInsert[0];
+    if (toInsert.length > 1) {
+      current.splice(index + 1, 0, ...toInsert.slice(1));
+    }
+    setProjectUrls(current.filter(x => x !== ''));
   };
 
   const getValidUrls = () => {
@@ -133,9 +169,10 @@ const BulkDownload: React.FC = () => {
           continueOnError: true,
           keepFiles: true,
           organizeByDSID: true,
-          // Concorrência default 3
           concurrency: 3,
-          mode
+          mode,
+          generatePpt: generatePpt || pptTestMode, // se testMode marcado, força generate
+          pptTestMode
         })
       });
       const startData = await startResp.json();
@@ -237,6 +274,15 @@ const BulkDownload: React.FC = () => {
               };
               return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
             });
+          } else if (type === 'ppt') {
+            const pn = data.projectNumber as number;
+            setProgressList(prev => {
+              const idx = prev.findIndex(p => p.projectNumber === pn);
+              if (idx < 0) return prev;
+              const base = prev[idx] as ProgressItem & { pptFile?: string; pptTestMode?: boolean };
+              const updated = { ...base, pptFile: data.fileName as string, pptTestMode: !!data.testMode };
+              return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
+            });
           } else if (type === 'completed') {
             es.close();
             setSseActive(false);
@@ -298,6 +344,7 @@ const BulkDownload: React.FC = () => {
               <Input
                 value={url}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateUrl(index, e.target.value)}
+                onPaste={(e) => handlePasteUrls(e, index)}
                 placeholder={`URL do projeto ${index + 1}`}
                 className="flex-1"
               />
@@ -322,8 +369,9 @@ const BulkDownload: React.FC = () => {
             </div>
           ))}
 
-          <div className="text-xs text-muted-foreground">
-            URLs válidas: {getValidUrls().length} de {projectUrls.length}
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div>URLs válidas: {getValidUrls().length} de {projectUrls.length}</div>
+            <div className="leading-4">Dica: você pode <strong>Ctrl + V</strong> várias URLs de uma vez (separe por quebra de linha, espaço, vírgula ou ponto e vírgula).</div>
           </div>
         </div>
 
@@ -376,6 +424,21 @@ const BulkDownload: React.FC = () => {
 │  └─ screenfill
 ├─ deliverables
 └─ sb`}</pre>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 mt-4">
+              <label className="text-sm font-medium text-foreground">Opções PPT</label>
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={generatePpt} onChange={e => { setGeneratePpt(e.target.checked); if (!e.target.checked) setPptTestMode(false); }} />
+                  <span>Gerar PPT</span>
+                </label>
+                <label className={`flex items-center gap-2 text-sm ${!generatePpt ? 'opacity-50 cursor-not-allowed' : ''}`}>                <input type="checkbox" disabled={!generatePpt} checked={pptTestMode} onChange={e => setPptTestMode(e.target.checked)} />
+                  <span>Modo Teste (Base64)</span>
+                </label>
+                {generatePpt && (
+                  <span className="text-xs text-muted-foreground">{pptTestMode ? 'Será retornado como base64 via evento.' : 'Arquivo será salvo na pasta do projeto.'}</span>
                 )}
               </div>
             </div>
@@ -505,6 +568,11 @@ const BulkDownload: React.FC = () => {
                   <div className={`h-2 ${p.status === 'fail' ? 'bg-destructive' : p.status === 'success' ? 'bg-green-600' : 'bg-primary'}`} style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}></div>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">{p.stage || (p.status === 'success' ? 'Concluído' : p.status === 'fail' ? 'Falha' : p.status === 'canceled' ? 'Cancelado' : 'Processando')}</div>
+                {p.pptFile && (
+                  <div className="mt-2 text-xs font-mono">
+                    PPT: {p.pptFile} {p.pptTestMode && <Badge variant="outline" className="ml-2">test</Badge>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
