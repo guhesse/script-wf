@@ -29,6 +29,16 @@ export interface BriefingPptData {
     csg?: string | null;
     // Canal/CON etc
     channel?: string | null; // ex: CON
+    // Nome do arquivo PDF original (para parsing adicional de metadata)
+    fileName?: string | null;
+    // Linguagem detectada ou fornecida (ex: EN, PT, ES)
+    language?: string | null;
+    // Público / audiência (ex: CONSUMER, SMB, ENTERPRISE)
+    audience?: string | null;
+    // Componentes fiscais (se já conhecidos externamente)
+    fiscalYear?: string | null; // ex: FY26
+    quarter?: string | null; // ex: Q3
+    weekNumber?: string | null; // ex: W10
 }
 
 export interface GeneratePptOptions {
@@ -103,7 +113,9 @@ export class BriefingPptService {
     async generateBriefingPpt(data: BriefingPptData, options: GeneratePptOptions = {}): Promise<GeneratePptResult> {
         // Mesclar structuredData se fornecido
         const sd = data.structuredData || {};
-        const week = data.week || this.deriveWeek(sd) || 'W?';
+    // Primeiro tentar decompor a partir do fileName (mais confiável), depois taskName, depois structuredData
+    const fileNameTokens = this.parseFileNameTokens(data.fileName || '');
+    let week = data.week || fileNameTokens.week || this.deriveWeek(sd) || 'W?';
         const wireframeTitle = data.wireframeTitle || sd.headline || data.headline || 'WIREFRAME – SEM TÍTULO';
 
         const liveDate = data.liveDate || sd.liveDate || null;
@@ -124,7 +136,20 @@ export class BriefingPptService {
         // Exemplo alvo: VML FY26Q3W10 CSG CON 5479874 (R1)
         const adv = this.parseAdvancedHeaderTokens(data.taskName || '', { dsid, csg, channel });
         const fiscalWeek = adv.fiscal || this.deriveFiscalWeekToken(data.taskName) || ('FY??Q?' + week);
-        const header = `VML ${fiscalWeek.toUpperCase()} ${(adv.csg || csg).toUpperCase()} ${(adv.channel || channel).toUpperCase()} ${(adv.dsid || dsid)} (R1)`;
+    const header = `VML ${fiscalWeek.toUpperCase()} ${(adv.csg || csg).toUpperCase()} ${(adv.channel || channel).toUpperCase()} ${(adv.dsid || dsid)} (R1)`;
+
+    // Derivar linguagem e audiência a partir do taskName ou fileName se não fornecido
+    const langAud = this.deriveLanguageAndAudienceFromName(data.taskName || data.fileName || '');
+    const language = (data.language || sd.language || langAud.language || '').toUpperCase() || undefined;
+    const audience = (data.audience || sd.audience || langAud.audience || '').toUpperCase() || undefined;
+
+    // Componentes fiscais detalhados (fiscalYear, quarter, weekNumber)
+    const fiscalComponents = this.extractFiscalComponents(fiscalWeek);
+    const fiscalYear = (data.fiscalYear || fileNameTokens.fiscalYear || (fiscalComponents ? fiscalComponents.fiscalYear : undefined)) || undefined;
+    const quarter = (data.quarter || fileNameTokens.quarter || (fiscalComponents ? fiscalComponents.quarter : undefined)) || undefined;
+    const weekNumber = (data.weekNumber || fileNameTokens.week || (fiscalComponents ? fiscalComponents.week : undefined)) || undefined;
+    // Se week original era W? mas temos weekNumber derivado, atualizar
+    if (week === 'W?' && weekNumber) week = weekNumber;
 
         const PptxCtor = await this.loadPptLib();
         const pptx = new PptxCtor();
@@ -189,6 +214,12 @@ export class BriefingPptService {
         pushLabelValue('Copy', copy || undefined);
         pushLabelValue('Description', description || undefined);
         pushLabelValue('CTA', cta || undefined);
+    // Info fiscal detalhada (evitar duplicar semana na parte azul: semana já aparece como primeira linha em azul)
+    pushLabelValue('Fiscal Year', fiscalYear || undefined);
+    pushLabelValue('Quarter', quarter || undefined);
+
+    pushLabelValue('Language', language || undefined);
+    pushLabelValue('Audience', audience || undefined);
 
         // Montar runs com espaçamento de parágrafo (paraSpaceBefore=10) e lineSpacing ~1.5
         // Removemos os múltiplos '\n' artificiais e usamos recursos de parágrafo da lib.
@@ -327,5 +358,75 @@ export class BriefingPptService {
             if (numeric) foundDsid = numeric;
         }
         return { fiscal, csg: foundCsg, channel: foundChannel, dsid: foundDsid };
+    }
+
+    // Derivar linguagem e audiência a partir do nome (taskName ou fileName)
+    private deriveLanguageAndAudienceFromName(name?: string): { language?: string; audience?: string } {
+        if (!name) return {};
+        const tokens = name.split(/[^A-Za-z0-9]+/).filter(Boolean);
+        // Possíveis códigos de idioma
+        const langPatterns: Record<string, string> = {
+            'en': 'EN', 'eng': 'EN', 'us': 'EN', 'uk': 'EN',
+            'pt': 'PT', 'ptbr': 'PT', 'br': 'PT',
+            'es': 'ES', 'latam': 'ES', 'mx': 'ES',
+            'fr': 'FR', 'de': 'DE', 'it': 'IT', 'ja': 'JA', 'jp': 'JA', 'zh': 'ZH', 'cn': 'ZH', 'ko': 'KO', 'kr': 'KO', 'ru': 'RU'
+        };
+        let language: string | undefined;
+        for (const tk of tokens) {
+            const low = tk.toLowerCase();
+            if (langPatterns[low]) { language = langPatterns[low]; break; }
+        }
+        // Audiência / Segmento
+        const audienceMap: Record<string, string> = {
+            'consumer': 'CONSUMER', 'consumers': 'CONSUMER', 'b2c': 'CONSUMER',
+            'smb': 'SMB', 'smbc': 'SMB',
+            'enterprise': 'ENTERPRISE', 'ent': 'ENTERPRISE',
+            'dev': 'DEV', 'developer': 'DEV', 'developers': 'DEV',
+            'edu': 'EDU', 'education': 'EDU'
+        };
+        let audience: string | undefined;
+        for (const tk of tokens) {
+            const low = tk.toLowerCase();
+            if (audienceMap[low]) { audience = audienceMap[low]; break; }
+        }
+        return { language, audience };
+    }
+
+    // Parser dedicado para nome de arquivo do PDF conforme padrão informado
+    private parseFileNameTokens(fileName: string): { dsid?: string; language?: string; csg?: string; channel?: string; fiscalYear?: string; quarter?: string; week?: string } {
+        if (!fileName) return {};
+        const base = fileName.replace(/\.pdf$/i, '');
+        const parts = base.split(/[_-]+/).filter(Boolean);
+        const result: { dsid?: string; language?: string; csg?: string; channel?: string; fiscalYear?: string; quarter?: string; week?: string } = {};
+        // DSID: primeira sequência de 6-8 dígitos
+        const dsid = parts.find(p => /^\d{6,8}$/.test(p));
+        if (dsid) result.dsid = dsid;
+        // language: códigos curtos (br, en, es, etc.)
+        const lang = parts.find(p => /^(br|en|es|pt|ptbr|fr|de|it|ja|jp|zh|cn|ko|kr|ru)$/i.test(p));
+        if (lang) result.language = lang.toLowerCase();
+        // csg literal
+        if (parts.some(p => p.toLowerCase() === 'csg')) result.csg = 'CSG';
+        // channel tokens
+        const channel = parts.find(p => /^(con|soc|crm|seo|sem|dsp)$/i.test(p));
+        if (channel) result.channel = channel.toUpperCase();
+        // fiscal composite token
+        const fiscalComposite = parts.find(p => /^fy\d{2}q\dw\d{1,2}$/i.test(p));
+        if (fiscalComposite) {
+            const up = fiscalComposite.toUpperCase();
+            const m = up.match(/^FY(\d{2})Q(\d)W(\d{1,2})$/);
+            if (m) {
+                result.fiscalYear = 'FY' + m[1];
+                result.quarter = 'Q' + m[2];
+                result.week = 'W' + m[3];
+            }
+        }
+        return result;
+    }
+
+    private extractFiscalComponents(fiscalToken?: string): { fiscalYear: string; quarter: string; week: string } | undefined {
+        if (!fiscalToken) return undefined;
+        const m = fiscalToken.toUpperCase().match(/^FY(\d{2})Q(\d)W(\d{1,2})$/);
+        if (!m) return undefined;
+        return { fiscalYear: 'FY' + m[1], quarter: 'Q' + m[2], week: 'W' + m[3] };
     }
 }
