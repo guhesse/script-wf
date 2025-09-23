@@ -1,51 +1,49 @@
 import { useState, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
-import { LoginScreen } from '@/components/LoginScreen';
 import { MainApplication } from '@/components/MainApplication';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
+import { useAppAuth } from '@/hooks/useAppAuth';
+import { AuthScreen } from '@/components/AuthScreen';
+import { Button } from '@/components/ui/button';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  // Auth da aplicação (JWT)
+  const { user, loading: userLoading } = useAppAuth();
+  // Sessão Workfront
+  const [wfReady, setWfReady] = useState(false);
   const { isLoading, loadingMessage, checkLoginStatus } = useWorkfrontApi();
 
-  // Aplicar tema escuro automaticamente
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
+  // Aplicar tema escuro
+  useEffect(() => { document.documentElement.classList.add('dark'); }, []);
 
-  // Verificar automaticamente se usuário já está logado ao iniciar a aplicação
   useEffect(() => {
-    const checkInitialLoginStatus = async () => {
+    if (!user) return; // só checa Workfront se app autenticado
+    (async () => {
       try {
         const status = await checkLoginStatus();
-        if (status.loggedIn) {
-          setIsLoggedIn(true);
-        }
-      } catch (error) {
-        console.error('Erro ao verificar status inicial de login:', error);
-      } finally {
-        setIsCheckingAuth(false);
+        setWfReady(!!status.loggedIn);
+      } catch {
+        setWfReady(false);
       }
-    };
+    })();
+  }, [user, checkLoginStatus]);
 
-    checkInitialLoginStatus();
-  }, [checkLoginStatus]);
-
-  const handleLoginComplete = () => {
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-  };
-
-  // Mostrar loading enquanto verifica o status de autenticação inicial
-  if (isCheckingAuth) {
+  // Enquanto carrega sessão app
+  if (userLoading) {
     return (
       <>
-        <LoadingOverlay isVisible={true} message="Verificando autenticação..." />
+        <LoadingOverlay isVisible={true} message="Carregando sessão..." />
+        <Toaster position="bottom-right" />
+      </>
+    );
+  }
+
+  // Se não autenticado na aplicação -> tela Auth (login/registro)
+  if (!user) {
+    return (
+      <>
+        <AuthScreen onAuthenticated={() => {}} registerEnabled={true} />
         <Toaster position="bottom-right" />
       </>
     );
@@ -54,13 +52,15 @@ function App() {
   return (
     <>
       <LoadingOverlay isVisible={isLoading} message={loadingMessage} />
-      
-      {isLoggedIn ? (
-        <MainApplication onLogout={handleLogout} />
-      ) : (
-        <LoginScreen onLoginComplete={handleLoginComplete} />
+      {!wfReady && (
+        <div className="fixed top-2 right-2 z-50 bg-amber-900/60 border border-amber-600/40 backdrop-blur px-4 py-2 rounded text-xs text-amber-200 shadow">
+          <div className="flex items-center gap-3">
+            <span>Workfront não conectado</span>
+            <Button size="sm" variant="secondary" onClick={async () => { const s = await checkLoginStatus().catch(()=>null); if(!s?.loggedIn){ await fetch('/api/login',{method:'POST'}); const again = await checkLoginStatus(); setWfReady(!!again.loggedIn);} }}>Login Workfront</Button>
+          </div>
+        </div>
       )}
-      
+      <MainApplication onLogout={() => { /* handled inside main */ }} />
       <Toaster position="bottom-right" />
     </>
   );

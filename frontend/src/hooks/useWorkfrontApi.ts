@@ -10,11 +10,18 @@ import type {
   WorkfrontProject
 } from '@/types';
 
-const API_URL = 'http://localhost:3000/api';
+// API_URL removido (uso direto de /api via proxy)
 
 export const useWorkfrontApi = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const getToken = useCallback((): string => {
+    try { return localStorage.getItem('wf_access_token') || ''; } catch { return ''; }
+  }, []);
+  const authHeaders = useCallback((): Record<string, string> => {
+    const t = getToken();
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  }, [getToken]);
 
   const checkLoginStatus = useCallback(async (): Promise<LoginStatusResponse> => {
     try {
@@ -394,7 +401,7 @@ export const useWorkfrontApi = () => {
     selectedUser: 'carol' | 'giovana' | 'test';
     assetZip: File;
     finalMaterials: File[];
-  }): Promise<{ success: boolean; staged: { assetZip?: string; finalMaterials?: string[] }; message?: string } > => {
+  }): Promise<{ success: boolean; staged: { assetZip?: string; finalMaterials?: string[] }; jobId?: string; status?: string; message?: string } > => {
     if (!params.projectUrl) throw new Error('URL do projeto é obrigatória');
     if (!params.assetZip) throw new Error('ZIP de Asset Release é obrigatório');
     if (!params.finalMaterials || params.finalMaterials.length === 0) throw new Error('Adicione arquivos de Final Materials');
@@ -410,14 +417,17 @@ export const useWorkfrontApi = () => {
       params.finalMaterials.forEach((f) => form.append('finalMaterials', f));
 
       // Tenta via proxy do Vite primeiro
-  let response: Response | null = await fetch('/api/upload/prepare', { method: 'POST', body: form }).catch(() => null);
+  let response: Response | null = await fetch('/api/upload/prepare', { method: 'POST', body: form, headers: authHeaders() }).catch(() => null);
       // Fallback direto para o backend (evita erros de proxy como ALPN negotiation)
       if (!response || !response.ok) {
         const direct = `http://localhost:3000/api/upload/prepare`;
-        response = await fetch(direct, { method: 'POST', body: form });
+  response = await fetch(direct, { method: 'POST', body: form, headers: authHeaders() });
       }
       const data = await response.json();
       if (data.success) {
+        if (data.jobId) {
+          try { localStorage.setItem('wf_activeUploadJob', JSON.stringify({ jobId: data.jobId, projectUrl: params.projectUrl })); } catch { /* ignore storage */ }
+        }
         toast.success('Arquivos enviados! Pronto para acionar automação.');
       } else {
         toast.error(data.message || 'Falha ao preparar upload');
@@ -431,7 +441,7 @@ export const useWorkfrontApi = () => {
       setIsLoading(false);
       setLoadingMessage('');
     }
-  }, []);
+  }, [authHeaders]);
 
   // Executar automação de upload (usa paths salvos no backend)
   const executeUploadAutomation = useCallback(async (params: {
@@ -440,7 +450,8 @@ export const useWorkfrontApi = () => {
     assetZipPath: string;
     finalMaterialPaths: string[];
     headless?: boolean;
-  }): Promise<{ success: boolean; message: string; results?: unknown[]; summary?: unknown }> => {
+    jobId?: string;
+  }): Promise<{ success: boolean; message: string; results?: unknown[]; summary?: unknown; jobId?: string }> => {
     setIsLoading(true);
     setLoadingMessage('Executando automação de upload no Workfront...');
 
@@ -448,7 +459,7 @@ export const useWorkfrontApi = () => {
       // Tenta via proxy primeiro
       let response: Response | null = await fetch('/api/upload/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', ...(authHeaders()) },
         body: JSON.stringify(params),
       }).catch(() => null);
       
@@ -456,7 +467,7 @@ export const useWorkfrontApi = () => {
       if (!response || !response.ok) {
         response = await fetch('http://localhost:3000/api/upload/execute', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(authHeaders()) },
           body: JSON.stringify(params),
         });
       }
@@ -464,6 +475,8 @@ export const useWorkfrontApi = () => {
       const data = await response.json();
       if (data.success) {
         toast.success(data.message || 'Automação concluída com sucesso!');
+        // se finalizado, remover job ativo
+  try { localStorage.removeItem('wf_activeUploadJob'); } catch { /* ignore */ }
       } else {
         toast.error(data.message || 'Falha na automação');
       }
@@ -476,16 +489,49 @@ export const useWorkfrontApi = () => {
       setIsLoading(false);
       setLoadingMessage('');
     }
-  }, []);
+  }, [authHeaders]);
 
+  // ---- JOBS DE UPLOAD ----
+  interface UploadJob { id: string; projectUrl: string; staged: { assetZip?: string; finalMaterials?: string[] }; status: string; error?: string }
+  const getActiveUploadJob = useCallback(async (): Promise<UploadJob | null> => {
+    try {
+  const resp = await fetch(`/api/upload/jobs/active`, { headers: authHeaders() });
+      const data = await resp.json();
+      return data.job || null;
+    } catch (e) {
+      console.warn('Falha ao obter job ativo', e);
+      return null;
+    }
+  }, [authHeaders]);
+
+  const getUploadJob = useCallback(async (jobId: string): Promise<UploadJob | null> => {
+    try {
+  const resp = await fetch(`/api/upload/jobs/${jobId}`, { headers: authHeaders() });
+      const data = await resp.json();
+      return data.job || null;
+    } catch { return null; }
+  }, [authHeaders]);
+
+  const cancelUploadJob = useCallback(async (jobId: string): Promise<boolean> => {
+    try {
+  const resp = await fetch(`/api/upload/jobs/${jobId}/cancel`, { method: 'POST', headers: authHeaders() });
+      const data = await resp.json();
+      if (data.success) {
+  try { localStorage.removeItem('wf_activeUploadJob'); } catch { /* ignore */ }
+      }
+      return !!data.success;
+    } catch { return false; }
+  }, [authHeaders]);
+
+  interface FrontendWorkflowStep { action: string; enabled?: boolean; params?: Record<string, unknown>; }
   const executeWorkflow = useCallback(async (config: {
     projectUrl: string;
-    steps: any[];
+    steps: FrontendWorkflowStep[];
     headless?: boolean;
     stopOnError?: boolean;
   }) => {
     try {
-      const mappedSteps = (config.steps || []).map((s: any) => {
+  const mappedSteps = (config.steps || []).map((s: FrontendWorkflowStep) => {
         if (!s) return s;
         const base = { enabled: s.enabled !== false, params: s.params || {} };
         switch (s.action) {
@@ -508,7 +554,7 @@ export const useWorkfrontApi = () => {
 
       const response = await fetch('/api/workflow/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authHeaders()) },
         body: JSON.stringify({
           projectUrl: config.projectUrl,
           steps: mappedSteps,
@@ -529,7 +575,7 @@ export const useWorkfrontApi = () => {
       toast.error('Erro de conexão durante workflow');
       throw error;
     }
-  }, []);
+  }, [authHeaders]);
 
   return {
     isLoading,
@@ -548,5 +594,8 @@ export const useWorkfrontApi = () => {
     prepareUploadPlan,
     executeUploadAutomation,
     executeWorkflow,
+    getActiveUploadJob,
+    getUploadJob,
+    cancelUploadJob,
   };
 };

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -38,11 +38,13 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     const [finalMaterials, setFinalMaterials] = useState<File[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const [stagedPaths, setStagedPaths] = useState<{ assetZip?: string; finalMaterials?: string[] } | null>(null);
-    const [executing, setExecuting] = useState(false);
+    // estado de execução direta removido; execução ocorre via Timeline
     const zipInputRef = useRef<HTMLInputElement>(null);
     const finalsInputRef = useRef<HTMLInputElement>(null);
 
-    const { prepareUploadPlan, executeUploadAutomation } = useWorkfrontApi();
+    const { prepareUploadPlan, getActiveUploadJob, cancelUploadJob } = useWorkfrontApi();
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [jobStatus, setJobStatus] = useState<string | null>(null);
 
     const hasPdfInFinals = useMemo(() => finalMaterials.some(isPdf), [finalMaterials]);
     const isValidUrl = (url: string) => !!url && url.includes('workfront');
@@ -69,6 +71,34 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     const removeFinal = (idx: number) => setFinalMaterials(f => f.filter((_, i) => i !== idx));
     const clearAll = () => { setAssetZip(null); setFinalMaterials([]); setStagedPaths(null); };
 
+    // Restaurar job ativo ao montar (por usuário atual simplificado)
+    useEffect(() => {
+        const saved = (() => { try { return JSON.parse(localStorage.getItem('wf_activeUploadJob') || 'null'); } catch { return null; } })();
+        if (saved?.jobId) {
+            getActiveUploadJob('anonymous').then(job => {
+                if (job && job.id === saved.jobId) {
+                    setJobId(job.id);
+                    setJobStatus(job.status);
+                    setStagedPaths(job.staged);
+                    if (!projectUrl) setProjectUrl(job.projectUrl);
+                } else {
+                    localStorage.removeItem('wf_activeUploadJob');
+                }
+            });
+        } else {
+            getActiveUploadJob('anonymous').then(job => {
+                if (job) {
+                    setJobId(job.id);
+                    setJobStatus(job.status);
+                    setStagedPaths(job.staged);
+                    if (!projectUrl) setProjectUrl(job.projectUrl);
+                    try { localStorage.setItem('wf_activeUploadJob', JSON.stringify({ jobId: job.id, projectUrl: job.projectUrl })); } catch { /* ignore */ }
+                }
+            });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleSubmit = async () => {
         if (!assetZip || finalMaterials.length === 0 || !hasPdfInFinals || !isValidUrl(projectUrl)) return;
         setSubmitting(true);
@@ -76,6 +106,7 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
             const res = await prepareUploadPlan({ projectUrl, selectedUser, assetZip, finalMaterials });
             if (res.success && res.staged) {
                 setStagedPaths(res.staged);
+                if (res.jobId) { setJobId(res.jobId); setJobStatus(res.status || 'staged'); }
                 console.log('Upload staged:', res);
             }
         } finally {
@@ -83,20 +114,15 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
         }
     };
 
-    const executeAutomation = async () => {
-        if (!stagedPaths?.assetZip || !stagedPaths?.finalMaterials || !isValidUrl(projectUrl)) return;
-        setExecuting(true);
-        try {
-            const res = await executeUploadAutomation({
-                projectUrl,
-                selectedUser,
-                assetZipPath: stagedPaths.assetZip,
-                finalMaterialPaths: stagedPaths.finalMaterials,
-                headless: false,
-            });
-            console.log('Automation completed:', res);
-        } finally {
-            setExecuting(false);
+    // (Execução direta de upload removida; usar TimelineSection para acionar workflow)
+
+    const handleCancel = async () => {
+        if (!jobId) return;
+        const ok = await cancelUploadJob(jobId, 'anonymous');
+        if (ok) {
+            clearAll();
+            setJobId(null);
+            setJobStatus('canceled');
         }
     };
 
@@ -274,14 +300,17 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     >
                         <Upload className="w-4 h-4 mr-2" /> {stagedPaths ? 'Arquivos Preparados ✓' : 'Preparar Arquivos'}
                     </Button>
-                    <Button variant="outline" onClick={clearAll} disabled={submitting || executing}>Limpar</Button>
+                    <Button variant="outline" onClick={clearAll} disabled={submitting}>Limpar</Button>
+                    {jobId && (
+                        <Button variant="destructive" onClick={handleCancel} disabled={submitting}>Cancelar</Button>
+                    )}
                 </div>
 
                 {/* Mensagem informativa quando arquivos estão preparados */}
                 {stagedPaths && (
                     <Alert className="border-primary/20 bg-primary/5">
                         <AlertDescription className="text-sm">
-                            ✅ Arquivos preparados! Use a Timeline para configurar Upload / Share / Comments ou apenas Status / Hours.
+                            ✅ Arquivos preparados{jobStatus ? ` (Status: ${jobStatus})` : ''}! Use a Timeline para configurar Upload / Share / Comments ou apenas Status / Hours.
                         </AlertDescription>
                     </Alert>
                 )}

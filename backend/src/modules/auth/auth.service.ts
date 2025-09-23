@@ -68,24 +68,66 @@ export class AuthService {
       this.logger.log('🌍 Abrindo Experience Cloud...');
       await page.goto('https://experience.adobe.com/', { waitUntil: 'domcontentloaded' });
 
-      this.logger.log('👤 Complete o login SSO/MFA. Aguardando até 90s ou fechamento manual...');
+      this.logger.log('👤 Complete o login SSO/MFA. Polling do botão "Adobe Experience Cloud" para persistir sessão.');
 
-      // Aguardar com checagem periódica se o contexto foi fechado
-      const maxWait = 90000;
-      const interval = 3000;
-      let waited = 0;
-      while (waited < maxWait) {
-        if (page.isClosed()) {
-          this.logger.warn('⚠️ Página fechada antes do tempo. Tentando salvar estado assim mesmo.');
-          break;
-        }
-        await page.waitForTimeout(interval);
-        waited += interval;
+  const TARGET_BUTTON_SELECTOR = process.env.WF_LOGIN_BUTTON_SELECTOR || 'button[aria-label="Adobe Experience Cloud"], button[data-omega-element="Adobe Experience Cloud"]';
+  const MAX_TOTAL_MS = parseInt(process.env.WF_LOGIN_MAX_TOTAL_MS || '90000', 10);
+  const INITIAL_GRACE_MS = parseInt(process.env.WF_LOGIN_INITIAL_GRACE_MS || '40000', 10);
+  const POLL_INTERVAL_MS = parseInt(process.env.WF_LOGIN_POLL_INTERVAL_MS || '3000', 10);
+  const MAX_PERSIST_ATTEMPTS = parseInt(process.env.WF_LOGIN_MAX_PERSIST_ATTEMPTS || '15', 10);
+      const start = Date.now();
+  let persisted = false;
+  let persistAttempts = 0;
+  const allowMultiple = (process.env.WF_LOGIN_MULTI_PERSIST || '').toLowerCase() === 'true';
+
+      // Fase inicial: aguardar período de SSO/MFA sem flood
+      while (Date.now() - start < INITIAL_GRACE_MS) {
+        if (page.isClosed()) break;
+        await page.waitForTimeout(2500);
       }
 
-      // Salvar estado da sessão
-      await context.storageState({ path: this.STATE_FILE });
-      this.logger.log(`✅ Sessão salva em ${this.STATE_FILE}`);
+      while ((Date.now() - start) < MAX_TOTAL_MS && !page.isClosed()) {
+        try {
+          const button = await page.$(TARGET_BUTTON_SELECTOR);
+          if (button) {
+            this.logger.log('✅ Botão Adobe Experience Cloud detectado — sessão aparentemente autenticada.');
+            // Salva state a cada detecção (com limite)
+            await context.storageState({ path: this.STATE_FILE });
+            persistAttempts++;
+            if (!persisted) {
+              persisted = true;
+              this.logger.log(`💾 Sessão persistida (1ª captura) em ${this.STATE_FILE}`);
+              if (!allowMultiple) {
+                this.logger.log('🛑 Encerrando imediatamente após primeira persistência (WF_LOGIN_MULTI_PERSIST != true).');
+                break;
+              }
+            } else if (allowMultiple) {
+              this.logger.log(`💾 Sessão atualizada (#${persistAttempts})`);
+              if (persistAttempts >= MAX_PERSIST_ATTEMPTS) {
+                this.logger.log('🛑 Limite de persistências atingido — encerrando browser para liberar usuário.');
+                break;
+              }
+            }
+          } else {
+            this.logger.verbose('⌛ Botão ainda não encontrado, continuará polling...');
+          }
+        } catch (e: any) {
+          this.logger.warn(`Falha durante polling de login: ${e.message}`);
+        }
+        await page.waitForTimeout(POLL_INTERVAL_MS);
+      }
+
+      if (!persisted) {
+        // fallback final: salvar ao menos uma vez antes de fechar
+        try {
+            await context.storageState({ path: this.STATE_FILE });
+            this.logger.log('💾 Sessão salva no fallback final.');
+        } catch (e:any) {
+            this.logger.warn('Não foi possível salvar sessão no fallback: ' + e.message);
+        }
+      }
+
+      this.logger.log(`✅ Processo de login concluído (persisted=${persisted})`);
     } catch (e: any) {
       this.logger.error('Erro durante login interativo', e.message);
       throw e;
