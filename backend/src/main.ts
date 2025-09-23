@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { logHeadlessConfigOnce } from './modules/workfront/utils/headless.util';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -58,6 +59,8 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 3000;
+
+  logHeadlessConfigOnce('bootstrap');
 
   await app.listen(port, () => {
     console.log('🚀 ===============================================');

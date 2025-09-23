@@ -64,6 +64,7 @@ import { ShareAutomationService } from './share-automation.service';
 import { UploadAutomationService } from './upload-automation.service';
 import { spawnSync } from 'child_process';
 import { TimelineService } from './timeline.service';
+import { resolveHeadless } from './utils/headless.util';
 
 @ApiTags('Projetos')
 @Controller('api')
@@ -778,7 +779,7 @@ export class WorkfrontController {
     description: 'Automação executada com sucesso',
     type: UploadExecutionResponseDto,
   })
-  async executeUpload(@Body() executeDto: ExecuteUploadDto): Promise<UploadExecutionResponseDto> {
+  async executeUpload(@Body() executeDto: ExecuteUploadDto, @Query('debugHeadless') debugHeadless?: string): Promise<UploadExecutionResponseDto> {
     try {
   const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths } = executeDto;
 
@@ -789,7 +790,7 @@ export class WorkfrontController {
         selectedUser,
         assetZipPath,
         finalMaterialPaths,
-  headless: (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
+  headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
       });
 
       return result;
@@ -813,9 +814,9 @@ export class WorkfrontController {
 
   @Post('work/log-hours')
   @ApiOperation({ summary: 'Lançar horas em uma tarefa (primeira ou pelo nome)' })
-  async logHours(@Body() body: LogHoursDto) {
+  async logHours(@Body() body: LogHoursDto, @Query('debugHeadless') debugHeadless?: string) {
     try {
-  return await this.hoursAutomation.logHours({ projectUrl: body.projectUrl, hours: body.hours, note: body.note, taskName: body.taskName, headless: (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true' });
+  return await this.hoursAutomation.logHours({ projectUrl: body.projectUrl, hours: body.hours, note: body.note, taskName: body.taskName, headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }) });
     } catch (e: any) {
       throw new HttpException({ success: false, message: e?.message || 'Falha ao lançar horas' }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -836,7 +837,7 @@ export class WorkfrontController {
       }
     }
   })
-  async executeWorkflow(@Body() body: any) {
+  async executeWorkflow(@Body() body: any, @Query('debugHeadless') debugHeadless?: string) {
     try {
   const { projectUrl, steps, stopOnError } = body;
       
@@ -851,7 +852,7 @@ export class WorkfrontController {
       const result = await this.timelineService.executeWorkflow({
         projectUrl,
         steps,
-  headless: (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
+  headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
         stopOnError: stopOnError || false
       });
 

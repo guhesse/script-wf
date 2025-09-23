@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
 import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
+import { resolveHeadless } from './utils/headless.util';
 import { CommentService } from '../pdf/comment.service';
 import { ShareAutomationService } from './share-automation.service';
 import { CommentType } from '../pdf/dto/pdf.dto';
@@ -44,7 +45,7 @@ export class UploadAutomationService {
         success: boolean; message: string; results: Array<{ type: 'asset-release' | 'final-materials'; fileName: string; uploadSuccess: boolean; shareSuccess: boolean; commentSuccess: boolean; message?: string; error?: string; estimatedUploadSeconds?: number; cumulativeEstimatedSeconds?: number }>;
         summary: { totalFiles: number; uploadSuccesses: number; shareSuccesses: number; commentSuccesses: number; errors: number; estimatedTotalSeconds?: number }
     }> {
-    const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true' } = params;
+    const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, headless = resolveHeadless() } = params;
         this.logger.log('🚀 [UPLOAD] Iniciando plano');
         const results: any[] = []; let uploadSuccesses = 0; let shareSuccesses = 0; let commentSuccesses = 0; let errors = 0;
 

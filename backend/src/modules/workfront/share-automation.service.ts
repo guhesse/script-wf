@@ -3,6 +3,7 @@ import { Browser, Page } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
+import { resolveHeadless } from './utils/headless.util';
 import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
 
 const STATE_FILE = 'wf_state.json';
@@ -55,7 +56,7 @@ export class ShareAutomationService {
         projectUrl: string,
         selections: ShareSelection[],
         selectedUser: TeamKey = 'carol',
-    headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
+    headless = resolveHeadless(),
     ): Promise<{ results: ShareResult[]; summary: { total: number; success: number; errors: number } }> {
         this.validateShareInputs(projectUrl, selections);
     const statePath = await this.ensureStateFile();
@@ -105,7 +106,7 @@ export class ShareAutomationService {
         projectUrl: string,
         folderName: string,
         fileName: string,
-    headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
+    headless = resolveHeadless(),
     ): Promise<{ browser: Browser; page: Page; frame: any }> {
     const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
     const page = await context.newPage();
@@ -150,7 +151,7 @@ export class ShareAutomationService {
         folderName: string,
         fileName: string,
         selectedUser: TeamKey = 'carol',
-    headless = (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true',
+    headless = resolveHeadless(),
     ): Promise<{ success: boolean; message?: string }> {
     const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
 

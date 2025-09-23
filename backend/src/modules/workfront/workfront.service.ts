@@ -12,6 +12,7 @@ import {
     LinkStatus,
 } from './dto/workfront.dto';
 import { ShareAutomationService } from './share-automation.service';
+import { resolveHeadless } from './utils/headless.util';
 import { CommentService } from '../pdf/comment.service';
 import { CommentType, UserTeam } from '../pdf/dto/pdf.dto';
 import {
@@ -231,7 +232,7 @@ export class WorkfrontService {
      * Fluxo combinado: Compartilhar + Comentar (por arquivo) com suporte a múltiplas URLs
      */
     async shareAndComment(payload: ShareAndCommentDto): Promise<ShareAndCommentResponseDto> {
-    const headless = payload.headless === true ? true : (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true';
+        const headless = payload.headless === true ? true : (process.env.WF_HEADLESS_DEFAULT ?? 'true').toLowerCase() === 'true';
         const selectedUser = (payload.selectedUser || UserTeam.CAROL) as UserTeam;
         const commentType = (payload.commentType || CommentType.ASSET_RELEASE) as CommentType;
 
