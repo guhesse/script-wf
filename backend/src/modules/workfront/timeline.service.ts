@@ -10,6 +10,7 @@ import { createOptimizedContext, disposeBrowser } from './utils/playwright-optim
 import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
 import { ProgressService } from './progress.service';
 import { resolveHeadless } from './utils/headless.util';
+import { UploadJobsService } from './upload-jobs.service';
 
 export enum WorkflowAction {
     SHARE = 'share',
@@ -38,6 +39,8 @@ export interface TimelineConfig {
     steps: WorkflowStep[];
     headless?: boolean;
     stopOnError?: boolean;
+    userId?: string;
+    jobId?: string; // se já existe job de upload pré-criado
 }
 
 @Injectable()
@@ -56,6 +59,7 @@ export class TimelineService {
         private readonly hoursService: HoursAutomationService,
         private readonly commentService: CommentService,
         private readonly progress: ProgressService,
+        private readonly uploadJobs: UploadJobsService,
     ) { }
 
     /**
@@ -67,7 +71,20 @@ export class TimelineService {
         summary: { total: number; successful: number; failed: number; skipped: number };
     }> {
     // Headless padrão controlado por variável de ambiente WF_HEADLESS_DEFAULT (default 'true')
-    const { projectUrl, steps, headless = resolveHeadless(), stopOnError = false } = config;
+    const { projectUrl, steps, headless = resolveHeadless(), stopOnError = false, userId, jobId: existingJobId } = config;
+        let workflowJobId = existingJobId;
+        if (!workflowJobId && userId) {
+            const uploadStep = steps.find(s => s.enabled && s.action === WorkflowAction.UPLOAD);
+            if (uploadStep) {
+                const p = uploadStep.params || {};
+                const staged = { assetZip: p.assetZipPath, finalMaterials: p.finalMaterialPaths };
+                if (staged.assetZip || (Array.isArray(staged.finalMaterials) && staged.finalMaterials.length)) {
+                    const job = this.uploadJobs.createJob({ userId, projectUrl, staged });
+                    workflowJobId = job.id;
+                    this.logger.log(`🆔 Job criado automaticamente para workflow: ${workflowJobId}`);
+                }
+            }
+        }
         const results: WorkflowResult[] = [];
         let successful = 0;
         let failed = 0;
@@ -167,6 +184,7 @@ export class TimelineService {
                     if (step.action === WorkflowAction.UPLOAD) {
                         lastUploadCompletedAt = Date.now();
                         const fileCount = this.estimateUploadFileCount(step);
+                        if (workflowJobId) this.uploadJobs.markCompleted(workflowJobId, { message: result.message, fileCount });
                         const planned = Math.min(
                             this.MIN_DELAY_AFTER_UPLOAD_MS + (fileCount * this.DELAY_PER_FILE_AFTER_UPLOAD_MS),
                             this.MAX_DELAY_AFTER_UPLOAD_MS
@@ -176,6 +194,7 @@ export class TimelineService {
                         this.progress.publish({ phase: 'info', action: 'upload', stepIndex: i, totalSteps: steps.length, message: 'Upload finalizado - aguardará estabilização', projectUrl, extra: { fileCount, plannedDelay: planned } });
                     }
                 } else {
+                    if (step.action === WorkflowAction.UPLOAD && workflowJobId) this.uploadJobs.markFailed(workflowJobId, result.message);
                     failed++;
                     this.logger.error(`❌ ${step.action} falhou: ${result.message}`);
                     this.progress.publish({ phase: 'error', action: step.action, stepIndex: i, totalSteps: steps.length, message: result.message || 'Erro', projectUrl, durationMs: duration });
@@ -230,8 +249,9 @@ export class TimelineService {
         return {
             success: failed === 0,
             results,
-            summary
-        };
+            summary,
+            jobId: workflowJobId
+        } as any;
     }
 
     /** Calcula número de arquivos do step de upload para definir delay dinâmico pós-processamento */

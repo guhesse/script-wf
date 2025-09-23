@@ -1,9 +1,12 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UploadedFile, UseInterceptors, UseGuards } from '@nestjs/common';
 import { MastersService } from './masters.service';
 import { CreateMasterDto } from './dto/create-master.dto';
 import { UpdateMasterDto, ListMastersQueryDto } from './dto/update-master.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('Masters')
 @Controller('api/masters')
@@ -29,14 +32,18 @@ export class MastersController {
     }
 
     @Post()
-    @ApiOperation({ summary: 'Criar novo master (registro de metadados)' })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('EDITOR','ADMIN')
+    @ApiOperation({ summary: 'Criar novo master (registro de metadados) [EDITOR|ADMIN]' })
     create(@Body() dto: CreateMasterDto) {
         return this.mastersService.create(dto);
     }
 
     @Post('upload')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('EDITOR','ADMIN')
     @UseInterceptors(FileInterceptor('file'))
-    @ApiOperation({ summary: 'Upload de arquivo master (multipart form-data)' })
+    @ApiOperation({ summary: 'Upload de arquivo master (multipart form-data) [EDITOR|ADMIN]' })
     upload(
         @UploadedFile() file: { originalname: string; buffer: Buffer; mimetype: string; size: number },
         @Body() body: { title?: string; brand?: string; editableType?: string; tags?: string; subfolder?: string; previewBase64?: string }
@@ -45,19 +52,25 @@ export class MastersController {
     }
 
     @Patch(':id')
-    @ApiOperation({ summary: 'Atualizar master (metadados)' })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('EDITOR','ADMIN')
+    @ApiOperation({ summary: 'Atualizar master (metadados) [EDITOR|ADMIN]' })
     update(@Param('id') id: string, @Body() dto: UpdateMasterDto) {
         return this.mastersService.update(id, dto);
     }
 
     @Patch(':id/archive')
-    @ApiOperation({ summary: 'Arquivar master' })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
+    @ApiOperation({ summary: 'Arquivar master [ADMIN]' })
     archive(@Param('id') id: string) {
         return this.mastersService.archive(id);
     }
 
     @Post('admin/consolidate')
-    @ApiOperation({ summary: 'Consolidar duplicados legacy (admin)' })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
+    @ApiOperation({ summary: 'Consolidar duplicados legacy (admin) [ADMIN]' })
     consolidate() {
         return this.mastersService.consolidateDuplicates();
     }

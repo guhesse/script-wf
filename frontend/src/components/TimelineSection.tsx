@@ -6,11 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlayCircle, Settings, Upload, Share2, MessageSquare, Activity, Clock, ChevronDown, ChevronUp, FolderOpen, Loader2, CheckCircle2, XCircle, SkipForward } from 'lucide-react';
+import { PlayCircle, Settings, Upload, UploadCloud, Share2, MessageSquare, Activity, Clock, ChevronDown, ChevronUp, FolderOpen, Loader2, CheckCircle2, XCircle, SkipForward } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useWorkflowProgress } from '@/hooks/useWorkflowProgress';
-import { Switch } from '@/components/ui/switch';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 
 type TeamKey = 'carol' | 'giovana' | 'test';
@@ -54,7 +52,7 @@ const WORKFLOW_ICONS: Record<WorkflowAction, React.ComponentType<{ className?: s
     upload_asset: Upload,
     share_asset: Share2,
     comment_asset: MessageSquare,
-    upload_finals: Upload,
+    upload_finals: UploadCloud,
     comment_finals: MessageSquare,
     status: Activity,
     hours: Clock,
@@ -79,10 +77,13 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
     const [executing, setExecuting] = useState(false);
     const [results, setResults] = useState<{ success?: boolean; summary?: { successful: number; failed: number; skipped: number }; message?: string } | null>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [showHeadless, setShowHeadless] = useState(true); // true = headless, false = mostrar navegador
-    const [showEvents, setShowEvents] = useState(false);
-    const { executeWorkflow } = useWorkfrontApi();
+    const [showInternal] = useState(false); // modo debug desativado por padrão (toggle removido)
+    const { executeWorkflow, getCommentPreview } = useWorkfrontApi();
     const progress = useWorkflowProgress({ projectUrl });
+    // Guardar o "plano" (sequência real de tasks enviadas) para enriquecer UI
+    const [executedPlan, setExecutedPlan] = useState<Array<{ action: string; subtype?: 'zip' | 'finals'; params?: Record<string, unknown>; label: string }>>([]);
+    const [commentPreviews, setCommentPreviews] = useState<Record<string,string>>({});
+    const [commentMentions, setCommentMentions] = useState<Record<string,string[]>>({});
 
     // Preenche params quando staging disponível
     useEffect(() => {
@@ -162,11 +163,60 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
     const executeTimeline = async () => {
         if (!projectUrl || readyEnabledSteps.length === 0) return;
         setExecuting(true); setResults(null);
+        // Monta plano linear na mesma ordem que será enviado ao backend
+        const plan = readyEnabledSteps.map(s => {
+            // Normaliza actions para coincidir com progress do backend
+            let mappedAction: string = s.action;
+            let subtype: 'zip' | 'finals' | undefined = undefined;
+            if (s.action === 'upload_asset') { mappedAction = 'upload'; subtype = 'zip'; }
+            if (s.action === 'upload_finals') { mappedAction = 'upload'; subtype = 'finals'; }
+            if (s.action === 'share_asset') mappedAction = 'share';
+            if (s.action === 'comment_asset' || s.action === 'comment_finals') mappedAction = 'comment';
+            const params = (s.params || {}) as Record<string, unknown>;
+            const label = (() => {
+                if (mappedAction === 'upload' && subtype === 'zip') return 'Upload Zip';
+                if (mappedAction === 'upload' && subtype === 'finals') return 'Upload Finais';
+                if (mappedAction === 'share') return 'Share';
+                if (mappedAction === 'comment') return 'Comment';
+                if (mappedAction === 'status') return 'Status';
+                if (mappedAction === 'hours') return 'Hours';
+                return mappedAction;
+            })();
+            return { action: mappedAction, subtype, params, label };
+        });
+        setExecutedPlan(plan);
+        // Buscar previews de comentários antes de iniciar (rich text)
         try {
+            const commentTypes = Array.from(new Set(plan.filter(p => p.action === 'comment').map(p => p.params?.commentType).filter(Boolean))) as string[];
+            if (commentTypes.length) {
+                const previews: Record<string,string> = {};
+                const mentionsMap: Record<string,string[]> = {};
+                for (const ct of commentTypes) {
+                    try {
+                        const prev = await getCommentPreview({ commentType: ct as 'assetRelease' | 'finalMaterials' | 'approval', selectedUser });
+                        if (prev?.success) {
+                            if (prev.commentText) previews[ct] = prev.commentText;
+                            if (Array.isArray(prev.users)) {
+                                mentionsMap[ct] = prev.users.map(u => u.name).filter(Boolean);
+                            }
+                        }
+                    } catch {/* ignora erro individual */}
+                }
+                setCommentPreviews(previews);
+                setCommentMentions(mentionsMap);
+            }
+        } catch {/* ignore */}
+        try {
+            // Converte explicitamente para shape esperado pelo hook (params generic Record)
+            const frontendSteps = readyEnabledSteps.map(s => ({
+                action: s.action,
+                enabled: s.enabled,
+                params: s.params ? { ...(s.params as Record<string, unknown>) } : undefined
+            }));
             const result = await executeWorkflow({
                 projectUrl,
-                steps: readyEnabledSteps, // envia só os válidos
-                headless: showHeadless,
+                steps: frontendSteps,
+                headless: false,
                 stopOnError: false
             });
             setResults(result);
@@ -194,31 +244,129 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                         <div className="flex items-center gap-3">
                             <Activity className="w-4 h-4 text-primary" /> Execução (tempo real)
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{progress.currentAction ? `${progress.currentAction} · ${progress.currentPhase}` : 'Aguardando'}</span>
-                                <Badge variant="outline">{progress.percent}%</Badge>
-                                <Button size="sm" variant="ghost" onClick={() => setShowEvents(s => !s)}>{showEvents ? 'Logs ▲' : 'Logs ▼'}</Button>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                                <span className="text-muted-foreground">Headless</span>
-                                <Switch checked={showHeadless} onCheckedChange={(v: boolean) => setShowHeadless(!!v)} />
-                            </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>{progress.currentAction ? `${progress.currentAction} · ${progress.currentPhase}` : 'Aguardando'}</span>
+                            <Badge variant="outline">{progress.percent}%</Badge>
                         </div>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <Progress value={progress.percent} className="h-2" />
-                    {progress.lastMessage && (
-                        <div className="text-[11px] text-muted-foreground truncate" title={progress.lastMessage}>{progress.lastMessage}</div>
-                    )}
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span className="truncate max-w-[60%]" title={progress.lastMessage}>{progress.lastMessage || ''}</span>
+                        <span>{progress.percent}%</span>
+                    </div>
+                    {/* Removed log details area */}
                     {/* Lista de tasks lineares (usando id/display) */}
                     {progress.tasks && progress.tasks.length > 0 && (
                         <div className="flex flex-col gap-1 pt-1">
-                            {progress.tasks
-                                .slice()
-                                .sort((a, b) => a.stepIndex - b.stepIndex)
-                                .map(t => {
+                            {/* Toggle visão interna */}
+                            <div className="flex justify-end pr-1 pb-1" />
+                            {/* Agrupamento por etapa de alto nível */}
+                            {(!showInternal && executedPlan.length > 0) ? (() => {
+                                // Ordena tarefas internas
+                                const sorted = progress.tasks.slice().sort((a,b)=>a.stepIndex - b.stepIndex);
+                                interface Group { action: string; tasks: typeof sorted; }
+                                // Cria grupos contíguos por action
+                                const rawGroups: Group[] = [];
+                                let current: Group | null = null;
+                                for (const t of sorted) {
+                                    if (!current || current.action !== t.action) {
+                                        current = { action: t.action, tasks: [] as typeof sorted };
+                                        rawGroups.push(current);
+                                    }
+                                    current.tasks.push(t);
+                                }
+                                // Associa grupos à ordem do executedPlan (matching por action sequencial)
+                                const usedGroupIdx = new Set<number>();
+                                const highLevel = executedPlan.map((p, idx) => {
+                                    const groupIdx = rawGroups.findIndex((g,i) => !usedGroupIdx.has(i) && g.action === (p.action) );
+                                    if (groupIdx >= 0) usedGroupIdx.add(groupIdx);
+                                    const g = groupIdx >= 0 ? rawGroups[groupIdx] : null;
+                                    const tasks = g ? g.tasks : [];
+                                    // Deriva status agregado
+                                    let status: string = 'pending';
+                                    if (tasks.length) {
+                                        if (tasks.some(t => t.status === 'error')) status = 'error';
+                                        else if (tasks.some(t => t.status === 'running')) status = 'running';
+                                        else if (tasks.every(t => t.status === 'skip')) status = 'skip';
+                                        else if (tasks.every(t => t.status === 'success')) status = 'success';
+                                        else status = 'pending';
+                                    }
+                                    const durationMs = tasks.reduce((acc,t)=> acc + (t.durationMs || 0),0) || undefined;
+                                    // Reaproveita lógica de detalhes existente
+                                    const pseudoTask: { id: string; action: string; display: string; status: string; message?: string; durationMs?: number } = { id: `${p.action}-hl-${idx}`, action: p.action, display: p.label || p.action, status, message: tasks[tasks.length-1]?.message, durationMs };
+                                    return { plan: p, pseudo: pseudoTask, tasks };
+                                });
+                                return highLevel.map(({ plan, pseudo, tasks }) => {
+                                    const t = pseudo;
+                                    const Icon = plan.subtype === 'finals' && plan.action === 'upload' ? UploadCloud : plan.action === 'upload' ? Upload : plan.action === 'share' ? Share2 : plan.action === 'comment' ? MessageSquare : plan.action === 'status' ? Activity : Clock;
+                                    const baseColor = t.status === 'success' ? 'text-emerald-500' : t.status === 'error' ? 'text-destructive' : t.status === 'skip' ? 'text-amber-500' : t.status === 'running' ? 'text-primary' : 'text-muted-foreground';
+                                    const bg = t.status === 'running' ? 'bg-primary/5' : t.status === 'success' ? 'bg-emerald-500/5' : t.status === 'error' ? 'bg-destructive/10' : t.status === 'skip' ? 'bg-amber-500/10' : 'bg-muted/10';
+                                    const statusIcon = t.status === 'running' ? <Loader2 className="w-3 h-3 animate-spin" /> : t.status === 'success' ? <CheckCircle2 className="w-3 h-3" /> : t.status === 'error' ? <XCircle className="w-3 h-3" /> : t.status === 'skip' ? <SkipForward className="w-3 h-3" /> : null;
+                                    const title = `${t.display} • ${t.status}` + (t.durationMs ? ` • ${progress.formatDuration(t.durationMs)}` : '') + (t.message ? `\n${t.message}` : '');
+                                    const planItem = plan;
+                                    const details = (() => {
+                                        if (!planItem) return null;
+                                        const p = planItem.params || {} as Record<string, unknown>;
+                                        const userLabel = typeof p.selectedUser === 'string' ? (p.selectedUser === 'carol' ? 'Equipe Carolina' : p.selectedUser === 'giovana' ? 'Equipe Giovana' : 'Usuário Teste') : undefined;
+                                        if (planItem.action === 'upload' && planItem.subtype === 'zip') {
+                                            if (p.assetZipPath) {
+                                                const name = String(p.assetZipPath).split(/[/\\]/).pop();
+                                                return `Subindo arquivo: ${name}${userLabel ? ' · ' + userLabel : ''}`;
+                                            }
+                                        }
+                                        if (planItem.action === 'upload' && planItem.subtype === 'finals') {
+                                            if (Array.isArray(p.finalMaterialPaths)) {
+                                                const all = (p.finalMaterialPaths as unknown as string[]).map(f => f.split(/[/\\]/).pop());
+                                                const multi = all.join('\n');
+                                                return `Upload finais:\n${multi}${userLabel ? '\n' + userLabel : ''}`;
+                                            }
+                                        }
+                                        if (planItem.action === 'share') {
+                                            const selections = (p.selections as Array<{ fileName?: string }> | undefined) || [];
+                                            const files = selections.map(s => s.fileName).filter(Boolean).join('\n');
+                                            return `Compartilhando ${selections.length} arquivo(s)${files ? ':\n' + files : ''}${userLabel ? '\n' + userLabel : ''}`;
+                                        }
+                                        if (planItem.action === 'comment') {
+                                            const ct = p.commentType as string | undefined;
+                                            const preview = (p.rawHtml as string | undefined) || (ct ? commentPreviews[ct] : '') || '';
+                                            const mentions = ct ? (commentMentions[ct] || []) : [];
+                                            const mentionLine = mentions.length ? mentions.map(n => `@${n}`).join(' ') + '\n' : '';
+                                            return (mentionLine + preview).trim() || '(Comentário não disponível)';
+                                        }
+                                        if (planItem.action === 'status') {
+                                            return `Novo status: ${p.deliverableStatus}`;
+                                        }
+                                        if (planItem.action === 'hours') {
+                                            // mostrar com vírgula
+                                            const hrs = typeof p.hours === 'number' ? p.hours.toString().replace('.', ',') : p.hours;
+                                            const task = p.taskName ? ` (${p.taskName})` : '';
+                                            return `Horas: ${hrs}${task}${p.note ? ' · ' + p.note : ''}`;
+                                        }
+                                        return null;
+                                    })();
+                                    const countInfo = tasks.length > 1 ? ` (${tasks.filter(x=>x.status==='success').length}/${tasks.length})` : '';
+                                    return (
+                                        <div key={t.id} className={`flex items-center gap-3 border rounded px-3 py-2 ${bg}`} title={title}>
+                                            <Icon className={`w-4 h-4 ${baseColor}`} />
+                                            <div className="flex-1 text-xs flex flex-col gap-0.5">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-medium tracking-wide capitalize">{t.display}{countInfo}</span>
+                                                    <span className={`flex items-center gap-1 text-[10px] ${baseColor}`}>
+                                                        {statusIcon}{t.status}
+                                                        {t.durationMs && t.status === 'success' && <span className="text-muted-foreground">{progress.formatDuration(t.durationMs)}</span>}
+                                                    </span>
+                                                </div>
+                                                {details && <div className="text-[10px] text-muted-foreground whitespace-pre-wrap" title={details}>{details}</div>}
+                                                {t.message && <div className="text-[10px] text-muted-foreground truncate" >{t.message}</div>}
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })() : (
+                                // Visão interna (original): todas subtarefas
+                                progress.tasks.slice().sort((a,b)=>a.stepIndex - b.stepIndex).map(t => {
                                     const Icon = t.action === 'upload' ? Upload : t.action === 'share' ? Share2 : t.action === 'comment' ? MessageSquare : t.action === 'status' ? Activity : Clock;
                                     const baseColor = t.status === 'success' ? 'text-emerald-500' : t.status === 'error' ? 'text-destructive' : t.status === 'skip' ? 'text-amber-500' : t.status === 'running' ? 'text-primary' : 'text-muted-foreground';
                                     const bg = t.status === 'running' ? 'bg-primary/5' : t.status === 'success' ? 'bg-emerald-500/5' : t.status === 'error' ? 'bg-destructive/10' : t.status === 'skip' ? 'bg-amber-500/10' : 'bg-muted/10';
@@ -229,7 +377,7 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                                             <Icon className={`w-4 h-4 ${baseColor}`} />
                                             <div className="flex-1 text-xs flex flex-col gap-0.5">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="font-medium lowercase tracking-wide">{t.display}</span>
+                                                    <span className="font-medium tracking-wide capitalize">{t.display}</span>
                                                     <span className={`flex items-center gap-1 text-[10px] ${baseColor}`}>
                                                         {statusIcon}{t.status}
                                                         {t.durationMs && t.status === 'success' && <span className="text-muted-foreground">{progress.formatDuration(t.durationMs)}</span>}
@@ -239,26 +387,9 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                                             </div>
                                         </div>
                                     );
-                                })}
+                                })
+                            )}
                         </div>
-                    )}
-                    {showEvents && (
-                        <ScrollArea className="h-48 border rounded p-2 bg-muted/30">
-                            <ul className="space-y-1">
-                                {progress.events.slice(-150).reverse().map((e, i) => (
-                                    <li key={e.timestamp + '-' + i} className="text-[11px] font-mono">
-                                        <span className={
-                                            e.phase === 'error' ? 'text-destructive' :
-                                                e.phase === 'success' ? 'text-emerald-600' :
-                                                    e.phase === 'delay' ? 'text-amber-600' :
-                                                        'text-muted-foreground'
-                                        }>
-                                            {new Date(e.timestamp).toLocaleTimeString()} {e.phase.toUpperCase()} {e.action && `[${e.action}]`} - {e.message}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </ScrollArea>
                     )}
                 </CardContent>
             </Card>
@@ -407,9 +538,14 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                                                     <div className="space-y-2">
                                                         <div className="flex items-center gap-3">
                                                             <Label className="text-xs w-24">Horas:</Label>
-                                                            <Input type="number" min={0.25} step={0.25} className="h-8 w-32"
-                                                                value={(step.params as HoursParams).hours ?? ''}
-                                                                onChange={e => updateStepParam(idx, 'hours', parseFloat(e.target.value))} />
+                                                            <Input type="text" className="h-8 w-32"
+                                                                value={(step.params as HoursParams).hours?.toString().replace('.', ',') ?? ''}
+                                                                onChange={e => {
+                                                                    const raw = e.target.value.replace(/[^0-9.,]/g,'');
+                                                                    const normalized = raw.replace(',','.');
+                                                                    const num = parseFloat(normalized) || 0;
+                                                                    updateStepParam(idx, 'hours', num);
+                                                                }} />
                                                         </div>
                                                         <div className="flex items-center gap-3">
                                                             <Label className="text-xs w-24">Nota:</Label>

@@ -13,6 +13,7 @@ import {
   UploadedFiles,
   UseInterceptors,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -64,6 +65,9 @@ import { ShareAutomationService } from './share-automation.service';
 import { UploadAutomationService } from './upload-automation.service';
 import { spawnSync } from 'child_process';
 import { TimelineService } from './timeline.service';
+import { UploadJobsService } from './upload-jobs.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 import { resolveHeadless } from './utils/headless.util';
 
 @ApiTags('Projetos')
@@ -83,6 +87,7 @@ export class WorkfrontController {
     private readonly statusAutomation: StatusAutomationService,
     private readonly hoursAutomation: HoursAutomationService,
     private readonly timelineService: TimelineService,
+    private readonly uploadJobs: UploadJobsService,
   ) { }
 
   @Get('health')
@@ -745,11 +750,16 @@ export class WorkfrontController {
   }))
 
   
+  @UseGuards(JwtAuthGuard)
   async prepareUpload(
     @UploadedFiles() files: any,
-    @Body() body: { projectUrl: string; selectedUser: 'carol' | 'giovana' | 'test' }
+    @Body() body: { projectUrl: string; selectedUser: 'carol' | 'giovana' | 'test'; jobId?: string },
+    @CurrentUser() user?: AuthUser
   ) {
     try {
+      // DEBUG TEMP: remover depois
+      const rawAuth = (arguments as any)[0]?.headers?.authorization || 'N/A';
+      this.logger.log(`[debug] prepareUpload Authorization header: ${rawAuth}`);
       if (!body?.projectUrl) throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
       const assetZip = files?.assetZip?.[0];
       const finals = files?.finalMaterials || [];
@@ -761,9 +771,27 @@ export class WorkfrontController {
         finalMaterials: finals.map(f => path.resolve(f.destination, f.filename)),
       };
 
+      // Identificação de usuário (stub simples) - em produção usar auth real
+  const userId = user?.userId || 'anonymous';
+      // Se foi passado jobId e existe, atualiza staged desse job (caso usuário queira refazer)
+      let jobId = body.jobId;
+      if (jobId) {
+        const existing = this.uploadJobs.getJob(jobId, userId, false);
+        if (!existing) jobId = undefined; // não pertence a ele
+      }
+      let job;
+      if (!jobId) {
+        job = this.uploadJobs.createJob({ userId, projectUrl: body.projectUrl, staged });
+      } else {
+        job = this.uploadJobs.getJob(jobId, userId, false)!;
+        // simples overwrite
+        (job as any).staged = staged; // para simplicidade; serviço não expôs update direto
+      }
       return {
         success: true,
         staged,
+        jobId: job.id,
+        status: job.status,
         message: 'Arquivos salvos em staging com sucesso',
       };
     } catch (error) {
@@ -779,9 +807,12 @@ export class WorkfrontController {
     description: 'Automação executada com sucesso',
     type: UploadExecutionResponseDto,
   })
-  async executeUpload(@Body() executeDto: ExecuteUploadDto, @Query('debugHeadless') debugHeadless?: string): Promise<UploadExecutionResponseDto> {
+  @UseGuards(JwtAuthGuard)
+  async executeUpload(@Body() executeDto: ExecuteUploadDto & { jobId?: string }, @Query('debugHeadless') debugHeadless?: string, @CurrentUser() user?: AuthUser): Promise<UploadExecutionResponseDto & { jobId?: string }> {
     try {
-  const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths } = executeDto;
+  const { projectUrl, selectedUser, assetZipPath, finalMaterialPaths, jobId } = executeDto;
+      const userId = user?.userId || 'anonymous';
+      if (jobId) this.uploadJobs.markExecuting(jobId);
 
       this.logger.log(`🚀 Executando upload automation: ${assetZipPath} + ${finalMaterialPaths.length} finals`);
 
@@ -792,9 +823,11 @@ export class WorkfrontController {
         finalMaterialPaths,
   headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
       });
-
-      return result;
+      if (jobId) this.uploadJobs.markCompleted(jobId, result.summary || result.message);
+      return { ...result, jobId };
     } catch (error) {
+      const jobId = (executeDto as any)?.jobId;
+      if (jobId) this.uploadJobs.markFailed(jobId, (error as any)?.message);
       if (error instanceof HttpException) throw error;
       throw new HttpException({ success: false, message: (error as Error).message }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -837,7 +870,8 @@ export class WorkfrontController {
       }
     }
   })
-  async executeWorkflow(@Body() body: any, @Query('debugHeadless') debugHeadless?: string) {
+  @UseGuards(JwtAuthGuard)
+  async executeWorkflow(@Body() body: any, @Query('debugHeadless') debugHeadless?: string, @CurrentUser() user?: AuthUser) {
     try {
   const { projectUrl, steps, stopOnError } = body;
       
@@ -852,8 +886,10 @@ export class WorkfrontController {
       const result = await this.timelineService.executeWorkflow({
         projectUrl,
         steps,
-  headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
-        stopOnError: stopOnError || false
+        headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
+        stopOnError: stopOnError || false,
+        userId: user?.userId,
+        jobId: body.jobId,
       });
 
       return result;
@@ -868,6 +904,38 @@ export class WorkfrontController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  // ===== JOBS DE UPLOAD (persistência simples) =====
+  @UseGuards(JwtAuthGuard)
+  @Get('upload/jobs/active')
+  async getActiveJob(@CurrentUser() user?: AuthUser) {
+    const job = this.uploadJobs.getActiveJobForUser(user?.userId || 'anonymous');
+    this.logger.log(`[debug] getActiveJob user=${user?.userId || 'anon'} roles=${user?.roles?.join(',') || ''}`);
+    return { success: true, job: job || null };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('upload/jobs/:id')
+  async getJob(@Param('id') id: string, @CurrentUser() user?: AuthUser, @Query('admin') admin?: string) {
+    const job = this.uploadJobs.getJob(id, user?.userId || 'anonymous', admin === 'true');
+    if (!job) return { success: false, message: 'Job não encontrado' };
+    return { success: true, job };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('upload/jobs/:id/cancel')
+  async cancelJob(@Param('id') id: string, @CurrentUser() user?: AuthUser, @Query('admin') admin?: string) {
+    const ok = this.uploadJobs.cancel(id, user?.userId || 'anonymous', admin === 'true');
+    return { success: ok };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('upload/jobs/search')
+  async searchJobs(@Query('q') q: string, @CurrentUser() user?: AuthUser, @Query('admin') admin?: string) {
+    if (!q) return { success: true, results: [] };
+    const results = this.uploadJobs.search(q, user?.userId, admin === 'true');
+    return { success: true, results };
   }
 
   @Post('workflow/preview')

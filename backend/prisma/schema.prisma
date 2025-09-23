@@ -13,6 +13,40 @@ datasource db {
   url      = env("DBLINK")
 }
 
+// =============================
+// Autenticação & Autorização
+// =============================
+
+/// Perfis / papéis de acesso do sistema
+enum Role {
+  ADMIN      // Acesso total
+  EDITOR     // Pode criar/atualizar recursos (masters, briefings)
+  VIEWER     // Acesso somente leitura
+}
+
+/// Status de aprovação de usuários
+enum UserStatus {
+  PENDING   // Aguardando aprovação de um ADMIN
+  ACTIVE    // Aprovado e pode autenticar / usar sistema
+  REJECTED  // Reprovado / bloqueado
+}
+
+/// Usuários da aplicação
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  roles        Role[]   @default([VIEWER]) // Um usuário pode ter múltiplos papéis
+  status       UserStatus @default(PENDING)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
 // Modelo para armazenar o histórico de links/projetos do Workfront
 model WorkfrontProject {
   id          String     @id @default(cuid())
