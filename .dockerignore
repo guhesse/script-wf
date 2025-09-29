@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+yarn-error.log
+.git
+.gitignore
+Dockerfile*
+**/dist
+frontend/dist
+backend/dist
+.vscode
+.DS_Store
+.env
+.env.*
+**/coverage
+**/tmp
+**/.turbo
