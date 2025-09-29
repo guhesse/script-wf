@@ -1,0 +1,55 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: scriptwf
+      POSTGRES_PASSWORD: scriptwf
+      POSTGRES_DB: scriptwf
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    command: ["node", "dist/main.js"]
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://scriptwf:scriptwf@db:5432/scriptwf?schema=public
+      JWT_SECRET: devsecret
+    volumes:
+      - ./backend/dist:/app/dist
+      - ./backend/prisma:/app/prisma
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    environment:
+      VITE_API_BASE_URL: http://localhost/api
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  proxy:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata_dev:
