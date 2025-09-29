@@ -75,7 +75,8 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     useEffect(() => {
         const saved = (() => { try { return JSON.parse(localStorage.getItem('wf_activeUploadJob') || 'null'); } catch { return null; } })();
         if (saved?.jobId) {
-            getActiveUploadJob('anonymous').then(job => {
+            // Ajustado: getActiveUploadJob não recebe parâmetros
+            getActiveUploadJob().then(job => {
                 if (job && job.id === saved.jobId) {
                     setJobId(job.id);
                     setJobStatus(job.status);
@@ -86,7 +87,8 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                 }
             });
         } else {
-            getActiveUploadJob('anonymous').then(job => {
+            // Ajustado: getActiveUploadJob não recebe parâmetros
+            getActiveUploadJob().then(job => {
                 if (job) {
                     setJobId(job.id);
                     setJobStatus(job.status);
@@ -118,7 +120,8 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
 
     const handleCancel = async () => {
         if (!jobId) return;
-        const ok = await cancelUploadJob(jobId, 'anonymous');
+    // Ajustado: cancelUploadJob aceita apenas jobId
+    const ok = await cancelUploadJob(jobId);
         if (ok) {
             clearAll();
             setJobId(null);
