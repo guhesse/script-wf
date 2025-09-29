@@ -16,7 +16,6 @@ import BriefingContentViewer from './BriefingContentViewer';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import MastersGallery from './MastersGallery';
 import { useAppAuth } from '@/hooks/useAppAuth';
-import type { WorkfrontFolder } from '@/types';
 
 interface MainApplicationProps {
   onLogout: () => void;
@@ -24,8 +23,7 @@ interface MainApplicationProps {
 
 export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   const [projectUrl, setProjectUrl] = useState('');
-  const [folders, setFolders] = useState<WorkfrontFolder[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  // Estados de pastas/seleção foram removidos (não utilizados neste componente após refatoração)
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
   const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters'>('upload');
@@ -89,9 +87,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
     try {
       setShowProgress(true);
-      const extractedFolders = await extractDocuments(urlToExtract);
-      setFolders(extractedFolders);
-      setSelectedFiles(new Set());
+  await extractDocuments(urlToExtract);
       setShowProgress(false);
 
     } catch (error) {
