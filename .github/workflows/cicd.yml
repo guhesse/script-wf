@@ -1,0 +1,114 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}/script-wf
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (backend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+          npx prisma generate
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (backend)
+        id: meta_backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-backend
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Extract metadata (frontend)
+        id: meta_frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-frontend
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build & Push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/backend.Dockerfile
+          push: true
+          tags: ${{ steps.meta_backend.outputs.tags }}
+          labels: ${{ steps.meta_backend.outputs.labels }}
+
+      - name: Build & Push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/frontend.Dockerfile
+          push: true
+          tags: ${{ steps.meta_frontend.outputs.tags }}
+          labels: ${{ steps.meta_frontend.outputs.labels }}
+
+      - name: Summary
+        run: |
+          echo "Backend Images: ${{ steps.meta_backend.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "Frontend Images: ${{ steps.meta_frontend.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+
+  deploy-vps:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy via SSH (pull new images and up)
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /var/www/script-wf || exit 1
+            echo "Atualizando imagens..."
+            docker pull ghcr.io/${{ github.repository_owner }}/script-wf-backend:latest || true
+            docker pull ghcr.io/${{ github.repository_owner }}/script-wf-frontend:latest || true
+            echo "Recriando stack..."
+            docker compose -f docker-compose.prod.yml --env-file .env up -d
+            echo "Aplicando migrações Prisma..."
+            docker compose -f docker-compose.prod.yml exec -T backend npx prisma migrate deploy
+            echo "OK"

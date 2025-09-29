@@ -1,24 +1,19 @@
 version: '3.9'
 services:
   backend:
-    build:
-      context: .
-      dockerfile: docker/backend.Dockerfile
-    image: scriptwf-backend:latest
+    image: ghcr.io/${GITHUB_OWNER:-owner}/script-wf-backend:latest
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: ${DATABASE_URL}
+      # Mapeia DBLINK (nome usado por você) para DATABASE_URL esperado pelo app
+      DATABASE_URL: ${DBLINK}
       JWT_SECRET: ${JWT_SECRET}
     expose:
       - "3000"
 
   frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend.Dockerfile
-    image: scriptwf-frontend:latest
+    image: ghcr.io/${GITHUB_OWNER:-owner}/script-wf-frontend:latest
     restart: unless-stopped
     depends_on:
       - backend

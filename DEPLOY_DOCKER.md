@@ -62,20 +62,22 @@ docker compose -f docker-compose.dev.yml down
 
 ## Rodando em Produção (VPS)
 
+O `docker-compose.prod.yml` agora espera a variável `DBLINK` (não `DATABASE_URL`). Ela é convertida internamente para `DATABASE_URL` no container do backend.
+
 1. Criar arquivo `.env` na raiz com:
 ```
-DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<db>?schema=public
+DBLINK=postgresql://<user>:<password>@<host>:<port>/<db>?schema=public
 JWT_SECRET=coloque_um_valor_forte
 ```
 
-2. Build e subir:
+2. Baixar imagens (se usar pipeline com GHCR) e subir stack:
 ```bash
-docker compose -f docker-compose.prod.yml build
-# Opcional: usar --pull para atualizar bases
-DATABASE_URL=... JWT_SECRET=... docker compose -f docker-compose.prod.yml up -d
+docker pull ghcr.io/<owner>/script-wf-backend:latest
+docker pull ghcr.io/<owner>/script-wf-frontend:latest
+docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
-3. Aplicar migrações (se não adicionarmos entrypoint automatizado):
+3. Aplicar migrações (caso necessário):
 ```bash
 docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
 ```
