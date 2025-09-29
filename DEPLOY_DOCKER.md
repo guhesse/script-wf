@@ -6,8 +6,7 @@ Este documento descreve como rodar a stack com Docker localmente (incluindo Post
 
 Serviços principais:
 - backend (Nest.js + Prisma)
-- frontend (Vite/React, servido via Nginx)
-- proxy (Nginx reverse proxy + entrega do frontend)
+- frontend (Vite/React servido via Nginx e atuando também como reverse proxy /api)
 - db (apenas em `docker-compose.dev.yml` para ambiente local)
 
 Em produção NÃO subimos o serviço `db`; usamos a instância gerenciada do Supabase (Postgres).
@@ -46,8 +45,9 @@ docker compose -f docker-compose.dev.yml up --build
 ```
 
 Acesso:
-- Frontend: http://localhost (via proxy) ou http://localhost:5173 (se exposto)
-- API: http://localhost/api (proxy) ou http://localhost:3000 direto
+- Frontend: http://localhost
+- API (via proxy do Nginx no container frontend): http://localhost/api
+- API direta (debug): http://localhost:3000
 - Postgres: localhost:5432 (user: scriptwf / pass: scriptwf)
 
 Logs:
@@ -116,12 +116,19 @@ Se migração quebrar:
 
 ## Nginx / SSL
 
-Para HTTPS na VPS, recomenda-se colocar um Nginx externo (host) com Certbot e apontar para `proxy:80` ou substituir o container proxy por uma solução com certificados montados em volume.
+Para HTTPS na VPS, você pode:
+
+1. Usar Nginx no host (recomendado) fazendo proxy para a porta 80 do container frontend.
+2. Usar Traefik ou Caddy como container adicional para TLS automático.
+3. Terminar TLS em um load balancer externo (caso futuro).
 
 Exemplo (host Nginx) upstream:
 ```
-location / {
-  proxy_pass http://127.0.0.1:8080; # mapear porta do container proxy
+server {
+  listen 443 ssl;
+  server_name seu-dominio.com;
+  # ssl_certificate ...; ssl_certificate_key ...;
+  location / { proxy_pass http://127.0.0.1:80; }
 }
 ```
 
