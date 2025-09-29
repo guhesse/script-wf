@@ -113,9 +113,9 @@ export class BriefingPptService {
     async generateBriefingPpt(data: BriefingPptData, options: GeneratePptOptions = {}): Promise<GeneratePptResult> {
         // Mesclar structuredData se fornecido
         const sd = data.structuredData || {};
-    // Primeiro tentar decompor a partir do fileName (mais confiável), depois taskName, depois structuredData
-    const fileNameTokens = this.parseFileNameTokens(data.fileName || '');
-    let week = data.week || fileNameTokens.week || this.deriveWeek(sd) || 'W?';
+        // Primeiro tentar decompor a partir do fileName (mais confiável), depois taskName, depois structuredData
+        const fileNameTokens = this.parseFileNameTokens(data.fileName || '');
+        let week = data.week || fileNameTokens.week || this.deriveWeek(sd) || 'W?';
         const wireframeTitle = data.wireframeTitle || sd.headline || data.headline || 'WIREFRAME – SEM TÍTULO';
 
         const liveDate = data.liveDate || sd.liveDate || null;
@@ -132,24 +132,36 @@ export class BriefingPptService {
 
         const dsid = data.dsid || derivedTokens.dsid || '0000000';
 
-        // Montar header principal (slide title)
-        // Exemplo alvo: VML FY26Q3W10 CSG CON 5479874 (R1)
-        const adv = this.parseAdvancedHeaderTokens(data.taskName || '', { dsid, csg, channel });
-        const fiscalWeek = adv.fiscal || this.deriveFiscalWeekToken(data.taskName) || ('FY??Q?' + week);
-    const header = `VML ${fiscalWeek.toUpperCase()} ${(adv.csg || csg).toUpperCase()} ${(adv.channel || channel).toUpperCase()} ${(adv.dsid || dsid)} (R1)`;
+    // Parsing avançado inicial
+    const adv = this.parseAdvancedHeaderTokens(data.taskName || '', { dsid, csg, channel });
+    let fiscalWeek = adv.fiscal || this.deriveFiscalWeekToken(data.taskName) || '';
 
-    // Derivar linguagem e audiência a partir do taskName ou fileName se não fornecido
-    const langAud = this.deriveLanguageAndAudienceFromName(data.taskName || data.fileName || '');
-    const language = (data.language || sd.language || langAud.language || '').toUpperCase() || undefined;
-    const audience = (data.audience || sd.audience || langAud.audience || '').toUpperCase() || undefined;
+        // Derivar linguagem e audiência a partir do taskName ou fileName se não fornecido
+        const langAud = this.deriveLanguageAndAudienceFromName(data.taskName || data.fileName || '');
+        const language = (data.language || sd.language || langAud.language || '').toUpperCase() || undefined;
+        const audience = (data.audience || sd.audience || langAud.audience || '').toUpperCase() || undefined;
 
-    // Componentes fiscais detalhados (fiscalYear, quarter, weekNumber)
-    const fiscalComponents = this.extractFiscalComponents(fiscalWeek);
-    const fiscalYear = (data.fiscalYear || fileNameTokens.fiscalYear || (fiscalComponents ? fiscalComponents.fiscalYear : undefined)) || undefined;
-    const quarter = (data.quarter || fileNameTokens.quarter || (fiscalComponents ? fiscalComponents.quarter : undefined)) || undefined;
-    const weekNumber = (data.weekNumber || fileNameTokens.week || (fiscalComponents ? fiscalComponents.week : undefined)) || undefined;
-    // Se week original era W? mas temos weekNumber derivado, atualizar
-    if (week === 'W?' && weekNumber) week = weekNumber;
+        // Componentes fiscais detalhados (fiscalYear, quarter, weekNumber)
+        const fiscalComponents = this.extractFiscalComponents(fiscalWeek);
+        const fiscalYear = (data.fiscalYear || fileNameTokens.fiscalYear || (fiscalComponents ? fiscalComponents.fiscalYear : undefined)) || undefined;
+        const quarter = (data.quarter || fileNameTokens.quarter || (fiscalComponents ? fiscalComponents.quarter : undefined)) || undefined;
+        const weekNumber = (data.weekNumber || fileNameTokens.week || (fiscalComponents ? fiscalComponents.week : undefined)) || undefined;
+        // Se week original era W? mas temos weekNumber derivado, atualizar
+        if (week === 'W?' && weekNumber) week = weekNumber;
+        // Reconstituir token fiscal quando placeholder ou ausente
+        if (!fiscalWeek || /FY\?\?Q\?W/i.test(fiscalWeek)) {
+            if (fiscalYear && quarter && weekNumber) {
+                fiscalWeek = `${fiscalYear}${quarter}${weekNumber}`;
+            } else if (fiscalYear && quarter && week) {
+                fiscalWeek = `${fiscalYear}${quarter}${week}`;
+            } else if (fiscalYear && weekNumber) {
+                fiscalWeek = `${fiscalYear}${weekNumber}`;
+            }
+        }
+        if (!fiscalWeek) {
+            fiscalWeek = `${fiscalYear || 'FY??'}${quarter || 'Q?'}${weekNumber || week || 'W?'}`;
+        }
+        const header = `VML ${fiscalWeek.toUpperCase()} ${(adv.csg || csg).toUpperCase()} ${(adv.channel || channel).toUpperCase()} ${(adv.dsid || dsid)} (R1)`;
 
         const PptxCtor = await this.loadPptLib();
         const pptx = new PptxCtor();
@@ -177,7 +189,6 @@ export class BriefingPptService {
                     title: masterName,
                     background: { color: 'DEEBF7' },
                     objects: [
-                        // Removido placeholder de título para evitar duplicidade
                         { placeholder: { options: { name: 'body', type: 'body', x: 0.5, y: 1.1, w: 5.8, h: '80%' }, text: '' } },
                         { placeholder: { options: { name: 'heroImage', type: 'image', x: 6.7, y: 1.1, w: 6.3, h: '80%' }, text: '' } },
                     ],
@@ -190,8 +201,12 @@ export class BriefingPptService {
         if (!masterOk) {
             try { slide.background = { fill: 'DEEBF7' } as any; } catch { }
         }
-        // Adicionar título sempre manualmente para evitar visual de placeholder
-        slide.addText(header, { x: 0.5, y: 0.5, w: 7.0, h: 0.5, fontFace: 'Calibri', fontSize: 18, bold: true, color: '000000' });
+        // Preencher placeholder título (permite que PPT marque semanticamente como Title/H1)
+        try {
+            slide.addText(header, { placeholder: 'title', x: 0.5, y: 0.5, w: 7.0, h: 0.5, fontFace: 'Calibri', fontSize: 20, bold: true, color: '203864' });
+        } catch {
+            slide.addText(header, { x: 0.5, y: 0.5, w: 7.0, h: 0.5, fontFace: 'Calibri', fontSize: 20, bold: true, color: '203864' });
+        }
 
         // Corpo: construir linhas conforme especificação
         // Duas primeiras linhas em azul ênfase 1: W10 e wireframeTitle
@@ -212,14 +227,11 @@ export class BriefingPptService {
         pushLabelValue('VF', vf || undefined);
         pushLabelValue('Headline Copy', headline || undefined);
         pushLabelValue('Copy', copy || undefined);
-        pushLabelValue('Description', description || undefined);
-        pushLabelValue('CTA', cta || undefined);
-    // Info fiscal detalhada (evitar duplicar semana na parte azul: semana já aparece como primeira linha em azul)
-    pushLabelValue('Fiscal Year', fiscalYear || undefined);
-    pushLabelValue('Quarter', quarter || undefined);
+    pushLabelValue('Description', description || undefined);
+    pushLabelValue('CTA', cta || undefined);
 
-    pushLabelValue('Language', language || undefined);
-    pushLabelValue('Audience', audience || undefined);
+        pushLabelValue('Language', language || undefined);
+        pushLabelValue('Audience', audience || undefined);
 
         // Montar runs com espaçamento de parágrafo (paraSpaceBefore=10) e lineSpacing ~1.5
         // Removemos os múltiplos '\n' artificiais e usamos recursos de parágrafo da lib.
@@ -261,7 +273,26 @@ export class BriefingPptService {
         }
 
         // Exportar
-        const fileName = options.fileName || this.buildFileName({ dsid, week, csg, channel });
+        // Nome do arquivo: usando nome base do briefing (fileName PDF sem _brief) se disponível
+        let baseName: string | undefined;
+        if (data.fileName) {
+            const raw = data.fileName.replace(/\.pdf$/i, '');
+            baseName = raw.replace(/_brief$/i, '').replace(/^brief_/i, '');
+        }
+        const fallbackName = this.buildFileName({ dsid, week, csg, channel });
+        let fileName = (options.fileName || baseName || fallbackName).replace(/\.pptx$/i, '');
+        // Limpar prefixo 'brief_' remanescente se baseName presente
+        if (baseName && /^brief_/i.test(fileName)) fileName = fileName.replace(/^brief_/i, '');
+        // Se semana desconhecida (W? ou W) no início do fallback, remover token vazio
+        fileName = fileName.replace(/(^|_)W\?_?/i, '$1').replace(/__+/g, '_').replace(/^_+|_+$/g, '');
+
+        // Metadados do documento
+        try {
+            (pptx as any).author = 'VML';
+            (pptx as any).company = 'VML';
+            (pptx as any).subject = '';
+            (pptx as any).title = fileName;
+        } catch { /* silencioso */ }
 
         // Gerar binário do PPT considerando diferenças de versão da lib.
         // Tentativas em ordem: writeBuffer(), write('arraybuffer'), write('base64')
@@ -293,15 +324,67 @@ export class BriefingPptService {
     }
 
     private buildFileName(tokens: { dsid: string; week: string; csg: string; channel: string; }) {
-        const safe = (v: string) => v.replace(/[^A-Za-z0-9_-]+/g, '').slice(0, 40) || 'X';
-        return `brief_${safe(tokens.week)}_${safe(tokens.csg)}_${safe(tokens.channel)}_${safe(tokens.dsid)}`;
+        const safe = (v: string) => v.replace(/[^A-Za-z0-9_-]+/g, '').slice(0, 40) || '';
+        const parts = [safe(tokens.week), safe(tokens.csg), safe(tokens.channel), safe(tokens.dsid)].filter(Boolean);
+        return parts.join('_') || 'presentation';
     }
 
     private formatLiveDate(liveDate?: string | null) {
         if (!liveDate) return undefined;
-        // Se já contém ' - ' ou ' – ' devolver direto
-        if (/\b\w+\s*,?\s*\d{1,2}\b.*?\b\w+\s*,?\s*\d{1,2}\b/.test(liveDate)) return liveDate; // heurística simples
-        return liveDate;
+        const original = liveDate.trim();
+        if (!original) return undefined;
+
+        // Normalizar separadores comuns
+        let s = original.replace(/–/g, '-').replace(/to/i, '-').replace(/\s{2,}/g, ' ').trim();
+
+        // Map meses (abreviações inglesas) - usaremos new Date fallback se necessário
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // Caso já esteja no formato alvo (Mon,DD - Mon,DD)
+        if (/^[A-Z][a-z]{2},?\s*\d{1,2}\s*-\s*[A-Z][a-z]{2},?\s*\d{1,2}$/i.test(s)) {
+            // Garantir vírgula após abreviação
+            return s.replace(/([A-Za-z]{3})\s*(\d{1,2})/g, (m, mon, day) => `${mon.charAt(0).toUpperCase()}${mon.slice(1, 3).toLowerCase()},${day}`);
+        }
+
+        // Padrões tipo MM/DD - MM/DD ou MM/DD-MM/DD
+        const mmddRange = /^(\d{1,2})\/(\d{1,2})\s*-\s*(\d{1,2})\/(\d{1,2})$/;
+        const matchRange = s.match(mmddRange);
+        if (matchRange) {
+            const [, m1, d1, m2, d2] = matchRange;
+            const m1i = Math.min(Math.max(parseInt(m1, 10) - 1, 0), 11);
+            const m2i = Math.min(Math.max(parseInt(m2, 10) - 1, 0), 11);
+            return `${monthNames[m1i]},${d1} - ${monthNames[m2i]},${d2}`;
+        }
+
+        // Padrões com ' to ' ainda não normalizados (ex: 10/10 to 10/31)
+        const toPattern = /^(\d{1,2})\/(\d{1,2})\s+to\s+(\d{1,2})\/(\d{1,2})$/i;
+        const toMatch = original.match(toPattern);
+        if (toMatch) {
+            const [, m1, d1, m2, d2] = toMatch;
+            const m1i = Math.min(Math.max(parseInt(m1, 10) - 1, 0), 11);
+            const m2i = Math.min(Math.max(parseInt(m2, 10) - 1, 0), 11);
+            return `${monthNames[m1i]},${d1} - ${monthNames[m2i]},${d2}`;
+        }
+
+        // Padrão único MM/DD (retorna só uma data formatada)
+        const single = /^(\d{1,2})\/(\d{1,2})$/;
+        const mSingle = s.match(single);
+        if (mSingle) {
+            const [, m, d] = mSingle;
+            const mi = Math.min(Math.max(parseInt(m, 10) - 1, 0), 11);
+            return `${monthNames[mi]},${d}`;
+        }
+
+        // Se contém mês por extenso + número já deixamos (apenas padronizar vírgula caso exista espaço)
+        if (/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}/i.test(s)) {
+            return s.replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})/gi, (m, mon, day) => {
+                const std = mon.slice(0, 3);
+                return `${std.charAt(0).toUpperCase()}${std.slice(1).toLowerCase()},${day}`;
+            });
+        }
+
+        // Fallback: retorna original (não conseguimos interpretar com segurança)
+        return original;
     }
 
     private deriveWeek(sd: any): string | undefined {

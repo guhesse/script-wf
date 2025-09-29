@@ -227,6 +227,7 @@ export class BriefingExtractionService {
                     const firstPdf = downloadResult?.pdfProcessing?.results?.[0];
                     const structured = firstPdf?.structuredData || null;
                     const dsidMeta = this.extractDSIDFromProjectName(projectName);
+                    const primaryPdfFileName = firstPdf?.fileName || structured?.originalFileName || undefined;
                     const pptResult = await this.pptService.generateBriefingPpt({
                         dsid: dsidMeta || undefined,
                         structuredData: structured,
@@ -236,7 +237,8 @@ export class BriefingExtractionService {
                         description: structured?.description,
                         cta: structured?.cta,
                         vf: structured?.vf,
-                        liveDate: structured?.liveDate
+                        liveDate: structured?.liveDate,
+                        fileName: primaryPdfFileName
                     });
                     pptMeta = { success: true, ...pptResult };
                     progress?.({ type: 'ppt-generated', data: { projectNumber, fileName: pptResult.fileName, size: pptResult.sizeBytes } });
@@ -336,7 +338,7 @@ export class BriefingExtractionService {
             try {
                 const contentResult = await this.extractPdfContent(file.filePath);
                 pdfResults.push({
-                fileName: file.fileName,
+                    fileName: file.fileName,
                     filePath: file.filePath,
                     metadata: { pages: contentResult.metadata?.pages || 0, fileSize: file.size || 0 },
                     text: contentResult.text || '',
@@ -777,7 +779,7 @@ export class BriefingExtractionService {
                 this.logger.log(`🔁 Tentativa ${i}/${attempts} para abrir pasta Briefing (delay atual=${delay}ms)`);
                 await this.navigateToBriefingFolder(page);
                 if (i > 1) {
-                    const total = ((Date.now() - startTs)/1000).toFixed(1);
+                    const total = ((Date.now() - startTs) / 1000).toFixed(1);
                     this.logger.log(`✅ Pasta Briefing acessada na tentativa ${i} (tempo total ${total}s)`);
                 }
                 return;
@@ -1299,7 +1301,7 @@ export class BriefingExtractionService {
             const extractField = (label: string, regex: RegExp) => { if (!structured[label]) { const m = textContent.match(regex); if (m) structured[label] = m[1].trim(); } };
             extractField('liveDate', /live\s+dates?:\s*([^\n]+)/i);
             extractField('vf', /(?:vf|visual framework|microsoft jma):\s*([^\n]+)/i);
-            
+
             // Detectar VF baseado em palavras-chave no texto principal
             if (!structured.vf) {
                 const vfKeywords = ['microsoft', 'mcafee', 'intel core', 'intel'];
@@ -1318,7 +1320,7 @@ export class BriefingExtractionService {
                     }
                 }
             }
-            
+
             extractField('headline', /(?:hl|headline(?:\s*copy)?):?\s*([^\n]+)/i);
             extractField('copy', /(?:^|\n)copy:\s*([^\n]+)/i);
             extractField('description', /description:\s*([^\n]+)/i);
@@ -1340,7 +1342,7 @@ export class BriefingExtractionService {
             const alloc = textContent.match(/allocadia\s*([0-9]+)/i); if (alloc && !structured.allocadia) structured.allocadia = alloc[1];
             // Regex muito mais restritiva para PO - capturar apenas códigos válidos
             extractField('po', /(?:^|\n|\s)po[#:\s]*([A-Z0-9]{3,}(?:-[A-Z0-9]+)*)(?=\s|$|\n)/i);
-            
+
             // Extração de formatos de assets
             const extractFormats = (text: string, comments: any[]): any => {
                 const formats = {
@@ -1348,7 +1350,7 @@ export class BriefingExtractionService {
                     existing: [] as string[],
                     summary: null as string | null
                 };
-                
+
                 // Padrões para formatos solicitados
                 const requestPatterns = [
                     /please create (?:a )?([0-9x, and]+) versions?/gi,
@@ -1357,17 +1359,17 @@ export class BriefingExtractionService {
                     /need (?:a )?([0-9x, and]+) versions?/gi,
                     /fazer (?:uma? )?versões? ([0-9x, e]+)/gi
                 ];
-                
+
                 // Padrões para formatos existentes em nomes de arquivos
                 const existingPatterns = [
                     /([0-9]+x[0-9]+)[-_]source/gi,
                     /[-_]([0-9]+x[0-9]+)[-_]/gi,
                     /[-_]([0-9]+x[0-9]+)\./gi
                 ];
-                
+
                 // Buscar em texto principal e comentários
                 const allText = [text, ...comments.map(c => c.text || '')].join(' ');
-                
+
                 // Extrair formatos solicitados
                 for (const pattern of requestPatterns) {
                     const matches = allText.matchAll(pattern);
@@ -1378,11 +1380,11 @@ export class BriefingExtractionService {
                             .split(/[,and\s]+/)
                             .map(f => f.trim())
                             .filter(f => /^[0-9]+x[0-9]+$/.test(f));
-                        
+
                         formats.requested.push(...parsedFormats);
                     }
                 }
-                
+
                 // Extrair formatos existentes de nomes de arquivos
                 for (const pattern of existingPatterns) {
                     const matches = allText.matchAll(pattern);
@@ -1393,11 +1395,11 @@ export class BriefingExtractionService {
                         }
                     }
                 }
-                
+
                 // Remover duplicatas
                 formats.requested = [...new Set(formats.requested)];
                 formats.existing = [...new Set(formats.existing)];
-                
+
                 // Criar resumo se houver formatos
                 if (formats.requested.length > 0 || formats.existing.length > 0) {
                     const parts = [];
@@ -1409,10 +1411,10 @@ export class BriefingExtractionService {
                     }
                     formats.summary = parts.join(' | ');
                 }
-                
+
                 return formats.summary ? formats : null;
             };
-            
+
             structured.formats = extractFormats(textContent, commentsNormalized);
 
             // Complementar com dados vindos dos COMENTÁRIOS somente se ainda faltarem campos
@@ -1427,7 +1429,7 @@ export class BriefingExtractionService {
             };
             ensureField('liveDate', /live\s+dates?:\s*([^\n]+)/i);
             ensureField('vf', /(?:vf|visual framework|microsoft jma):\s*([^\n]+)/i);
-            
+
             // Detectar VF baseado em palavras-chave nos comentários
             if (!structured.vf) {
                 const vfKeywords = ['microsoft', 'mcafee', 'intel core', 'intel'];
@@ -1443,7 +1445,7 @@ export class BriefingExtractionService {
                     if (structured.vf) break; // Para assim que encontrar o primeiro
                 }
             }
-            
+
             // Variações do headline nos comentários
             ensureField('headline', /(?:hl|headline(?:\s*copy)?):?\s*([^\n]+)/i);
             ensureField('copy', /(?:^|\n)copy:\s*([^\n]+)/i);
@@ -1492,14 +1494,14 @@ export class BriefingExtractionService {
             ensureField('urn', /urn:\s*([^\n]+)/i);
             if (!structured.allocadia) { for (const c of commentsNormalized) { const m = (c.text || '').match(/allocadia\s*([0-9]+)/i); if (m) { structured.allocadia = m[1].trim(); break; } } }
             // Extração muito mais restritiva de PO para evitar nomes de arquivos e texto quebrado
-            if (!structured.po) { 
-                for (const c of commentsNormalized) { 
-                    const m = (c.text || '').match(/(?:^|\n|\s)po[#:\s]*([A-Z0-9]{3,}(?:-[A-Z0-9]+)*)(?=\s|$|\n)/i); 
-                    if (m && m[1].length >= 3 && !/\.(psd|pdf|jpg|png|zip)$/i.test(m[1])) { 
-                        structured.po = m[1].trim(); 
-                        break; 
-                    } 
-                } 
+            if (!structured.po) {
+                for (const c of commentsNormalized) {
+                    const m = (c.text || '').match(/(?:^|\n|\s)po[#:\s]*([A-Z0-9]{3,}(?:-[A-Z0-9]+)*)(?=\s|$|\n)/i);
+                    if (m && m[1].length >= 3 && !/\.(psd|pdf|jpg|png|zip)$/i.test(m[1])) {
+                        structured.po = m[1].trim();
+                        break;
+                    }
+                }
             }
 
             // Enriquecimento de comentários (datas, autor fallback, tipo amigável, ordenação)
