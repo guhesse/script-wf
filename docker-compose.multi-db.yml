@@ -23,7 +23,9 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-7zUL9y8LTTTQ2m23Zt!}
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
-      PGADMIN_CONFIG_LOGIN_BANNER: 'ACESSO RESTRITO. USO MONITORADO.'
+      # IMPORTANTE: Variáveis PGADMIN_CONFIG_* são inseridas diretamente no config Python.
+      # Por isso precisamos incluir aspas dentro da string para gerar código Python válido.
+      PGADMIN_CONFIG_LOGIN_BANNER: '"ACESSO RESTRITO. USO MONITORADO."'
     ports:
       - "8081:80"
     volumes:
