@@ -8,11 +8,11 @@ echo "👤 Criando usuários e bancos de dados..."
 
 # Conectar como usuário padrão e criar estrutura
 docker exec -i script-wf-db-1 psql -U scriptwfdev -d scriptwf_dev << EOF
--- Criar usuário de produção se não existir
+# Criar usuário de produção se não existir
 DO \$\$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_user WHERE usename = 'scriptwf_prod') THEN
-        CREATE USER scriptwf_prod WITH PASSWORD 'Pr0d_ScriptWF_2024!@#\$';
+        CREATE USER scriptwf_prod WITH PASSWORD 'Prod2024ScriptWF9x7K';
     END IF;
 END
 \$\$;
@@ -32,14 +32,14 @@ echo "✅ Usuários e bancos criados!"
 
 # 2. Aplicar migrações no banco de desenvolvimento
 echo "📦 Aplicando migrações no banco de desenvolvimento..."
-DATABASE_URL="postgresql://scriptwfdev:AJDO2r7bOcCCKb0Z1Rjw0nq!@localhost:5432/scriptwf_dev" \
+DATABASE_URL="postgresql://scriptwfdev:Dev2024ScriptWF3mL8@localhost:5432/scriptwf_dev" \
   npx prisma migrate deploy --schema=./backend/prisma/schema.prisma
 
 echo "✅ Migrações de desenvolvimento aplicadas!"
 
 # 3. Aplicar migrações no banco de produção
 echo "📦 Aplicando migrações no banco de produção..."
-DATABASE_URL="postgresql://scriptwf_prod:Pr0d_ScriptWF_2024!@#\$@localhost:5432/scriptwf_prod" \
+DATABASE_URL="postgresql://scriptwf_prod:Prod2024ScriptWF9x7K@localhost:5432/scriptwf_prod" \
   npx prisma migrate deploy --schema=./backend/prisma/schema.prisma
 
 echo "✅ Migrações de produção aplicadas!"
