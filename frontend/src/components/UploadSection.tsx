@@ -184,9 +184,9 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     });
                 }
 
-                // Processar resposta - separar por tipo de arquivo
-                const assetZipUpload = result.uploads.find((_: UploadInfo, idx: number) => allFiles[idx]?.isZip);
-                const finalMaterialsUploads = result.uploads.filter((_: UploadInfo, idx: number) => !allFiles[idx]?.isZip);
+                // Processar resposta - separar por extensão do arquivo (mais simples)
+                const assetZipUpload = result.uploads.find((u: UploadInfo) => u.fileName.toLowerCase().endsWith('.zip'));
+                const finalMaterialsUploads = result.uploads.filter((u: UploadInfo) => !u.fileName.toLowerCase().endsWith('.zip'));
                 
                 const staged = {
                     assetZip: assetZipUpload?.storagePath,
