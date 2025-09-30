@@ -2,12 +2,16 @@ name: CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [ prod, dev ]
+  pull_request:
+    branches: [ prod ]
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAMESPACE: ${{ github.repository_owner }}/script-wf
+  # Nome simplificado da branch (prod ou dev)
+  BRANCH_NAME: ${{ github.ref_name }}
 
 jobs:
   build-and-push:
@@ -56,7 +60,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-backend
           tags: |
-            type=raw,value=latest
+            # latest só para prod
+            type=raw,value=latest,enable=${{ env.BRANCH_NAME == 'prod' }}
+            # dev-latest só para dev
+            type=raw,value=dev-latest,enable=${{ env.BRANCH_NAME == 'dev' }}
+            # Tag com nome da branch (prod ou dev)
+            type=ref,event=branch
+            # Tag com SHA curto
             type=sha
 
       - name: Extract metadata (frontend)
@@ -65,7 +75,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-frontend
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ env.BRANCH_NAME == 'prod' }}
+            type=raw,value=dev-latest,enable=${{ env.BRANCH_NAME == 'dev' }}
+            type=ref,event=branch
             type=sha
 
       - name: Build & Push backend image
@@ -88,13 +100,17 @@ jobs:
 
       - name: Summary
         run: |
-          echo "Backend Images: ${{ steps.meta_backend.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo "Frontend Images: ${{ steps.meta_frontend.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "Branch: $BRANCH_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "Backend Tags:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta_backend.outputs.tags }}" | tr ' ' '\n' >> $GITHUB_STEP_SUMMARY
+          echo "Frontend Tags:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta_frontend.outputs.tags }}" | tr ' ' '\n' >> $GITHUB_STEP_SUMMARY
 
   deploy-vps:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Executa somente para a branch prod (antiga main)
+    if: github.ref_name == 'prod'
     steps:
       - name: Deploy via SSH (pull new images and up)
         uses: appleboy/ssh-action@v1.1.0
@@ -105,8 +121,17 @@ jobs:
           script: |
             cd /var/www/script-wf || exit 1
             echo "Atualizando imagens..."
-            docker pull ghcr.io/${{ github.repository_owner }}/script-wf-backend:latest || true
-            docker pull ghcr.io/${{ github.repository_owner }}/script-wf-frontend:latest || true
+            # Puxa a tag correta (latest só existe em prod; fallback para tag da branch)
+            if docker pull ghcr.io/${{ github.repository_owner }}/script-wf-backend:latest 2>/dev/null; then
+              echo "Backend latest puxada"
+            else
+              docker pull ghcr.io/${{ github.repository_owner }}/script-wf-backend:prod || true
+            fi
+            if docker pull ghcr.io/${{ github.repository_owner }}/script-wf-frontend:latest 2>/dev/null; then
+              echo "Frontend latest puxada"
+            else
+              docker pull ghcr.io/${{ github.repository_owner }}/script-wf-frontend:prod || true
+            fi
             echo "Recriando stack..."
             docker compose -f docker-compose.prod.yml --env-file .env up -d
             echo "Aplicando migrações Prisma..."
