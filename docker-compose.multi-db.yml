@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_DEV_USER:-scriptwfdev}
-      POSTGRES_PASSWORD: ${POSTGRES_DEV_PASSWORD:-ChangeMeDev!}
+      POSTGRES_PASSWORD: ${POSTGRES_DEV_PASSWORD:-AJDO2r7bOcCCKb0Z1Rjw0nq!}
       POSTGRES_DB: ${POSTGRES_DEV_DB:-scriptwf_dev}
     ports:
       - "5432:5432"
@@ -20,8 +20,8 @@ services:
     image: dpage/pgadmin4:8.8
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-Admin123!}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-7zUL9y8LTTTQ2m23Zt!}
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
       PGADMIN_CONFIG_LOGIN_BANNER: 'ACESSO RESTRITO. USO MONITORADO.'
     ports:
