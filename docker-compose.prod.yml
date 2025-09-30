@@ -1,7 +1,4 @@
-# Produção usa o mesmo banco do desenvolvimento (container compartilhado)
-# mas com database separado: scriptwf_prod
-# O container DB já existe via docker-compose.multi-db.yml
-
+services:
   backend:
     build:
       context: .
@@ -10,12 +7,12 @@
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Produção usa database separado no mesmo container
-      DATABASE_URL: postgresql://scriptwf_prod:ProdPassword123!@script-wf-db-1:5432/scriptwf_prod
+      # Produção usa database separado no mesmo container DB
+      DATABASE_URL: postgresql://scriptwf_prod:ProdPass2024@db:5432/scriptwf_prod
       JWT_SECRET: ${JWT_SECRET}
-    depends_on:
-      db:
-        condition: service_healthy
+    # Depende do container DB do docker-compose.multi-db.yml
+    external_links:
+      - script-wf-db-1:db
     expose:
       - "3000"
 
@@ -31,4 +28,6 @@
     ports:
       - "80:80"
 
-# Volumes não necessários - usando container DB existente
+# Produção compartilha o mesmo container DB mas usa database separado
+# Development: scriptwf_dev (scriptwfdev user)  
+# Production: scriptwf_prod (scriptwf_prod user)
