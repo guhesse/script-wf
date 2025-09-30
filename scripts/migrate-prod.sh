@@ -3,8 +3,8 @@
 
 echo "🔄 Aplicando migrações Prisma no banco de produção..."
 
-# Definir URL temporária para produção
-export DATABASE_URL="postgresql://scriptwf_prod:Pr0d_ScriptWF_2024!@#\$@localhost:5432/scriptwf_prod"
+# Definir URL temporária para produção (usando nome do container Docker)
+export DATABASE_URL="postgresql://scriptwf_prod:Pr0d_ScriptWF_2024!@#\$@db:5432/scriptwf_prod"
 
 # Entrar no diretório backend
 cd /var/www/script-wf/backend
