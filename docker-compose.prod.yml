@@ -21,7 +21,7 @@ services:
       context: .
       dockerfile: docker/frontend.Dockerfile
       args:
-        VITE_API_BASE_URL: https://hesse.app.br/api
+        VITE_API_BASE_URL: /api
     restart: unless-stopped
     depends_on:
       - backend
