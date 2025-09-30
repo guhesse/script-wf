@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_DEV_USER:-scriptwfdev}
+      POSTGRES_PASSWORD: ${POSTGRES_DEV_PASSWORD:-ChangeMeDev!}
+      POSTGRES_DB: ${POSTGRES_DEV_DB:-scriptwf_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  pgadmin:
+    image: dpage/pgadmin4:8.8
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-Admin123!}
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
+      PGADMIN_CONFIG_LOGIN_BANNER: 'ACESSO RESTRITO. USO MONITORADO.'
+    ports:
+      - "8081:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+
+volumes:
+  pgdata_dev:
+  pgadmin_data:
+
+# Uso:
+# docker compose -f docker-compose.multi-db.yml up -d
+# Acessar PGAdmin: http://localhost:8081
+# Adicionar servidor:
+#   Dev: host=db port=5432 user=POSTGRES_DEV_USER db=POSTGRES_DEV_DB
