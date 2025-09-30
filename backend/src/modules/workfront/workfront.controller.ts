@@ -69,6 +69,7 @@ import { UploadJobsService } from './upload-jobs.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 import { resolveHeadless } from './utils/headless.util';
+import { BunnyUploadUrlService } from '../../services/bunny-upload-url.service';
 
 @ApiTags('Projetos')
 @Controller('api')
@@ -88,6 +89,7 @@ export class WorkfrontController {
     private readonly hoursAutomation: HoursAutomationService,
     private readonly timelineService: TimelineService,
     private readonly uploadJobs: UploadJobsService,
+    private readonly bunnyUploadService: BunnyUploadUrlService,
   ) { }
 
   @Get('health')
@@ -729,74 +731,130 @@ export class WorkfrontController {
 
   // ===== ROTAS DE UPLOAD (staging) =====
   @Post('upload/prepare')
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'assetZip', maxCount: 1 },
-    { name: 'finalMaterials', maxCount: 50 },
-  ], {
-    storage: diskStorage({
-      destination: (req, file, cb) => {
-        const base = path.resolve(process.cwd(), 'Downloads', 'staging');
-        fs.mkdirSync(base, { recursive: true });
-        cb(null, base);
-      },
-      filename: (req, file, cb) => {
-        // Preservar nome original do arquivo
-        const originalName = file.originalname;
-        // Apenas sanitizar caracteres perigosos, mantendo o nome
-        const safeName = originalName.replace(/[<>:"|?*\\]/g, '_');
-        cb(null, safeName);
-      }
-    })
-  }))
-
-  
+  @ApiOperation({ summary: 'Preparar upload de arquivos via Bunny CDN' })
   @UseGuards(JwtAuthGuard)
   async prepareUpload(
-    @UploadedFiles() files: any,
-    @Body() body: { projectUrl: string; selectedUser: 'carol' | 'giovana' | 'test'; jobId?: string },
+    @Body() body: {
+      files: Array<{ name: string; size: number; type?: string }>;
+      projectUrl: string;
+      selectedUser: 'carol' | 'giovana' | 'test';
+      jobId?: string;
+    },
     @CurrentUser() user?: AuthUser
   ) {
     try {
-      // DEBUG TEMP: remover depois
-      const rawAuth = (arguments as any)[0]?.headers?.authorization || 'N/A';
-      this.logger.log(`[debug] prepareUpload Authorization header: ${rawAuth}`);
-      if (!body?.projectUrl) throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
-      const assetZip = files?.assetZip?.[0];
-      const finals = files?.finalMaterials || [];
-      if (!assetZip) throw new HttpException('assetZip é obrigatório', HttpStatus.BAD_REQUEST);
-      if (finals.length === 0) throw new HttpException('finalMaterials é obrigatório', HttpStatus.BAD_REQUEST);
-
-      const staged = {
-        assetZip: assetZip ? path.resolve(assetZip.destination, assetZip.filename) : undefined,
-        finalMaterials: finals.map(f => path.resolve(f.destination, f.filename)),
-      };
-
-      // Identificação de usuário (stub simples) - em produção usar auth real
-  const userId = user?.userId || 'anonymous';
-      // Se foi passado jobId e existe, atualiza staged desse job (caso usuário queira refazer)
-      let jobId = body.jobId;
-      if (jobId) {
-        const existing = this.uploadJobs.getJob(jobId, userId, false);
-        if (!existing) jobId = undefined; // não pertence a ele
+      if (!body.projectUrl) {
+        throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
       }
-      let job;
-      if (!jobId) {
-        job = this.uploadJobs.createJob({ userId, projectUrl: body.projectUrl, staged });
-      } else {
-        job = this.uploadJobs.getJob(jobId, userId, false)!;
-        // simples overwrite
-        (job as any).staged = staged; // para simplicidade; serviço não expôs update direto
+
+      if (!body.files || body.files.length === 0) {
+        throw new HttpException('Lista de arquivos é obrigatória', HttpStatus.BAD_REQUEST);
       }
+
+      const userId = user?.userId || 'anonymous';
+      const uploadUrls: Array<{
+        fileName: string;
+        uploadId: string;
+        uploadUrl: string;
+        headers: Record<string, string>;
+        cdnUrl: string;
+        storagePath: string;
+      }> = [];
+
+      // Gerar URL de upload para cada arquivo - TODOS vão para Bunny CDN
+      for (const fileInfo of body.files) {
+        const result = await this.bunnyUploadService.generateSignedUploadUrl({
+          fileName: fileInfo.name,
+          fileSize: fileInfo.size,
+          userId,
+          projectUrl: body.projectUrl,
+          brand: 'temp',
+          subfolder: 'staging',
+          expiresInMinutes: 120 // 2 horas para upload
+        });
+
+        if (!result.success) {
+          throw new HttpException(
+            `Erro ao gerar URL para ${fileInfo.name}: ${result.error}`,
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        }
+
+        uploadUrls.push({
+          fileName: fileInfo.name,
+          uploadId: result.uploadId!,
+          uploadUrl: result.uploadUrl!,
+          headers: result.headers!,
+          cdnUrl: result.cdnUrl!,
+          storagePath: result.storagePath!
+        });
+      }
+
+      // Criar job de upload para rastreamento
+      const job = this.uploadJobs.createJob({ 
+        userId, 
+        projectUrl: body.projectUrl, 
+        staged: {
+          // Simular paths locais para compatibilidade com sistema existente
+          assetZip: uploadUrls.find(u => u.fileName.toLowerCase().endsWith('.zip'))?.storagePath,
+          finalMaterials: uploadUrls.filter(u => !u.fileName.toLowerCase().endsWith('.zip')).map(u => u.storagePath)
+        }
+      });
+
       return {
         success: true,
-        staged,
+        uploads: uploadUrls,
         jobId: job.id,
-        status: job.status,
-        message: 'Arquivos salvos em staging com sucesso',
+        expiresInMinutes: 120,
+        message: `URLs de upload CDN geradas para ${uploadUrls.length} arquivos`
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      throw new HttpException({ success: false, message: (error as Error).message }, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('upload/generate-direct-url')
+  @ApiOperation({ summary: 'Gerar URL para upload direto ao Bunny CDN (arquivos grandes)' })
+  @UseGuards(JwtAuthGuard)
+  async generateDirectUploadUrl(
+    @Body() body: { fileName: string; brand?: string; subfolder?: string },
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      if (!body.fileName) {
+        throw new HttpException('fileName é obrigatório', HttpStatus.BAD_REQUEST);
+      }
+
+      const result = await this.bunnyUploadService.generateSignedUploadUrl({
+        fileName: body.fileName,
+        brand: body.brand || 'temp',
+        subfolder: body.subfolder || 'staging',
+        expiresInMinutes: 60 // URL válida por 1 hora
+      });
+
+      if (!result.success) {
+        throw new HttpException(result.error || 'Erro ao gerar URL', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      return {
+        success: true,
+        uploadId: result.uploadId,
+        uploadUrl: result.uploadUrl,
+        headers: result.headers,
+        storagePath: result.storagePath,
+        cdnUrl: result.cdnUrl,
+        message: 'URL de upload direto gerada com sucesso'
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -975,6 +1033,75 @@ export class WorkfrontController {
           message: (error as Error).message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // ===== ROTAS ADMINISTRATIVAS DE LIMPEZA =====
+  
+  @Get('admin/temp-uploads/stats')
+  @ApiOperation({ summary: 'Estatísticas de uploads temporários [ADMIN]' })
+  @UseGuards(JwtAuthGuard)
+  async getTempUploadStats(@CurrentUser() user?: AuthUser) {
+    try {
+      const stats = await this.bunnyUploadService.getStats();
+      return {
+        success: true,
+        stats,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('admin/temp-uploads/cleanup')
+  @ApiOperation({ summary: 'Executar limpeza manual de uploads temporários [ADMIN]' })
+  @UseGuards(JwtAuthGuard)
+  async manualCleanup(
+    @Body() body?: { includeUsedFiles?: boolean; usedFilesOlderThanHours?: number },
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      // Importar o serviço aqui para evitar dependência circular
+      const { CleanupSchedulerService } = await import('../../services/cleanup-scheduler.service');
+      const cleanupService = new CleanupSchedulerService(this.bunnyUploadService);
+      
+      const result = await cleanupService.manualCleanup(body || {});
+      
+      return {
+        success: true,
+        result,
+        message: `Limpeza manual concluída: ${result.totalDeleted} arquivos removidos`
+      };
+    } catch (error) {
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('upload/mark-used/:uploadId')
+  @ApiOperation({ summary: 'Marcar upload temporário como utilizado' })
+  @UseGuards(JwtAuthGuard)
+  async markUploadAsUsed(
+    @Param('uploadId') uploadId: string,
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      const success = await this.bunnyUploadService.markAsUsed(uploadId);
+      return {
+        success,
+        message: success ? 'Upload marcado como utilizado' : 'Falha ao marcar upload'
+      };
+    } catch (error) {
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }

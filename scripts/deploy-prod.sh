@@ -35,5 +35,4 @@ echo "📋 Últimos logs do backend:"
 docker-compose -f docker-compose.prod.yml logs --tail=20 backend
 
 echo "✅ ==================== DEPLOY CONCLUÍDO! ===================="
-echo "🌐 Acesse: http://seu-ip"
-echo "📱 Teste o sistema de login atualizado!"
+echo "🌐 Acesse: http://hesse.app.br"

@@ -16,6 +16,7 @@ import {
     Link,
 } from 'lucide-react';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
+import { useAppAuth } from '@/hooks/useAppAuth';
 import TimelineSection from './TimelineSection';
 
 type TeamKey = 'carol' | 'giovana' | 'test';
@@ -33,6 +34,15 @@ const isPdf = (f: File) => /\.pdf$/i.test(f.name);
 const isImage = (f: File) => /\.(png|jpg|jpeg)$/i.test(f.name);
 const isVideo = (f: File) => /\.(mp4|mov|mkv)$/i.test(f.name);
 
+interface UploadInfo {
+    fileName: string;
+    uploadId: string;
+    uploadUrl: string;
+    headers: Record<string, string>;
+    cdnUrl: string;
+    storagePath: string;
+}
+
 export default function UploadSection({ projectUrl, setProjectUrl, selectedUser, setSelectedUser, currentProject }: UploadSectionProps) {
     const [assetZip, setAssetZip] = useState<File | null>(null);
     const [finalMaterials, setFinalMaterials] = useState<File[]>([]);
@@ -42,7 +52,8 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     const zipInputRef = useRef<HTMLInputElement>(null);
     const finalsInputRef = useRef<HTMLInputElement>(null);
 
-    const { prepareUploadPlan, getActiveUploadJob, cancelUploadJob } = useWorkfrontApi();
+    const { getActiveUploadJob, cancelUploadJob } = useWorkfrontApi();
+    const { token } = useAppAuth();
     const [jobId, setJobId] = useState<string | null>(null);
     const [jobStatus, setJobStatus] = useState<string | null>(null);
 
@@ -98,19 +109,95 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                 }
             });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleSubmit = async () => {
         if (!assetZip || finalMaterials.length === 0 || !hasPdfInFinals || !isValidUrl(projectUrl)) return;
+        
+        if (!token) {
+            alert('Você precisa estar logado para fazer upload de arquivos');
+            return;
+        }
+        
         setSubmitting(true);
+
         try {
-            const res = await prepareUploadPlan({ projectUrl, selectedUser, assetZip, finalMaterials });
-            if (res.success && res.staged) {
-                setStagedPaths(res.staged);
-                if (res.jobId) { setJobId(res.jobId); setJobStatus(res.status || 'staged'); }
-                console.log('Upload staged:', res);
+            // Preparar lista de arquivos para upload CDN
+            const files = [
+                { name: assetZip.name, size: assetZip.size, type: assetZip.type },
+                ...finalMaterials.map(f => ({ name: f.name, size: f.size, type: f.type }))
+            ];
+
+            // Gerar URLs de upload CDN
+            const prepareResponse = await fetch('/api/upload/prepare', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    files,
+                    projectUrl,
+                    selectedUser
+                })
+            });
+
+            if (!prepareResponse.ok) {
+                throw new Error(`Erro ao preparar upload: ${prepareResponse.statusText}`);
             }
+
+            const result = await prepareResponse.json();
+
+            if (result.success) {
+                // Fazer upload de cada arquivo para o CDN
+                const allFiles = [assetZip, ...finalMaterials];
+
+                for (let i = 0; i < allFiles.length; i++) {
+                    const file = allFiles[i];
+                    const uploadInfo = result.uploads[i];
+
+                    // Upload direto para Bunny CDN
+                    const uploadResponse = await fetch(uploadInfo.uploadUrl, {
+                        method: 'PUT',
+                        headers: {
+                            ...uploadInfo.headers,
+                            'Content-Type': file.type || 'application/octet-stream'
+                        },
+                        body: file
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error(`Erro no upload de ${file.name}: ${uploadResponse.statusText}`);
+                    }
+
+                    // Marcar arquivo como utilizado
+                    await fetch(`/api/upload/mark-used/${uploadInfo.uploadId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                }
+
+                // Simular resposta compatível com sistema existente
+                const staged = {
+                    assetZip: result.uploads.find((u: UploadInfo) => u.fileName.toLowerCase().endsWith('.zip'))?.storagePath,
+                    finalMaterials: result.uploads.filter((u: UploadInfo) => !u.fileName.toLowerCase().endsWith('.zip')).map((u: UploadInfo) => u.storagePath)
+                };
+
+                setStagedPaths(staged);
+                if (result.jobId) {
+                    setJobId(result.jobId);
+                    setJobStatus('staged');
+                }
+
+                console.log('Arquivos enviados para CDN:', result);
+            }
+        } catch (error) {
+            console.error('Erro no upload:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+            alert(`Erro no upload: ${errorMessage}`);
         } finally {
             setSubmitting(false);
         }
@@ -120,8 +207,8 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
 
     const handleCancel = async () => {
         if (!jobId) return;
-    // Ajustado: cancelUploadJob aceita apenas jobId
-    const ok = await cancelUploadJob(jobId);
+        // Ajustado: cancelUploadJob aceita apenas jobId
+        const ok = await cancelUploadJob(jobId);
         if (ok) {
             clearAll();
             setJobId(null);
@@ -223,7 +310,15 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                         <div className="mt-3 flex items-center justify-between rounded border border-border p-3">
                             <div className="flex items-center gap-2 text-sm">
                                 <FileArchive className="w-4 h-4" />
-                                <span className="text-foreground">{assetZip.name}</span>
+                                <div className="flex flex-col">
+                                    <span className="text-foreground">{assetZip.name}</span>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span>{(assetZip.size / 1024 / 1024).toFixed(1)} MB</span>
+                                        <Badge variant="secondary" className="text-xs">
+                                            {assetZip.size > 20 * 1024 * 1024 ? 'Grande (upload pode demorar)' : 'Tamanho normal'}
+                                        </Badge>
+                                    </div>
+                                </div>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setAssetZip(null)}><Trash2 className="w-4 h-4" /></Button>
                         </div>
@@ -266,15 +361,26 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
 
                     {finalMaterials.length > 0 && (
                         <div className="mt-3 space-y-2">
-                            {finalMaterials.map((f, idx) => (
-                                <div key={`${f.name}-${idx}`} className="flex items-center justify-between rounded border border-border p-3">
-                                    <div className="flex items-center gap-2 text-sm">
-                                        {isPdf(f) ? <FileText className="w-4 h-4" /> : isImage(f) ? <FileImage className="w-4 h-4" /> : <FileVideo className="w-4 h-4" />}
-                                        <span className="text-foreground">{f.name}</span>
+                            {finalMaterials.map((f, idx) => {
+                                const fileSizeMB = (f.size / 1024 / 1024).toFixed(1);
+                                return (
+                                    <div key={`${f.name}-${idx}`} className="flex items-center justify-between rounded border border-border p-3">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            {isPdf(f) ? <FileText className="w-4 h-4" /> : isImage(f) ? <FileImage className="w-4 h-4" /> : <FileVideo className="w-4 h-4" />}
+                                            <div className="flex flex-col">
+                                                <span className="text-foreground">{f.name}</span>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <span>{fileSizeMB} MB</span>
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {f.size > 20 * 1024 * 1024 ? 'Grande (upload pode demorar)' : 'Tamanho normal'}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => removeFinal(idx)}><Trash2 className="w-4 h-4" /></Button>
                                     </div>
-                                    <Button variant="ghost" size="icon" onClick={() => removeFinal(idx)}><Trash2 className="w-4 h-4" /></Button>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
 

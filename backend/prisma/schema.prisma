@@ -258,3 +258,27 @@ model MasterAsset {
   @@index([createdAt])
   @@map("master_assets")
 }
+
+// =============================
+// Uploads Temporários
+// =============================
+
+/// Registro de uploads temporários no Bunny CDN (para limpeza automática)
+model TempUpload {
+  id          String    @id // ID único do upload
+  storagePath String    @unique // Caminho no Bunny Storage
+  cdnUrl      String    // URL do CDN
+  fileName    String    // Nome original do arquivo
+  fileSize    BigInt?   // Tamanho em bytes (opcional)
+  userId      String?   // ID do usuário que fez upload (opcional)
+  projectUrl  String?   // URL do projeto relacionado (opcional)
+  isUsed      Boolean   @default(false) // Se o arquivo já foi utilizado
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime  // Data de expiração para limpeza
+  deletedAt   DateTime? // Quando foi deletado (soft delete)
+
+  @@index([expiresAt])
+  @@index([isUsed])
+  @@index([createdAt])
+  @@map("temp_uploads")
+}

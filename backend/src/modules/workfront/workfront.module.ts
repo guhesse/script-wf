@@ -11,11 +11,13 @@ import { TimelineService } from './timeline.service';
 import { ProgressService } from './progress.service';
 import { WorkflowProgressController } from './progress.controller';
 import { UploadJobsService } from './upload-jobs.service';
+import { BunnyUploadUrlService } from '../../services/bunny-upload-url.service';
+import { CleanupSchedulerService } from '../../services/cleanup-scheduler.service';
 
 @Module({
   imports: [forwardRef(() => PdfModule)],
   controllers: [WorkfrontController, WorkflowProgressController],
-  providers: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService, ProgressService, UploadJobsService],
-  exports: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService, ProgressService, UploadJobsService],
+  providers: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService, ProgressService, UploadJobsService, BunnyUploadUrlService, CleanupSchedulerService],
+  exports: [WorkfrontService, WorkfrontRepository, ShareAutomationService, StatusAutomationService, HoursAutomationService, UploadAutomationService, TimelineService, ProgressService, UploadJobsService, BunnyUploadUrlService, CleanupSchedulerService],
 })
 export class WorkfrontModule { }
