@@ -123,10 +123,14 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
         setSubmitting(true);
 
         try {
-            // Preparar dados no formato esperado pelo backend
+            // Preparar dados no formato esperado pelo backend (lista única de files)
+            const allFiles = [
+                { name: assetZip.name, size: assetZip.size, type: assetZip.type, isZip: true },
+                ...finalMaterials.map(f => ({ name: f.name, size: f.size, type: f.type, isZip: false }))
+            ];
+            
             const requestBody = {
-                assetZip: { name: assetZip.name, size: assetZip.size, type: assetZip.type },
-                finalMaterials: finalMaterials.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                files: allFiles,
                 projectUrl,
                 selectedUser
             };
@@ -180,9 +184,9 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     });
                 }
 
-                // Processar resposta - separar assetZip de finalMaterials
-                const assetZipUpload = result.uploads.find((u: UploadInfo) => u.fileName.toLowerCase().endsWith('.zip'));
-                const finalMaterialsUploads = result.uploads.filter((u: UploadInfo) => !u.fileName.toLowerCase().endsWith('.zip'));
+                // Processar resposta - separar por tipo de arquivo
+                const assetZipUpload = result.uploads.find((_: UploadInfo, idx: number) => allFiles[idx]?.isZip);
+                const finalMaterialsUploads = result.uploads.filter((_: UploadInfo, idx: number) => !allFiles[idx]?.isZip);
                 
                 const staged = {
                     assetZip: assetZipUpload?.storagePath,
