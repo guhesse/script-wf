@@ -6,12 +6,14 @@ import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import { useAppAuth } from '@/hooks/useAppAuth';
 import { AuthScreen } from '@/components/AuthScreen';
 import { Button } from '@/components/ui/button';
+import { WorkfrontLoginWizard } from '@/components/WorkfrontLoginWizard';
 
 function App() {
   // Auth da aplicação (JWT)
   const { user, loading: userLoading } = useAppAuth();
   // Sessão Workfront
   const [wfReady, setWfReady] = useState(false);
+  const [showLoginWizard, setShowLoginWizard] = useState(false);
   const { isLoading, loadingMessage, checkLoginStatus } = useWorkfrontApi();
 
   // Aplicar tema escuro
@@ -56,11 +58,27 @@ function App() {
         <div className="fixed top-2 right-2 z-50 bg-amber-900/60 border border-amber-600/40 backdrop-blur px-4 py-2 rounded text-xs text-amber-200 shadow">
           <div className="flex items-center gap-3">
             <span>Workfront não conectado</span>
-            <Button size="sm" variant="secondary" onClick={async () => { const s = await checkLoginStatus().catch(()=>null); if(!s?.loggedIn){ await fetch('/api/login',{method:'POST'}); const again = await checkLoginStatus(); setWfReady(!!again.loggedIn);} }}>Login Workfront</Button>
+            <Button 
+              size="sm" 
+              variant="secondary" 
+              onClick={() => setShowLoginWizard(true)}
+            >
+              Login Workfront
+            </Button>
           </div>
         </div>
       )}
       <MainApplication onLogout={() => { /* handled inside main */ }} />
+      <WorkfrontLoginWizard 
+        open={showLoginWizard} 
+        onClose={() => {
+          setShowLoginWizard(false);
+          // Recheck login status after wizard closes
+          checkLoginStatus().then(status => {
+            setWfReady(!!status.loggedIn);
+          }).catch(() => setWfReady(false));
+        }} 
+      />
       <Toaster position="bottom-right" />
     </>
   );
