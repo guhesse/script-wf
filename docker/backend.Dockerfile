@@ -5,10 +5,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential python3 pkg-config unzip \
     libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpng-dev \
     libfreetype6-dev \
-    # libs necessárias para chromium headless
+    # libs necessárias para chromium headless + gtk stack
     libnss3 libnspr4 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
     libxfixes3 libxrandr2 libasound2 libxshmfence1 libgbm1 libatspi2.0-0 \
     libx11-xcb1 libx11-6 libxext6 libxss1 libxrender1 fonts-liberation \
+    libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libglib2.0-0 libdbus-1-3 libxtst6 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -46,11 +47,12 @@ ENV NODE_ENV=production \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 # Instala dependências runtime (canvas + chromium libs) e OpenSSL
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libcairo2 libpango-1.0-0 libjpeg62-turbo libgif7 libpng16-16 libfreetype6 \
-        libnss3 libnspr4 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
-        libxfixes3 libxrandr2 libasound2 libxshmfence1 libgbm1 libatspi2.0-0 \
-        libx11-xcb1 libx11-6 libxext6 libxss1 libxrender1 fonts-liberation \
-        openssl ca-certificates \
+    libcairo2 libpango-1.0-0 libjpeg62-turbo libgif7 libpng16-16 libfreetype6 \
+    libnss3 libnspr4 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+    libxfixes3 libxrandr2 libasound2 libxshmfence1 libgbm1 libatspi2.0-0 \
+    libx11-xcb1 libx11-6 libxext6 libxss1 libxrender1 fonts-liberation \
+    libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libglib2.0-0 libdbus-1-3 libxtst6 \
+    openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 # Copiar artefatos finais (node_modules já contém browsers em .cache/ms-playwright)
 COPY --from=build /app/dist ./dist
