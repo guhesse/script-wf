@@ -1,0 +1,179 @@
+{
+  "cookies": [
+    {
+      "name": "ab_test_chosen_params",
+      "value": "clear-state,group-transitions",
+      "domain": "auth.services.adobe.com",
+      "path": "/pt_BR",
+      "expires": 1759287899,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ab_test_given_params",
+      "value": "clear-state,group-transitions",
+      "domain": "auth.services.adobe.com",
+      "path": "/pt_BR",
+      "expires": 1759287899,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "relay",
+      "value": "d20d0bfa-e007-4e81-b6c2-574d1a7ae5c0",
+      "domain": "adobeid-na1.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ftrset",
+      "value": "709",
+      "domain": "adobeid-na1.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "fg",
+      "value": "Z2RDQ3R5FLM5ADEKFAQVIHAACI======",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1759287899.119886,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "shellImsEnv",
+      "value": "prod",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "userGuid",
+      "value": "anonymous",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1790737499,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "relay",
+      "value": "dfdff832-3eb1-4ae5-871c-9db9f3e82b0b",
+      "domain": "ims-na1.adobelogin.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ftrset",
+      "value": "709",
+      "domain": "ims-na1.adobelogin.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "locale",
+      "value": "pt_BR",
+      "domain": "ims-na1.adobelogin.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "relay",
+      "value": "dfdff832-3eb1-4ae5-871c-9db9f3e82b0b",
+      "domain": "auth.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "gpv",
+      "value": "Account:IMS:GetStarted:OnLoad",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1759203300,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kndctr_9E1005A551ED61CA0A490D45_AdobeOrg_cluster",
+      "value": "va6",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1759203301.24584,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "kndctr_9E1005A551ED61CA0A490D45_AdobeOrg_identity",
+      "value": "CiYxMzYxMDEwNDc4MTk5NDg4NzY0NDM5MDMxMTQ5NDIxMDc2NzYxMFISCMWl0sSZMxABGAEqA1ZBNjAA8AHFpdLEmTM%3D",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1793329501.080508,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "AMCV_9E1005A551ED61CA0A490D45%40AdobeOrg",
+      "value": "MCMID|13610104781994887644390311494210767610",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1792897501,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "idg_token",
+      "value": "F0Pa1/PRN6h2NWOhIYrPx5hH15CuFlrcsKDOxE16pXuFnV131BVyCqSTVumEtD6c",
+      "domain": "idg.adobe.com",
+      "path": "/",
+      "expires": 1761793501.626442,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://auth.services.adobe.com",
+      "localStorage": [
+        {
+          "name": "idgTokenLs",
+          "value": "a3703138-f044-4f1f-bc8a-0e98319b32b2"
+        },
+        {
+          "name": "LOCAL_STORAGE_DEVICE_ID",
+          "value": "45b19511-8625-4584-a73e-2395d91c98cb"
+        }
+      ]
+    }
+  ]
+}

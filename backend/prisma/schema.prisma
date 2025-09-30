@@ -20,29 +20,29 @@ datasource db {
 
 /// Perfis / papéis de acesso do sistema
 enum Role {
-  ADMIN      // Acesso total
-  EDITOR     // Pode criar/atualizar recursos (masters, briefings)
-  VIEWER     // Acesso somente leitura
+  ADMIN // Acesso total
+  EDITOR // Pode criar/atualizar recursos (masters, briefings)
+  VIEWER // Acesso somente leitura
 }
 
 /// Status de aprovação de usuários
 enum UserStatus {
-  PENDING   // Aguardando aprovação de um ADMIN
-  ACTIVE    // Aprovado e pode autenticar / usar sistema
-  REJECTED  // Reprovado / bloqueado
+  PENDING // Aguardando aprovação de um ADMIN
+  ACTIVE // Aprovado e pode autenticar / usar sistema
+  REJECTED // Reprovado / bloqueado
 }
 
 /// Usuários da aplicação
 model User {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String     @unique
   passwordHash String
-  roles        Role[]   @default([VIEWER]) // Um usuário pode ter múltiplos papéis
+  roles        Role[]     @default([VIEWER]) // Um usuário pode ter múltiplos papéis
   status       UserStatus @default(PENDING)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@index([email])
   @@map("users")
@@ -227,28 +227,28 @@ enum MasterEditableType {
 
 /// Registro de master assets armazenados no Bunny CDN
 model MasterAsset {
-  id             String             @id @default(cuid())
-  title          String
-  brand          String?            // Nome da marca
-  description    String?
-  fileName       String             // Nome do arquivo original
-  fileType       MasterFileType     // Tipo do arquivo (PSD, AI, etc)
-  editableType   MasterEditableType // Classificação de uso
-  fileSize       BigInt             // Em bytes
-  frameCount     Int?               // Quantidade de frames (se aplicável - animações / vídeos)
-  width          Int?               // Largura em px (quando aplicável)
-  height         Int?               // Altura em px (quando aplicável)
-  aspectRatio    String?            // Ex: 16:9, 1:1
-  checksum       String?            @unique // Hash (MD5/SHA1) p/ deduplicação
-  bunnyPath      String             // Caminho relativo na storage do Bunny
-  bunnyCdnUrl    String             // URL CDN pública
-  previewImageUrl String?           // Miniatura gerada (armazenada também no Bunny)
-  tags           String[]           // Tags livres
-  version        Int                @default(1)
-  isActive       Boolean            @default(true)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  archivedAt     DateTime?
+  id              String             @id @default(cuid())
+  title           String
+  brand           String? // Nome da marca
+  description     String?
+  fileName        String // Nome do arquivo original
+  fileType        MasterFileType // Tipo do arquivo (PSD, AI, etc)
+  editableType    MasterEditableType // Classificação de uso
+  fileSize        BigInt // Em bytes
+  frameCount      Int? // Quantidade de frames (se aplicável - animações / vídeos)
+  width           Int? // Largura em px (quando aplicável)
+  height          Int? // Altura em px (quando aplicável)
+  aspectRatio     String? // Ex: 16:9, 1:1
+  checksum        String?            @unique // Hash (MD5/SHA1) p/ deduplicação
+  bunnyPath       String // Caminho relativo na storage do Bunny
+  bunnyCdnUrl     String // URL CDN pública
+  previewImageUrl String? // Miniatura gerada (armazenada também no Bunny)
+  tags            String[] // Tags livres
+  version         Int                @default(1)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  archivedAt      DateTime?
 
   // Índices auxiliares
   @@index([brand])
