@@ -1,6 +1,17 @@
 // DTOs para requests e responses de autenticação
 import { ApiProperty } from '@nestjs/swagger';
 
+export class LoginCredentialsDto {
+  @ApiProperty({ description: 'Email para login no Workfront e Okta' })
+  email: string;
+
+  @ApiProperty({ description: 'Senha do Workfront', required: false })
+  workfrontPassword?: string;
+
+  @ApiProperty({ description: 'Senha do Okta' })
+  oktaPassword: string;
+}
+
 export class LoginResponseDto {
   @ApiProperty({ description: 'Indica se o login foi bem-sucedido' })
   success: boolean;
