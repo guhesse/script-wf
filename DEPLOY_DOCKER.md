@@ -62,11 +62,11 @@ docker compose -f docker-compose.dev.yml down
 
 ## Rodando em Produção (VPS)
 
-O `docker-compose.prod.yml` agora espera a variável `DBLINK` (não `DATABASE_URL`). Ela é convertida internamente para `DATABASE_URL` no container do backend.
+O `docker-compose.prod.yml` agora espera a variável `DATABASE_URL`. Ela é convertida internamente para `DATABASE_URL` no container do backend.
 
 1. Criar arquivo `.env` na raiz com:
 ```
-DBLINK=postgresql://<user>:<password>@<host>:<port>/<db>?schema=public
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<db>?schema=public
 JWT_SECRET=coloque_um_valor_forte
 ```
 
