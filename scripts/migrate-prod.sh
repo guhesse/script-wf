@@ -4,7 +4,7 @@
 echo "🔄 Aplicando migrações Prisma no banco de produção..."
 
 # Definir URL temporária para produção
-export DATABASE_URL="postgresql://scriptwf_prod:ProdPass2024@localhost:5432/scriptwf_prod"
+export DATABASE_URL="postgresql://scriptwf_prod:Pr0d_ScriptWF_2024!@#\$@localhost:5432/scriptwf_prod"
 
 # Entrar no diretório backend
 cd /var/www/script-wf/backend
