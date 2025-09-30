@@ -11,6 +11,9 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       BUNNY_API_KEY: ${BUNNY_API_KEY}
+      BUNNY_STORAGE_ZONE: ${BUNNY_STORAGE_ZONE}
+      BUNNY_CDN_BASE_URL: ${BUNNY_CDN_BASE_URL}
+      BUNNY_STORAGE_HOST: ${BUNNY_STORAGE_HOST}
     # Depende do container DB do docker-compose.multi-db.yml
     external_links:
       - script-wf-db-1:db
