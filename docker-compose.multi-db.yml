@@ -20,7 +20,7 @@ services:
     image: dpage/pgadmin4:8.8
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-hesse.gustavo@gmail.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-7zUL9y8LTTTQ2m23Zt!}
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
       # IMPORTANTE: Variáveis PGADMIN_CONFIG_* são inseridas diretamente no config Python.
