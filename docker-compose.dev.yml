@@ -1,45 +1,45 @@
-version: '3.9'
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: scriptwf
-      POSTGRES_PASSWORD: scriptwf
-      POSTGRES_DB: scriptwf
+      POSTGRES_USER: ${POSTGRES_USER:-scriptwf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-L4r01EC4DAXA7UwG}
+      POSTGRES_DB: ${POSTGRES_DB:-scriptwf}
     volumes:
-      - pgdata_dev:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
   backend:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
-    command: ["node", "dist/main.js"]
+    restart: unless-stopped
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://scriptwf:scriptwf@db:5432/scriptwf?schema=public
-      JWT_SECRET: devsecret
-    volumes:
-      - ./backend/dist:/app/dist
-      - ./backend/prisma:/app/prisma
+      DATABASE_URL: postgresql://${POSTGRES_USER:-scriptwf}:${POSTGRES_PASSWORD:-L4r01EC4DAXA7UwG}@db:5432/${POSTGRES_DB:-scriptwf}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
-      - db
-    ports:
-      - "3000:3000"
+      db:
+        condition: service_healthy
+    expose:
+      - "3000"
 
   frontend:
     build:
       context: .
-      dockerfile: docker/frontend.Dockerfile
-    environment:
-      # Em desenvolvimento, apontar para backend direto via host.docker.internal se necessário
-      VITE_API_BASE_URL: http://localhost/api
-    ports:
-      - "80:80"
+    # (mantém seu docker/frontend.Dockerfile se necessário)
+    dockerfile: docker/frontend.Dockerfile
+    restart: unless-stopped
     depends_on:
       - backend
+    ports:
+      - "80:80"
 
 volumes:
-  pgdata_dev:
+  pgdata_prod:
