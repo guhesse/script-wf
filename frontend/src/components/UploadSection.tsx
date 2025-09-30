@@ -123,11 +123,15 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
         setSubmitting(true);
 
         try {
-            // Preparar lista de arquivos para upload CDN
-            const files = [
-                { name: assetZip.name, size: assetZip.size, type: assetZip.type },
-                ...finalMaterials.map(f => ({ name: f.name, size: f.size, type: f.type }))
-            ];
+            // Preparar dados no formato esperado pelo backend
+            const requestBody = {
+                assetZip: { name: assetZip.name, size: assetZip.size, type: assetZip.type },
+                finalMaterials: finalMaterials.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                projectUrl,
+                selectedUser
+            };
+
+            console.log('🐛 Enviando para /api/upload/prepare:', requestBody);
 
             // Gerar URLs de upload CDN
             const prepareResponse = await fetch('/api/upload/prepare', {
@@ -136,11 +140,7 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    files,
-                    projectUrl,
-                    selectedUser
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!prepareResponse.ok) {
@@ -180,11 +180,16 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     });
                 }
 
-                // Simular resposta compatível com sistema existente
+                // Processar resposta - separar assetZip de finalMaterials
+                const assetZipUpload = result.uploads.find((u: UploadInfo) => u.fileName.toLowerCase().endsWith('.zip'));
+                const finalMaterialsUploads = result.uploads.filter((u: UploadInfo) => !u.fileName.toLowerCase().endsWith('.zip'));
+                
                 const staged = {
-                    assetZip: result.uploads.find((u: UploadInfo) => u.fileName.toLowerCase().endsWith('.zip'))?.storagePath,
-                    finalMaterials: result.uploads.filter((u: UploadInfo) => !u.fileName.toLowerCase().endsWith('.zip')).map((u: UploadInfo) => u.storagePath)
+                    assetZip: assetZipUpload?.storagePath,
+                    finalMaterials: finalMaterialsUploads.map((u: UploadInfo) => u.storagePath)
                 };
+                
+                console.log('🐛 Staged paths:', staged);
 
                 setStagedPaths(staged);
                 if (result.jobId) {

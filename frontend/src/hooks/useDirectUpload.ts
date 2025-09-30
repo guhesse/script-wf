@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useAppAuth } from '@/hooks/useAppAuth';
 
 // Limite para considerar arquivo "grande" (30MB)
 const LARGE_FILE_THRESHOLD = 30 * 1024 * 1024;
@@ -19,6 +20,7 @@ interface DirectUploadResult {
 }
 
 export const useDirectUpload = () => {
+    const { token } = useAppAuth();
     const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({});
 
     // Verificar se arquivo deve usar upload direto
@@ -46,10 +48,11 @@ export const useDirectUpload = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('wf_access_token')}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    files: [{ name: file.name, size: file.size, type: file.type }],
+                    assetZip: { name: file.name, size: file.size, type: file.type },
+                    finalMaterials: [],
                     projectUrl: 'temp-upload',
                     selectedUser: 'carol'
                 })
@@ -91,7 +94,7 @@ export const useDirectUpload = () => {
             await fetch(`/api/upload/mark-used/${uploadId}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('wf_access_token')}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
@@ -129,7 +132,7 @@ export const useDirectUpload = () => {
 
             throw error;
         }
-    }, []);
+    }, [token]);
 
     // Upload múltiplos arquivos
     const uploadMultipleFiles = useCallback(async (files: File[]): Promise<DirectUploadResult[]> => {
