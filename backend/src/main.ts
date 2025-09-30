@@ -12,7 +12,7 @@ async function bootstrap() {
   // Enable CORS
   app.enableCors({
     origin: process.env.NODE_ENV === 'production'
-      ? ['https://your-production-domain.com']
+      ? ['https://www.hesse.app.br']
       : ['http://localhost:3000', 'http://localhost:5173'],
     credentials: true,
   });

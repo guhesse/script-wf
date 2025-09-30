@@ -1,6 +1,8 @@
-import { Controller, Post, Get, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, HttpException, HttpStatus, ConflictException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { LoginProgressService } from './login-progress.service';
+import { LoginPhase } from './login-progress.enum';
 import {
   LoginResponseDto,
   LoginStatusDto,
@@ -13,7 +15,28 @@ import {
 @ApiTags('Autenticação')
 @Controller('api')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly progress: LoginProgressService,
+  ) {}
+
+  @Post('login/start')
+  @ApiOperation({ summary: 'Iniciar processo assíncrono de login' })
+  async startLogin(): Promise<{ started: boolean; phase: LoginPhase }> {
+    if (this.progress.isRunning()) {
+      throw new ConflictException('Login já em andamento');
+    }
+    this.progress.start();
+    // dispara async sem aguardar
+    setImmediate(() => this.authService.login().catch(e => this.progress.fail(e.message)));
+    return { started: true, phase: LoginPhase.STARTING };
+  }
+
+  @Get('login-progress')
+  @ApiOperation({ summary: 'Obter progresso do login assíncrono' })
+  getProgress() {
+    return this.progress.get();
+  }
 
   @Post('login')
   @ApiOperation({ summary: 'Fazer login no Workfront' })

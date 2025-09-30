@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright';
+import { LoginProgressService } from './login-progress.service';
+import { LoginPhase } from './login-progress.enum';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import {
@@ -15,13 +17,29 @@ import {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly STATE_FILE = 'wf_state.json';
+  private readonly PARTIAL_FILE = 'wf_state.partial.json';
 
   /**
    * Fazer login no Workfront
    */
+  constructor(private readonly progress: LoginProgressService) {}
+
   async login(): Promise<LoginResponseDto> {
     try {
+      // Se já existe state válido, retornar direto
+      const status = await this.checkLoginStatus();
+      if (status.loggedIn) {
+        this.logger.log('⚡ Sessão já válida — pulando novo login');
+        return {
+            success: true,
+            message: 'Sessão existente reutilizada',
+            sessionFile: this.STATE_FILE,
+            loginTime: status.lastLogin,
+        };
+      }
+
       this.logger.log('🔑 Iniciando processo de login no Workfront...');
+      this.progress.update(LoginPhase.LAUNCHING_BROWSER, 'Lançando navegador');
 
       // Implementar login diretamente com Playwright
       await this.performWorkfrontLogin();
@@ -52,20 +70,18 @@ export class AuthService {
    */
   private async performWorkfrontLogin(): Promise<void> {
     this.logger.log('🔐 === FAZENDO LOGIN NO WORKFRONT ===');
-
     const browser = await chromium.launch({
-      headless: false,
-      args: ['--start-maximized'],
+      headless: true,
+      args: ['--no-sandbox','--disable-dev-shm-usage'],
     });
 
     try {
-      const context = await browser.newContext({
-        viewport: null,
-      });
+      const context = await browser.newContext();
 
       const page = await context.newPage();
 
-      this.logger.log('🌍 Abrindo Experience Cloud...');
+  this.progress.update(LoginPhase.NAVIGATING, 'Abrindo Experience Cloud');
+  this.logger.log('🌍 Abrindo Experience Cloud...');
       await page.goto('https://experience.adobe.com/', { waitUntil: 'domcontentloaded' });
 
       this.logger.log('👤 Complete o login SSO/MFA. Polling do botão "Adobe Experience Cloud" para persistir sessão.');
@@ -86,23 +102,25 @@ export class AuthService {
         await page.waitForTimeout(2500);
       }
 
-      while ((Date.now() - start) < MAX_TOTAL_MS && !page.isClosed()) {
+  this.progress.update(LoginPhase.WAITING_SSO, 'Aguardando autenticação SSO/MFA');
+  while ((Date.now() - start) < MAX_TOTAL_MS && !page.isClosed()) {
         try {
           const button = await page.$(TARGET_BUTTON_SELECTOR);
           if (button) {
+            this.progress.update(LoginPhase.DETECTED_BUTTON, 'Sessão autenticada, persistindo');
             this.logger.log('✅ Botão Adobe Experience Cloud detectado — sessão aparentemente autenticada.');
             // Salva state a cada detecção (com limite)
-            await context.storageState({ path: this.STATE_FILE });
+            await context.storageState({ path: this.PARTIAL_FILE });
             persistAttempts++;
             if (!persisted) {
               persisted = true;
-              this.logger.log(`💾 Sessão persistida (1ª captura) em ${this.STATE_FILE}`);
+              this.logger.log(`💾 Sessão persistida (1ª captura parcial) em ${this.PARTIAL_FILE}`);
               if (!allowMultiple) {
                 this.logger.log('🛑 Encerrando imediatamente após primeira persistência (WF_LOGIN_MULTI_PERSIST != true).');
                 break;
               }
             } else if (allowMultiple) {
-              this.logger.log(`💾 Sessão atualizada (#${persistAttempts})`);
+              this.logger.log(`💾 Sessão parcial atualizada (#${persistAttempts})`);
               if (persistAttempts >= MAX_PERSIST_ATTEMPTS) {
                 this.logger.log('🛑 Limite de persistências atingido — encerrando browser para liberar usuário.');
                 break;
@@ -120,7 +138,7 @@ export class AuthService {
       if (!persisted) {
         // fallback final: salvar ao menos uma vez antes de fechar
         try {
-            await context.storageState({ path: this.STATE_FILE });
+            await context.storageState({ path: this.PARTIAL_FILE });
             this.logger.log('💾 Sessão salva no fallback final.');
         } catch (e:any) {
             this.logger.warn('Não foi possível salvar sessão no fallback: ' + e.message);
@@ -128,13 +146,40 @@ export class AuthService {
       }
 
       this.logger.log(`✅ Processo de login concluído (persisted=${persisted})`);
+      if (persisted) {
+        this.progress.update(LoginPhase.PERSISTING, 'Validando e gravando state final');
+        await this.promotePartialState();
+        this.progress.success('Login concluído');
+      } else {
+        this.progress.fail('Não foi possível confirmar a sessão');
+      }
     } catch (e: any) {
       this.logger.error('Erro durante login interativo', e.message);
+      this.progress.fail(e.message);
       throw e;
     } finally {
       if (browser.isConnected()) {
         await browser.close();
       }
+    }
+  }
+
+  private async promotePartialState() {
+    try {
+      // Validar conteúdo básico
+      const data = await fs.readFile(this.PARTIAL_FILE, 'utf8');
+      const json = JSON.parse(data);
+      if (!json.cookies || !Array.isArray(json.cookies) || json.cookies.length === 0) {
+        throw new Error('State parcial sem cookies, abortando promoção');
+      }
+      // Renomear atômico
+      try { await fs.unlink(this.STATE_FILE); } catch { /* ignore */ }
+      await fs.rename(this.PARTIAL_FILE, this.STATE_FILE);
+      this.logger.log('🟢 State final promovido com sucesso.');
+    } catch (e:any) {
+      this.logger.error('Falha ao promover state parcial:', e.message);
+      try { await fs.unlink(this.PARTIAL_FILE); } catch {/* ignore */}
+      throw e;
     }
   }
 
