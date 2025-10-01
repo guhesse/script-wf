@@ -825,6 +825,9 @@ export class TimelineService {
                 this.logger.log(`   - ${key}: ${value}`);
             });
             
+            // DIAGNÓSTICO COMPLETO DA ESTRUTURA DA PÁGINA
+            await this.performPageStructureDiagnostic(page);
+            
             // 9. AGUARDAR CARREGAMENTO COMPLETO DA INTERFACE WORKFRONT
             if (interfaceStatus.workfrontElements === 0 || interfaceStatus.tableElements === 0 || !interfaceStatus.isReactLoaded) {
                 this.logger.warn(`⚠️ Interface Workfront incompleta! Aguardando carregamento...`);
@@ -1123,6 +1126,183 @@ export class TimelineService {
         const base = path.basename(filePath);
         const match = base.match(/^temp_\d+_[a-z0-9]+_(.+)$/);
         return match ? match[1] : base;
+    }
+
+    private async performPageStructureDiagnostic(page: Page) {
+        try {
+            this.logger.log(`🔍 === DIAGNÓSTICO COMPLETO DA ESTRUTURA DA PÁGINA ===`);
+            
+            // 1. Análise básica do DOM
+            const domAnalysis = await page.evaluate(() => {
+                return {
+                    docType: document.doctype?.name || 'não definido',
+                    charset: document.characterSet,
+                    readyState: document.readyState,
+                    referrer: document.referrer,
+                    domain: document.domain,
+                    bodyClasses: document.body?.className || 'sem classes',
+                    htmlLang: document.documentElement?.lang || 'não definido'
+                };
+            });
+            
+            this.logger.log(`📄 Análise do DOM:`);
+            Object.entries(domAnalysis).forEach(([key, value]) => {
+                this.logger.log(`   - ${key}: "${value}"`);
+            });
+            
+            // 2. Estrutura de elementos principais
+            const mainStructure = await page.evaluate(() => {
+                return {
+                    headElements: document.head?.children.length || 0,
+                    metaTags: document.querySelectorAll('meta').length,
+                    linkTags: document.querySelectorAll('link').length,
+                    scriptTags: document.querySelectorAll('script').length,
+                    styleTags: document.querySelectorAll('style').length,
+                    bodyChildren: document.body?.children.length || 0,
+                    totalDivs: document.querySelectorAll('div').length,
+                    totalSpans: document.querySelectorAll('span').length,
+                    totalInputs: document.querySelectorAll('input').length,
+                    totalForms: document.querySelectorAll('form').length,
+                    totalImages: document.querySelectorAll('img').length
+                };
+            });
+            
+            this.logger.log(`🏗️ Estrutura de elementos:`);
+            Object.entries(mainStructure).forEach(([key, value]) => {
+                this.logger.log(`   - ${key}: ${value}`);
+            });
+            
+            // 3. Conteúdo textual da página
+            const textContent = await page.evaluate(() => {
+                const bodyText = document.body?.innerText?.substring(0, 500) || 'sem texto';
+                const title = document.title;
+                const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(h => h.textContent?.trim()).filter(Boolean).slice(0, 5);
+                
+                return {
+                    title,
+                    bodyTextPreview: bodyText,
+                    headings: headings,
+                    hasErrorMessages: bodyText.toLowerCase().includes('error') || bodyText.toLowerCase().includes('erro'),
+                    hasLoadingMessages: bodyText.toLowerCase().includes('loading') || bodyText.toLowerCase().includes('carregando')
+                };
+            });
+            
+            this.logger.log(`📝 Conteúdo da página:`);
+            this.logger.log(`   - title: "${textContent.title}"`);
+            this.logger.log(`   - bodyText (preview): "${textContent.bodyTextPreview}"`);
+            this.logger.log(`   - headings: [${textContent.headings.map(h => `"${h}"`).join(', ')}]`);
+            this.logger.log(`   - hasErrorMessages: ${textContent.hasErrorMessages}`);
+            this.logger.log(`   - hasLoadingMessages: ${textContent.hasLoadingMessages}`);
+            
+            // 4. Análise de iframes
+            const iframeAnalysis = await page.evaluate(() => {
+                const iframes = Array.from(document.querySelectorAll('iframe'));
+                return iframes.map((iframe, index) => ({
+                    index,
+                    src: iframe.src || 'sem src',
+                    id: iframe.id || 'sem id',
+                    className: iframe.className || 'sem classes',
+                    width: iframe.width || 'auto',
+                    height: iframe.height || 'auto',
+                    name: iframe.name || 'sem nome'
+                }));
+            });
+            
+            this.logger.log(`🖼️ Análise de iframes (${iframeAnalysis.length}):`);
+            iframeAnalysis.forEach(iframe => {
+                this.logger.log(`   ${iframe.index + 1}. src="${iframe.src}", id="${iframe.id}", classes="${iframe.className}"`);
+            });
+            
+            // 5. JavaScript e erros no console
+            const jsAnalysis = await page.evaluate(() => {
+                return {
+                    hasReact: !!(window as any).React,
+                    hasAngular: !!(window as any).angular,
+                    hasJQuery: !!(window as any).jQuery || !!(window as any).$,
+                    hasWorkfrontGlobal: !!(window as any).Workfront || !!(window as any).WF || !!(window as any).workfront,
+                    globalKeys: Object.keys(window).filter(key => key.toLowerCase().includes('workfront') || key.toLowerCase().includes('adobe')).slice(0, 10)
+                };
+            });
+            
+            this.logger.log(`⚡ JavaScript e globals:`);
+            Object.entries(jsAnalysis).forEach(([key, value]) => {
+                this.logger.log(`   - ${key}: ${value}`);
+            });
+            
+            // 6. Classes CSS mais comuns
+            const cssClasses = await page.evaluate(() => {
+                const allElements = document.querySelectorAll('*');
+                const classMap = new Map();
+                
+                Array.from(allElements).forEach(el => {
+                    const classList = el.className;
+                    if (typeof classList === 'string' && classList.trim()) {
+                        classList.split(/\s+/).forEach(cls => {
+                            if (cls.trim()) {
+                                classMap.set(cls, (classMap.get(cls) || 0) + 1);
+                            }
+                        });
+                    }
+                });
+                
+                return Array.from(classMap.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 20)
+                    .map(([className, count]) => ({ className, count }));
+            });
+            
+            this.logger.log(`🎨 Classes CSS mais frequentes:`);
+            cssClasses.forEach((cls, index) => {
+                this.logger.log(`   ${index + 1}. "${cls.className}" (${cls.count}x)`);
+            });
+            
+            // 7. Análise específica do iframe (se houver)
+            if (iframeAnalysis.length > 0) {
+                this.logger.log(`🔍 Analisando conteúdo do iframe principal...`);
+                try {
+                    const frame = page.frameLocator('iframe').first();
+                    const frameContent = await frame.locator('body').textContent();
+                    const frameButtons = await frame.locator('button').count();
+                    const frameTables = await frame.locator('table').count();
+                    const frameInputs = await frame.locator('input').count();
+                    
+                    this.logger.log(`📱 Conteúdo do iframe:`);
+                    this.logger.log(`   - textContent (preview): "${frameContent?.substring(0, 200) || 'vazio'}"`);
+                    this.logger.log(`   - buttons: ${frameButtons}`);
+                    this.logger.log(`   - tables: ${frameTables}`);
+                    this.logger.log(`   - inputs: ${frameInputs}`);
+                    
+                    // Verificar se é uma página de erro ou carregamento
+                    const frameAnalysis = await page.evaluate(() => {
+                        const iframe = document.querySelector('iframe');
+                        if (iframe && iframe.contentDocument) {
+                            const doc = iframe.contentDocument;
+                            return {
+                                url: iframe.src,
+                                title: doc.title,
+                                bodyText: doc.body?.innerText?.substring(0, 300) || 'sem texto',
+                                hasError: doc.body?.innerText?.toLowerCase().includes('error') || false,
+                                hasAuth: doc.body?.innerText?.toLowerCase().includes('login') || doc.body?.innerText?.toLowerCase().includes('sign') || false
+                            };
+                        }
+                        return { error: 'Iframe não acessível' };
+                    });
+                    
+                    this.logger.log(`🔍 Análise do iframe:`);
+                    Object.entries(frameAnalysis).forEach(([key, value]) => {
+                        this.logger.log(`   - ${key}: "${value}"`);
+                    });
+                    
+                } catch (frameError) {
+                    this.logger.warn(`⚠️ Não foi possível acessar conteúdo do iframe: ${frameError.message}`);
+                }
+            }
+            
+            this.logger.log(`🔍 === FIM DO DIAGNÓSTICO DE ESTRUTURA ===`);
+            
+        } catch (error) {
+            this.logger.error(`❌ Erro durante diagnóstico de estrutura: ${error.message}`);
+        }
     }
 
     private async captureDebugScreenshot(page: Page, identifier: string, description: string) {
