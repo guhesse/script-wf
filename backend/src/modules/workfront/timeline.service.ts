@@ -495,11 +495,14 @@ export class TimelineService {
             // DIAGNÓSTICO CRÍTICO ANTES DA NAVEGAÇÃO
             await this.performAuthenticationDiagnostic(page);
             
-            this.logger.log(`🖼️ [TIMELINE] Tentando navegar para pasta: ${folder}`);
+            this.logger.log(`�️ [TIMELINE] Tentando navegar para pasta: ${folder}`);
             await this.shareService.navigateToFolder(frame, page, folder);
             this.logger.log(`✅ [TIMELINE] Navegação bem-sucedida para: ${folder}`);
             
             await this.uploadThroughDialog(frame, page, [filePath]);
+            
+            // VERIFICAÇÃO CRÍTICA: Upload realmente funcionou?
+            await this.verifyUploadSuccess(frame, page, filePath, folder);
         } catch (error) {
             // DIAGNÓSTICO COMPLETO QUANDO FALHA
             await this.performAccessDiagnostic(page, folder);
@@ -768,7 +771,61 @@ export class TimelineService {
             
             this.logger.log(`📤 Elementos de upload encontrados: upload=${hasUploadAccess.uploadButtons}, add=${hasUploadAccess.addButtons}`);
             
-            // 8. Capturar screenshot do estado de autenticação
+            // 8. VERIFICAÇÃO CRÍTICA DE RENDERIZAÇÃO
+            const interfaceStatus = await page.evaluate(() => {
+                // Aguardar um pouco para renderização
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        const status = {
+                            totalElements: document.querySelectorAll('*').length,
+                            iframes: document.querySelectorAll('iframe').length,
+                            workfrontElements: document.querySelectorAll('[class*="workfront"], [data-testid*="workfront"]').length,
+                            reactElements: document.querySelectorAll('[class*="react"], [data-reactid]').length,
+                            buttonElements: document.querySelectorAll('button').length,
+                            tableElements: document.querySelectorAll('table').length,
+                            isReactLoaded: !!(window as any).React || !!document.querySelector('[data-reactroot]'),
+                            hasWorkfrontApp: !!document.querySelector('[class*="app"], [id*="app"], main, [role="main"]'),
+                            documentReadyState: document.readyState,
+                            networkStatus: navigator.onLine
+                        };
+                        resolve(status);
+                    }, 2000);
+                });
+            }) as {
+                totalElements: number;
+                iframes: number;
+                workfrontElements: number;
+                reactElements: number;
+                buttonElements: number;
+                tableElements: number;
+                isReactLoaded: boolean;
+                hasWorkfrontApp: boolean;
+                documentReadyState: string;
+                networkStatus: boolean;
+            };
+            
+            this.logger.log(`🏗️ Status da Interface:`);
+            Object.entries(interfaceStatus).forEach(([key, value]) => {
+                this.logger.log(`   - ${key}: ${value}`);
+            });
+            
+            // 9. Se interface não carregou, forçar reload
+            if (interfaceStatus.totalElements < 100 || !interfaceStatus.hasWorkfrontApp) {
+                this.logger.warn(`⚠️ Interface não carregou completamente! Tentando reload...`);
+                await page.reload({ waitUntil: 'domcontentloaded' });
+                await page.waitForTimeout(5000);
+                
+                // Re-verificar após reload
+                const afterReload = await page.evaluate(() => ({
+                    totalElements: document.querySelectorAll('*').length,
+                    hasWorkfrontApp: !!document.querySelector('[class*="app"], [id*="app"], main, [role="main"]'),
+                    buttonElements: document.querySelectorAll('button').length
+                }));
+                
+                this.logger.log(`🔄 Após reload: elementos=${afterReload.totalElements}, app=${afterReload.hasWorkfrontApp}, botões=${afterReload.buttonElements}`);
+            }
+            
+            // 10. Capturar screenshot do estado de autenticação
             await this.captureDebugScreenshot(page, 'timeline-auth-diagnostic', 'Timeline Authentication diagnostic state');
             
             this.logger.log(`🔍 === FIM DO DIAGNÓSTICO ===`);
@@ -889,6 +946,91 @@ export class TimelineService {
         } catch (error) {
             this.logger.error(`❌ Erro durante diagnóstico de acesso: ${error.message}`);
         }
+    }
+
+    private async verifyUploadSuccess(frame: any, page: Page, filePath: string, folder: string) {
+        try {
+            const fileName = path.basename(filePath);
+            const originalName = this.getOriginalFileName(fileName);
+            
+            this.logger.log(`🔍 [VERIFY] Verificando se upload de "${originalName}" realmente funcionou na pasta "${folder}"`);
+            
+            // Aguardar um momento para o arquivo aparecer
+            await page.waitForTimeout(3000);
+            
+            // Procurar pelo arquivo na interface
+            const fileFound = await page.evaluate((searchName) => {
+                const selectors = [
+                    `[title*="${searchName}"]`,
+                    `[aria-label*="${searchName}"]`,
+                    `td:has-text("${searchName}")`,
+                    `*:has-text("${searchName}")`
+                ];
+                
+                for (const selector of selectors) {
+                    try {
+                        const elements = document.querySelectorAll(selector);
+                        if (elements.length > 0) {
+                            return { found: true, selector, count: elements.length };
+                        }
+                    } catch (e) {
+                        // Ignorar erros de seletor
+                    }
+                }
+                
+                return { found: false, selector: null, count: 0 };
+            }, originalName);
+            
+            if (fileFound.found) {
+                this.logger.log(`✅ [VERIFY] Arquivo "${originalName}" encontrado na interface! (${fileFound.selector}, ${fileFound.count} elementos)`);
+            } else {
+                this.logger.error(`❌ [VERIFY] Arquivo "${originalName}" NÃO encontrado na interface após upload!`);
+                
+                // Listar todos os documentos visíveis
+                const visibleDocs = await page.evaluate(() => {
+                    const docSelectors = [
+                        'td[class*="name"]',
+                        '[class*="document"] [class*="name"]',
+                        '[data-testid*="document"]',
+                        'tr td:first-child'
+                    ];
+                    
+                    const docs = [];
+                    docSelectors.forEach(selector => {
+                        try {
+                            const elements = document.querySelectorAll(selector);
+                            elements.forEach(el => {
+                                const text = el.textContent?.trim();
+                                if (text && text.length > 0 && !docs.includes(text)) {
+                                    docs.push(text);
+                                }
+                            });
+                        } catch (e) {
+                            // Ignorar erros
+                        }
+                    });
+                    
+                    return docs;
+                });
+                
+                this.logger.log(`📋 [VERIFY] Documentos visíveis na pasta "${folder}" (${visibleDocs.length}):`);
+                visibleDocs.forEach((doc, index) => {
+                    this.logger.log(`   ${index + 1}. "${doc}"`);
+                });
+                
+                // Screenshot da situação
+                await this.captureDebugScreenshot(page, `upload-verification-failed-${folder}`, `Upload verification failed for ${originalName} in ${folder}`);
+            }
+            
+        } catch (error) {
+            this.logger.error(`❌ [VERIFY] Erro durante verificação: ${error.message}`);
+        }
+    }
+
+    private getOriginalFileName(filePath: string): string {
+        const base = path.basename(filePath);
+        const match = base.match(/^temp_\d+_[a-z0-9]+_(.+)$/);
+        return match ? match[1] : base;
     }
 
     private async captureDebugScreenshot(page: Page, identifier: string, description: string) {
