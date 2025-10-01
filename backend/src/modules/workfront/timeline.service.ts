@@ -690,40 +690,80 @@ export class TimelineService {
     }
 
     private async navigateToFolderRobust(frame: any, page: Page, folder: string) {
-        // Aguardar interface estar pronta antes de navegar
+        // AGUARDAR botão Add new estar VISÍVEL antes de navegar
+        this.logger.log(`⏳ [NAV] Aguardando botão Add new estar visível...`);
         try {
-            await frame.waitForSelector('[data-testid="add-new"], button[class*="add"]', { timeout: 5000 });
-        } catch {
-            this.logger.warn('⚠️ [NAV] Botão Add new não visível antes da navegação');
+            // Usar o próprio frame, não frameLocator
+            if (frame.url) {
+                // É um Frame real
+                await frame.waitForSelector('[data-testid="add-new"], button[class*="add"]', { 
+                    state: 'visible',
+                    timeout: 10000 
+                });
+                this.logger.log(`✅ [NAV] Botão Add new está visível no frame`);
+            } else {
+                // É um FrameLocator
+                await frame.locator('[data-testid="add-new"], button[class*="add"]').first().waitFor({ 
+                    state: 'visible',
+                    timeout: 10000 
+                });
+                this.logger.log(`✅ [NAV] Botão Add new está visível no frameLocator`);
+            }
+        } catch (waitErr) {
+            this.logger.error(`❌ [NAV] Botão Add new NÃO ficou visível: ${waitErr.message}`);
+            await this.captureDebugScreenshot(page, 'no-add-button-visible', 'Add button not visible before navigation');
+            throw new Error('Interface Workfront não carregou completamente - botão Add new não visível');
         }
         
-        // Primeiro tentar via serviço existente (caso funcione em ambientes locais)
+        // Primeiro tentar via serviço existente
         try {
             await this.shareService.navigateToFolder(frame, page, folder);
             return;
         } catch { /* fallback custom abaixo */ }
 
         this.logger.log(`🔁 [NAV] Usando fallback custom para localizar pasta: ${folder}`);
+        
+        // ESTRATÉGIA MAIS AGRESSIVA: tentar múltiplos seletores em paralelo
         const normalized = folder.toLowerCase();
         const folderCandidates = [
+            // Seletores de linha de tabela
+            `tr:has-text("${folder}")`,
+            `tr[data-testid*="folder"]:has-text("${folder}")`,
+            // Seletores de texto direto
             `text="${folder}"`,
             `text=/^${folder}$/i`,
-            `xpath=//div[contains(@class,'folder')][contains(translate(.,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${normalized}')]`,
-            `[data-testid*="folder"]:has-text("${folder}")`,
-            `:text-matches("${folder}")`
+            // XPath
+            `xpath=//tr[contains(translate(.,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${normalized}')]`,
+            // Seletores de célula
+            `td:has-text("${folder}")`,
+            `[class*="cell"]:has-text("${folder}")`
         ];
+        
         for (const sel of folderCandidates) {
             try {
-                const loc = frame.locator(sel).first();
-                if (await loc.count() > 0 && await loc.isVisible()) {
-                    await loc.click({ delay: 50 });
-                    this.logger.log(`✅ [NAV] Pasta selecionada via seletor: ${sel}`);
-                    await page.waitForTimeout(1000);
-                    return;
+                this.logger.log(`🔍 [NAV] Tentando seletor: ${sel}`);
+                const loc = frame.locator ? frame.locator(sel).first() : frame(sel).first();
+                const count = await loc.count();
+                
+                if (count > 0) {
+                    const isVisible = await loc.isVisible().catch(() => false);
+                    this.logger.log(`   📊 Encontrado ${count} elemento(s), visível: ${isVisible}`);
+                    
+                    if (isVisible) {
+                        await loc.click({ delay: 50, timeout: 5000 });
+                        this.logger.log(`✅ [NAV] Pasta selecionada via seletor: ${sel}`);
+                        await page.waitForTimeout(2000); // Aguardar navegação
+                        return;
+                    }
                 }
-            } catch { /* tenta próximo */ }
+            } catch (err) {
+                this.logger.warn(`⚠️ [NAV] Seletor falhou: ${sel} - ${err.message}`);
+            }
         }
-        throw new Error(`Folder '${folder}' não localizada em fallback custom`);
+        
+        // Se nada funcionou, capturar screenshot
+        await this.captureDebugScreenshot(page, `folder-not-found-${folder}`, `Could not locate folder ${folder}`);
+        throw new Error(`Folder '${folder}' não localizada após todas estratégias`);
     }
 
     /**
@@ -732,34 +772,50 @@ export class TimelineService {
     private async uploadThroughDialogRobust(frame: any, page: Page, filePaths: string[]) {
         this.logger.log(`📁 [UPLOAD-R] Upload robusto de ${filePaths.length} arquivo(s)`);
         
-        // Aguardar interface estável
-        await frame.waitForTimeout(2000);
+        // Aguardar interface REALMENTE estável
+        this.logger.log(`⏳ [UPLOAD-R] Aguardando 3 segundos para estabilização completa...`);
+        await page.waitForTimeout(3000);
         
-        // Seletores fortes do botão Add new presentes no DOM real enviado pelo usuário
+        // Determinar se é Frame real ou FrameLocator
+        const isRealFrame = !!frame.url;
+        this.logger.log(`🔍 [UPLOAD-R] Tipo de frame: ${isRealFrame ? 'Frame real' : 'FrameLocator'}`);
+        
+        // Seletores do botão Add new
         const addSelectors = [
             'button[data-testid="add-new"]',
             '#add-new-button',
-            '#doc-central-add-new-dropdown-react-container button.add-new-react-button',
             'button.add-new-react-button',
             'button:has-text("Add new")'
         ];
+        
         let opened = false;
         for (const sel of addSelectors) {
             try {
-                const btn = frame.locator(sel).first();
-                if (await btn.count() > 0 && await btn.isVisible()) {
-                    await btn.click({ delay: 30 });
-                    await page.waitForTimeout(400);
-                    opened = true;
-                    this.logger.log(`✅ [UPLOAD-R] Botão Add new clicado: ${sel}`);
-                    break;
+                this.logger.log(`🔍 [UPLOAD-R] Tentando botão: ${sel}`);
+                const btn = isRealFrame ? frame.locator(sel).first() : frame.locator(sel).first();
+                const count = await btn.count();
+                
+                if (count > 0) {
+                    const isVisible = await btn.isVisible().catch(() => false);
+                    this.logger.log(`   📊 Botão encontrado (count=${count}, visible=${isVisible})`);
+                    
+                    if (isVisible) {
+                        await btn.click({ delay: 30, timeout: 5000 });
+                        await page.waitForTimeout(800); // Aguardar menu abrir
+                        opened = true;
+                        this.logger.log(`✅ [UPLOAD-R] Botão Add new clicado: ${sel}`);
+                        break;
+                    }
                 }
-            } catch { }
+            } catch (err) {
+                this.logger.warn(`⚠️ [UPLOAD-R] Falha no botão ${sel}: ${err.message}`);
+            }
         }
+        
         if (!opened) {
-            this.logger.error('❌ [UPLOAD-R] Não conseguiu clicar Add new (tentará screenshot)');
-            await this.captureDebugScreenshot(page, 'no-add-new', 'Could not locate Add new');
-            throw new Error('Botão Add new não encontrado');
+            this.logger.error('❌ [UPLOAD-R] Não conseguiu clicar Add new após todas tentativas');
+            await this.captureDebugScreenshot(page, 'no-add-new-clickable', 'Could not click Add new button');
+            throw new Error('Botão Add new não encontrado ou não clicável');
         }
 
         // Abrir opção Document
@@ -769,42 +825,51 @@ export class TimelineService {
             'li:has-text("Document")',
             '[role="menuitem"]:has-text("Document")'
         ];
-        let docClicked = false;
-        let chooser = null;
         
+        let chooser = null;
         for (const sel of docSelectors) {
             try {
-                const m = frame.locator(sel).first();
-                if (await m.count() > 0 && await m.isVisible()) {
-                    // Setup listener ANTES de clicar
-                    const chooserPromise = page.waitForEvent('filechooser', { timeout: 10000 });
-                    await m.click();
-                    docClicked = true;
-                    this.logger.log(`✅ [UPLOAD-R] Opção Document clicada: ${sel}`);
+                this.logger.log(`🔍 [UPLOAD-R] Tentando opção Document: ${sel}`);
+                const m = isRealFrame ? frame.locator(sel).first() : frame.locator(sel).first();
+                const count = await m.count();
+                
+                if (count > 0) {
+                    const isVisible = await m.isVisible().catch(() => false);
+                    this.logger.log(`   📊 Opção encontrada (count=${count}, visible=${isVisible})`);
                     
-                    // Aguardar file chooser
-                    try {
-                        chooser = await chooserPromise;
-                        break;
-                    } catch (chooserErr) {
-                        this.logger.error('❌ File chooser não apareceu após clicar Document');
-                        docClicked = false;
+                    if (isVisible) {
+                        // Setup listener ANTES de clicar
+                        const chooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
+                        await m.click({ timeout: 5000 });
+                        this.logger.log(`✅ [UPLOAD-R] Opção Document clicada: ${sel}`);
+                        
+                        // Aguardar file chooser
+                        try {
+                            chooser = await chooserPromise;
+                            this.logger.log(`✅ [UPLOAD-R] File chooser aberto`);
+                            break;
+                        } catch (chooserErr) {
+                            this.logger.error(`❌ File chooser não apareceu: ${chooserErr.message}`);
+                        }
                     }
                 }
-            } catch { }
+            } catch (err) {
+                this.logger.warn(`⚠️ [UPLOAD-R] Falha na opção ${sel}: ${err.message}`);
+            }
         }
         
-        if (!docClicked || !chooser) {
-            throw new Error('Opção Document não encontrada ou file chooser não abriu');
+        if (!chooser) {
+            await this.captureDebugScreenshot(page, 'no-file-chooser', 'File chooser did not open');
+            throw new Error('File chooser não abriu após clicar Document');
         }
         
         // Enviar arquivos
         await chooser.setFiles(filePaths);
         this.logger.log(`📤 [UPLOAD-R] ${filePaths.length} arquivo(s) enviado(s)`);
         
-        // Aguardar processamento com tempo dinâmico
-        const waitTime = Math.max(5000, filePaths.length * 3000);
-        this.logger.log(`⏳ [UPLOAD-R] Aguardando ${waitTime}ms para processamento...`);
+        // Aguardar processamento com tempo MUITO mais longo
+        const waitTime = Math.max(8000, filePaths.length * 5000); // Mínimo 8s, 5s por arquivo
+        this.logger.log(`⏳ [UPLOAD-R] Aguardando ${waitTime}ms para processamento completo...`);
         await page.waitForTimeout(waitTime);
     }
 
@@ -978,181 +1043,90 @@ export class TimelineService {
         try {
             this.logger.log(`🔍 === DIAGNÓSTICO DE AUTENTICAÇÃO (Timeline) ===`);
             
-            // 1. Verificar URL atual
             const currentUrl = page.url();
             this.logger.log(`🌐 URL atual: ${currentUrl}`);
             
-            // 2. Verificar título da página
             const title = await page.title();
             this.logger.log(`📄 Título da página: ${title}`);
             
-            // 3. Verificar se está na página de login
-            const isLoginPage = currentUrl.includes('login') || currentUrl.includes('auth') || title.toLowerCase().includes('sign in');
-            this.logger.log(`🔐 É página de login: ${isLoginPage}`);
+            // CRÍTICO: Verificar no IFRAME, não na página principal
+            const frames = page.frames();
+            const wfFrame = frames.find(f => f.url().includes('.workfront.adobe.com/project/'));
             
-            // 4. Verificar cookies de sessão
-            const cookies = await page.context().cookies();
-            const sessionCookies = cookies.filter(c => c.name.toLowerCase().includes('session') || c.name.toLowerCase().includes('auth') || c.name.toLowerCase().includes('token'));
-            this.logger.log(`🍪 Cookies de sessão encontrados: ${sessionCookies.length}`);
-            sessionCookies.forEach(cookie => {
-                this.logger.log(`   - ${cookie.name}: ${cookie.value.substring(0, 20)}...`);
-            });
-            
-            // 5. Verificar elementos de usuário logado
-            const userElements = [
-                '[data-testid="user-menu"]',
-                '.user-menu',
-                '[aria-label*="user"]',
-                '[class*="user"]',
-                '.avatar',
-                '[data-cy="user"]'
-            ];
-            
-            let userFound = false;
-            for (const selector of userElements) {
-                try {
-                    const element = await page.$(selector);
-                    if (element) {
-                        this.logger.log(`👤 Elemento de usuário encontrado: ${selector}`);
-                        userFound = true;
-                        break;
-                    }
-                } catch (e) {
-                    // Ignorar erros de seletor
-                }
-            }
-            
-            if (!userFound) {
-                this.logger.warn(`⚠️ Nenhum elemento de usuário encontrado - possível problema de autenticação`);
-            }
-            
-            // 6. Verificar se consegue acessar informações do projeto
-            const projectInfo = await page.evaluate(() => {
-                const breadcrumbs = document.querySelectorAll('[class*="breadcrumb"], .breadcrumb, [data-testid*="breadcrumb"]');
-                const projectName = document.querySelector('[class*="project"], [data-testid*="project"]');
-                return {
-                    breadcrumbs: breadcrumbs.length,
-                    projectName: projectName?.textContent || 'não encontrado'
-                };
-            });
-            
-            this.logger.log(`🏗️ Informações do projeto: breadcrumbs=${projectInfo.breadcrumbs}, nome="${projectInfo.projectName}"`);
-            
-            // 7. Verificar permissões de acesso
-            const hasUploadAccess = await page.evaluate(() => {
-                const uploadButtons = document.querySelectorAll('[class*="upload"], [data-testid*="upload"], input[type="file"]');
-                const addButtons = document.querySelectorAll('[class*="add"], [data-testid*="add"], button[class*="add"]');
-                return {
-                    uploadButtons: uploadButtons.length,
-                    addButtons: addButtons.length
-                };
-            });
-            
-            this.logger.log(`📤 Elementos de upload encontrados: upload=${hasUploadAccess.uploadButtons}, add=${hasUploadAccess.addButtons}`);
-            
-            // 8. VERIFICAÇÃO CRÍTICA DE RENDERIZAÇÃO
-            const interfaceStatus = await page.evaluate(() => {
-                // Aguardar um pouco para renderização
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        const status = {
-                            totalElements: document.querySelectorAll('*').length,
-                            iframes: document.querySelectorAll('iframe').length,
-                            workfrontElements: document.querySelectorAll('[class*="workfront"], [data-testid*="workfront"]').length,
-                            reactElements: document.querySelectorAll('[class*="react"], [data-reactid]').length,
-                            buttonElements: document.querySelectorAll('button').length,
-                            tableElements: document.querySelectorAll('table').length,
-                            isReactLoaded: !!(window as any).React || !!document.querySelector('[data-reactroot]'),
-                            hasWorkfrontApp: !!document.querySelector('[class*="app"], [id*="app"], main, [role="main"]'),
-                            documentReadyState: document.readyState,
-                            networkStatus: navigator.onLine
-                        };
-                        resolve(status);
-                    }, 2000);
-                });
-            }) as {
-                totalElements: number;
-                iframes: number;
-                workfrontElements: number;
-                reactElements: number;
-                buttonElements: number;
-                tableElements: number;
-                isReactLoaded: boolean;
-                hasWorkfrontApp: boolean;
-                documentReadyState: string;
-                networkStatus: boolean;
-            };
-            
-            this.logger.log(`🏗️ Status da Interface:`);
-            Object.entries(interfaceStatus).forEach(([key, value]) => {
-                this.logger.log(`   - ${key}: ${value}`);
-            });
-            
-            // DIAGNÓSTICO COMPLETO DA ESTRUTURA DA PÁGINA
-            await this.performPageStructureDiagnostic(page);
-            
-            // 9. AGUARDAR CARREGAMENTO COMPLETO DA INTERFACE WORKFRONT
-            if (interfaceStatus.workfrontElements === 0 || interfaceStatus.tableElements === 0 || !interfaceStatus.isReactLoaded) {
-                this.logger.warn(`⚠️ Interface Workfront incompleta! Aguardando carregamento...`);
-                this.logger.warn(`   - workfrontElements: ${interfaceStatus.workfrontElements} (precisa >0)`);
-                this.logger.warn(`   - tableElements: ${interfaceStatus.tableElements} (precisa >0)`);
-                this.logger.warn(`   - isReactLoaded: ${interfaceStatus.isReactLoaded} (precisa true)`);
+            if (wfFrame) {
+                this.logger.log(`✅ Frame Workfront encontrado - analisando conteúdo do frame...`);
                 
-                // Aguardar carregamento completo com múltiplas tentativas
+                // Análise DENTRO do frame
+                const frameStatus = await wfFrame.evaluate(() => {
+                    return {
+                        totalElements: document.querySelectorAll('*').length,
+                        buttons: document.querySelectorAll('button').length,
+                        tables: document.querySelectorAll('table, [class*="table"]').length,
+                        addButtons: document.querySelectorAll('[data-testid="add-new"], button[class*="add"], [class*="add-new"]').length,
+                        folders: document.querySelectorAll('[class*="folder"], [data-testid*="folder"], tr[data-testid*="folder"]').length,
+                        documents: document.querySelectorAll('[class*="document"], [data-testid*="document"], tr[data-testid*="document"]').length,
+                        hasTable: !!document.querySelector('table'),
+                        bodyText: document.body?.innerText?.substring(0, 300) || 'vazio'
+                    };
+                });
+                
+                this.logger.log(`🏗️ Status do Frame Workfront:`);
+                this.logger.log(`   - totalElements: ${frameStatus.totalElements}`);
+                this.logger.log(`   - buttons: ${frameStatus.buttons}`);
+                this.logger.log(`   - tables: ${frameStatus.tables}`);
+                this.logger.log(`   - addButtons: ${frameStatus.addButtons}`);
+                this.logger.log(`   - folders: ${frameStatus.folders}`);
+                this.logger.log(`   - documents: ${frameStatus.documents}`);
+                this.logger.log(`   - hasTable: ${frameStatus.hasTable}`);
+                this.logger.log(`   - bodyText: "${frameStatus.bodyText}"`);
+                
+                // CONDIÇÃO DE SUCESSO: Tem botões Add E tem estrutura de documentos
+                if (frameStatus.addButtons > 0 && (frameStatus.tables > 0 || frameStatus.folders > 0)) {
+                    this.logger.log(`✅ Interface Workfront PRONTA no frame! (addBtns=${frameStatus.addButtons}, structure=${frameStatus.tables || frameStatus.folders})`);
+                    return; // Interface OK, pular espera
+                } else {
+                    this.logger.warn(`⚠️ Interface incompleta no frame: addBtns=${frameStatus.addButtons}, tables=${frameStatus.tables}, folders=${frameStatus.folders}`);
+                }
+            } else {
+                this.logger.error(`❌ Frame Workfront NÃO encontrado!`);
+            }
+            
+            // AGUARDAR CARREGAMENTO NO FRAME (não na página principal)
+            if (wfFrame) {
+                this.logger.log(`⏳ Aguardando carregamento completo no FRAME Workfront...`);
                 let attempts = 0;
-                const maxAttempts = 10;
+                const maxAttempts = 15; // Aumentado para 15 tentativas
                 
                 while (attempts < maxAttempts) {
                     attempts++;
-                    this.logger.log(`🔄 Tentativa ${attempts}/${maxAttempts}: aguardando interface Workfront...`);
+                    this.logger.log(`🔄 Tentativa ${attempts}/${maxAttempts}: verificando frame...`);
                     
-                    await page.waitForTimeout(3000);
+                    await page.waitForTimeout(2000); // 2s entre tentativas
                     
-                    const currentStatus = await page.evaluate(() => ({
-                        workfrontElements: document.querySelectorAll('[class*="workfront"], [data-testid*="workfront"], [class*="wf-"], [id*="workfront"]').length,
-                        tableElements: document.querySelectorAll('table, [class*="table"], [data-testid*="table"]').length,
-                        documentRows: document.querySelectorAll('tr, [class*="row"], [data-testid*="row"]').length,
+                    const currentStatus = await wfFrame.evaluate(() => ({
                         addButtons: document.querySelectorAll('[data-testid="add-new"], button[class*="add"], [class*="add-new"]').length,
-                        folderElements: document.querySelectorAll('[class*="folder"], [data-testid*="folder"]').length
+                        tables: document.querySelectorAll('table, [class*="table"]').length,
+                        folders: document.querySelectorAll('[class*="folder"], [data-testid*="folder"], tr').length,
+                        visibleButtons: Array.from(document.querySelectorAll('button')).filter(b => b.offsetWidth > 0 && b.offsetHeight > 0).length
                     }));
                     
-                    this.logger.log(`   📊 Status atual: workfront=${currentStatus.workfrontElements}, tables=${currentStatus.tableElements}, rows=${currentStatus.documentRows}, addBtns=${currentStatus.addButtons}, folders=${currentStatus.folderElements}`);
+                    this.logger.log(`   📊 Frame: addBtns=${currentStatus.addButtons}, tables=${currentStatus.tables}, folders=${currentStatus.folders}, visibleBtns=${currentStatus.visibleButtons}`);
                     
-                    // Condição de sucesso: tem elementos de tabela E botões de add
-                    if (currentStatus.tableElements > 0 && currentStatus.addButtons > 0) {
-                        this.logger.log(`✅ Interface Workfront carregada completamente! (tentativa ${attempts})`);
+                    // Condição de sucesso: tem botões de add VISÍVEIS
+                    if (currentStatus.addButtons > 0 && currentStatus.visibleButtons > 0) {
+                        this.logger.log(`✅ Interface Workfront carregada no frame! (tentativa ${attempts})`);
                         break;
                     }
                     
-                    // Se chegou na última tentativa, forçar reload
+                    // Se chegou na última tentativa
                     if (attempts === maxAttempts) {
-                        this.logger.warn(`⚠️ Interface ainda incompleta após ${maxAttempts} tentativas. Forçando reload com timeout maior...`);
-                        try {
-                            await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-                            await page.waitForTimeout(10000);
-                        } catch (reloadError) {
-                            this.logger.error(`❌ Erro no reload: ${reloadError.message}`);
-                            this.logger.log('🔄 Tentando navegação direta novamente...');
-                            await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: 60000 });
-                            await page.waitForTimeout(10000);
-                        }
-                        
-                        const afterReload = await page.evaluate(() => ({
-                            workfrontElements: document.querySelectorAll('[class*="workfront"], [data-testid*="workfront"]').length,
-                            tableElements: document.querySelectorAll('table, [class*="table"]').length,
-                            addButtons: document.querySelectorAll('[data-testid="add-new"], [class*="add-new"]').length
-                        }));
-                        
-                        this.logger.log(`🔄 Após reload forçado: workfront=${afterReload.workfrontElements}, tables=${afterReload.tableElements}, addBtns=${afterReload.addButtons}`);
+                        this.logger.error(`❌ Interface ainda incompleta após ${maxAttempts} tentativas!`);
+                        // NÃO fazer reload - pode piorar
                     }
                 }
-            } else {
-                this.logger.log(`✅ Interface Workfront já carregada completamente!`);
             }
             
-            // 10. Capturar screenshot do estado de autenticação
             await this.captureDebugScreenshot(page, 'timeline-auth-diagnostic', 'Timeline Authentication diagnostic state');
-            
             this.logger.log(`🔍 === FIM DO DIAGNÓSTICO ===`);
             
         } catch (error) {
