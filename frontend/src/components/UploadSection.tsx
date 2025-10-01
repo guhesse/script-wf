@@ -156,6 +156,7 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
             if (result.success) {
                 // Fazer upload de cada arquivo para o servidor local
                 const allFiles = [assetZip, ...finalMaterials];
+                const realPaths: string[] = [];
 
                 for (let i = 0; i < allFiles.length; i++) {
                     const file = allFiles[i];
@@ -177,16 +178,20 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                         throw new Error(`Erro no upload de ${file.name}: ${uploadResponse.statusText}`);
                     }
 
-                    console.log(`✅ Arquivo ${file.name} enviado com sucesso para ${uploadInfo.uploadUrl}`);
+                    // Capturar o caminho real retornado pelo servidor
+                    const uploadResult = await uploadResponse.json();
+                    realPaths.push(uploadResult.path);
+                    
+                    console.log(`✅ Arquivo ${file.name} enviado para: ${uploadResult.path}`);
                 }
 
-                // Processar resposta - separar por extensão do arquivo (mais simples)
-                const assetZipUpload = result.uploads.find((u: UploadInfo) => u.fileName.toLowerCase().endsWith('.zip'));
-                const finalMaterialsUploads = result.uploads.filter((u: UploadInfo) => !u.fileName.toLowerCase().endsWith('.zip'));
+                // Usar os caminhos REAIS retornados pelo servidor
+                const assetZipPath = realPaths.find(path => path.toLowerCase().endsWith('.zip'));
+                const finalMaterialPaths = realPaths.filter(path => !path.toLowerCase().endsWith('.zip'));
                 
                 const staged = {
-                    assetZip: assetZipUpload?.storagePath,
-                    finalMaterials: finalMaterialsUploads.map((u: UploadInfo) => u.storagePath)
+                    assetZip: assetZipPath,
+                    finalMaterials: finalMaterialPaths
                 };
                 
                 console.log('🐛 Staged paths:', staged);
