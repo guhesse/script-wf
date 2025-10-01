@@ -70,6 +70,9 @@ export class UploadAutomationService {
             const frame = WorkfrontDomHelper.frameLocator(page);
             await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
             
+            // DIAGNÓSTICO CRÍTICO DE AUTENTICAÇÃO
+            await this.performAuthenticationDiagnostic(page);
+            
             // Debug: informações da página atual
             this.logger.log(`🌐 [DEBUG] URL atual: ${page.url()}`);
             this.logger.log(`📄 [DEBUG] Título da página: ${await page.title()}`);
@@ -93,6 +96,9 @@ export class UploadAutomationService {
                     await page.screenshot({ path: '/app/temp/debug_after_asset_release.png', fullPage: true });
                     this.logger.log('📸 Screenshot salvo: /app/temp/debug_after_asset_release.png');
                 } catch (error) {
+                    // DIAGNÓSTICO COMPLETO DE ACESSO
+                    await this.performAccessDiagnostic(page, 'Asset Release');
+                    
                     // Screenshot do erro
                     await page.screenshot({ path: '/app/temp/debug_error_asset_release.png', fullPage: true });
                     this.logger.error('❌ [DEBUG] Falha na navegação para Asset Release:', error);
@@ -336,6 +342,219 @@ export class UploadAutomationService {
         } catch (error) {
             this.logger.error(`❌ Erro no upload de ${filePath}:`, error);
             return false;
+        }
+    }
+
+    // FUNÇÕES DE DIAGNÓSTICO CRÍTICO
+    private async performAuthenticationDiagnostic(page: Page) {
+        try {
+            this.logger.log(`🔍 === DIAGNÓSTICO DE AUTENTICAÇÃO ===`);
+            
+            // 1. Verificar URL atual
+            const currentUrl = page.url();
+            this.logger.log(`🌐 URL atual: ${currentUrl}`);
+            
+            // 2. Verificar título da página
+            const title = await page.title();
+            this.logger.log(`📄 Título da página: ${title}`);
+            
+            // 3. Verificar se está na página de login
+            const isLoginPage = currentUrl.includes('login') || currentUrl.includes('auth') || title.toLowerCase().includes('sign in');
+            this.logger.log(`🔐 É página de login: ${isLoginPage}`);
+            
+            // 4. Verificar cookies de sessão
+            const cookies = await page.context().cookies();
+            const sessionCookies = cookies.filter(c => c.name.toLowerCase().includes('session') || c.name.toLowerCase().includes('auth') || c.name.toLowerCase().includes('token'));
+            this.logger.log(`🍪 Cookies de sessão encontrados: ${sessionCookies.length}`);
+            sessionCookies.forEach(cookie => {
+                this.logger.log(`   - ${cookie.name}: ${cookie.value.substring(0, 20)}...`);
+            });
+            
+            // 5. Verificar elementos de usuário logado
+            const userElements = [
+                '[data-testid="user-menu"]',
+                '.user-menu',
+                '[aria-label*="user"]',
+                '[class*="user"]',
+                '.avatar',
+                '[data-cy="user"]'
+            ];
+            
+            let userFound = false;
+            for (const selector of userElements) {
+                try {
+                    const element = await page.$(selector);
+                    if (element) {
+                        this.logger.log(`👤 Elemento de usuário encontrado: ${selector}`);
+                        userFound = true;
+                        break;
+                    }
+                } catch (e) {
+                    // Ignorar erros de seletor
+                }
+            }
+            
+            if (!userFound) {
+                this.logger.warn(`⚠️ Nenhum elemento de usuário encontrado - possível problema de autenticação`);
+            }
+            
+            // 6. Verificar se consegue acessar informações do projeto
+            const projectInfo = await page.evaluate(() => {
+                const breadcrumbs = document.querySelectorAll('[class*="breadcrumb"], .breadcrumb, [data-testid*="breadcrumb"]');
+                const projectName = document.querySelector('[class*="project"], [data-testid*="project"]');
+                return {
+                    breadcrumbs: breadcrumbs.length,
+                    projectName: projectName?.textContent || 'não encontrado'
+                };
+            });
+            
+            this.logger.log(`🏗️ Informações do projeto: breadcrumbs=${projectInfo.breadcrumbs}, nome="${projectInfo.projectName}"`);
+            
+            // 7. Verificar permissões de acesso
+            const hasUploadAccess = await page.evaluate(() => {
+                const uploadButtons = document.querySelectorAll('[class*="upload"], [data-testid*="upload"], input[type="file"]');
+                const addButtons = document.querySelectorAll('[class*="add"], [data-testid*="add"], button[class*="add"]');
+                return {
+                    uploadButtons: uploadButtons.length,
+                    addButtons: addButtons.length
+                };
+            });
+            
+            this.logger.log(`📤 Elementos de upload encontrados: upload=${hasUploadAccess.uploadButtons}, add=${hasUploadAccess.addButtons}`);
+            
+            // 8. Capturar screenshot do estado de autenticação
+            await this.captureDebugScreenshot(page, 'auth-diagnostic', 'Authentication diagnostic state');
+            
+            this.logger.log(`🔍 === FIM DO DIAGNÓSTICO ===`);
+            
+        } catch (error) {
+            this.logger.error(`❌ Erro durante diagnóstico de autenticação: ${error.message}`);
+            await this.captureDebugScreenshot(page, 'auth-error', 'Authentication diagnostic error');
+        }
+    }
+
+    private async performAccessDiagnostic(page: Page, targetFolder: string) {
+        try {
+            this.logger.log(`🔍 === DIAGNÓSTICO DE ACESSO PARA PASTA "${targetFolder}" ===`);
+            
+            // 1. Estado básico da página
+            const currentUrl = page.url();
+            const title = await page.title();
+            this.logger.log(`🌐 URL atual: ${currentUrl}`);
+            this.logger.log(`📄 Título atual: ${title}`);
+            
+            // 2. Verificar se ainda estamos autenticados
+            const isLoggedOut = currentUrl.includes('login') || currentUrl.includes('auth') || title.toLowerCase().includes('sign in');
+            if (isLoggedOut) {
+                this.logger.error(`🚨 PROBLEMA CRÍTICO: Usuário foi deslogado durante a operação!`);
+                return;
+            }
+            
+            // 3. Verificar estrutura da página de documentos
+            const pageStructure = await page.evaluate(() => {
+                return {
+                    folders: document.querySelectorAll('[class*="folder"], [data-testid*="folder"]').length,
+                    documents: document.querySelectorAll('[class*="document"], [data-testid*="document"]').length,
+                    breadcrumbs: document.querySelectorAll('[class*="breadcrumb"], .breadcrumb').length,
+                    navigation: document.querySelectorAll('nav, [class*="nav"]').length,
+                    tables: document.querySelectorAll('table, [class*="table"]').length,
+                    lists: document.querySelectorAll('ul, ol, [class*="list"]').length
+                };
+            });
+            
+            this.logger.log(`📊 Estrutura da página:`);
+            Object.entries(pageStructure).forEach(([key, value]) => {
+                this.logger.log(`   - ${key}: ${value}`);
+            });
+            
+            // 4. Listar todas as pastas visíveis
+            const visibleFolders = await page.evaluate(() => {
+                const folderSelectors = [
+                    'tr[data-testid*="folder"] td:first-child',
+                    '[class*="folder"] [class*="name"]',
+                    'td[class*="name"]',
+                    '.folder-name',
+                    '[data-cy*="folder"]'
+                ];
+                
+                const folders = [];
+                
+                folderSelectors.forEach(selector => {
+                    try {
+                        const elements = document.querySelectorAll(selector);
+                        elements.forEach(el => {
+                            const text = el.textContent?.trim();
+                            if (text && text.length > 0 && !folders.includes(text)) {
+                                folders.push(text);
+                            }
+                        });
+                    } catch (e) {
+                        // Ignorar erros de seletor
+                    }
+                });
+                
+                return folders;
+            });
+            
+            this.logger.log(`📁 Pastas visíveis encontradas (${visibleFolders.length}):`);
+            visibleFolders.forEach((folder, index) => {
+                const isTarget = folder.toLowerCase().includes(targetFolder.toLowerCase()) || targetFolder.toLowerCase().includes(folder.toLowerCase());
+                this.logger.log(`   ${index + 1}. "${folder}" ${isTarget ? '👈 POSSÍVEL MATCH' : ''}`);
+            });
+            
+            // 5. Verificar permissões na página
+            const permissions = await page.evaluate(() => {
+                return {
+                    canUpload: !!document.querySelector('input[type="file"], [class*="upload"], [data-testid*="upload"]'),
+                    canCreate: !!document.querySelector('[class*="create"], [class*="new"], [data-testid*="create"]'),
+                    hasEditAccess: !!document.querySelector('[class*="edit"], [class*="modify"], [data-testid*="edit"]'),
+                    hasDeleteAccess: !!document.querySelector('[class*="delete"], [class*="remove"], [data-testid*="delete"]')
+                };
+            });
+            
+            this.logger.log(`🔒 Permissões detectadas:`);
+            Object.entries(permissions).forEach(([key, value]) => {
+                this.logger.log(`   - ${key}: ${value ? '✅' : '❌'}`);
+            });
+            
+            // 6. Verificar se a página carregou completamente
+            const loadingIndicators = await page.evaluate(() => {
+                const loadingSelectors = [
+                    '[class*="loading"]',
+                    '[class*="spinner"]',
+                    '[data-testid*="loading"]',
+                    '.loading',
+                    '.spinner'
+                ];
+                
+                return loadingSelectors.some(selector => {
+                    const elements = document.querySelectorAll(selector);
+                    return Array.from(elements).some(el => {
+                        const htmlEl = el as HTMLElement;
+                        return htmlEl.offsetWidth > 0 && htmlEl.offsetHeight > 0;
+                    });
+                });
+            });
+            
+            this.logger.log(`⏳ Página ainda carregando: ${loadingIndicators}`);
+            
+            this.logger.log(`🔍 === FIM DO DIAGNÓSTICO DE ACESSO ===`);
+            
+        } catch (error) {
+            this.logger.error(`❌ Erro durante diagnóstico de acesso: ${error.message}`);
+        }
+    }
+
+    private async captureDebugScreenshot(page: Page, identifier: string, description: string) {
+        try {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `debug_${identifier}_${timestamp}.png`;
+            const fullPath = path.join('/app/temp', filename);
+            
+            await page.screenshot({ path: fullPath, fullPage: true });
+            this.logger.log(`📸 Screenshot capturado: ${description} -> ${fullPath}`);
+        } catch (error) {
+            this.logger.warn(`⚠️ Falha ao capturar screenshot ${identifier}: ${error.message}`);
         }
     }
 }
