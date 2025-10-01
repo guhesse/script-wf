@@ -5,7 +5,7 @@
       "value": "clear-state,group-transitions",
       "domain": "auth.services.adobe.com",
       "path": "/pt_BR",
-      "expires": 1759356042,
+      "expires": 1759425138,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -15,7 +15,7 @@
       "value": "clear-state,group-transitions",
       "domain": "auth.services.adobe.com",
       "path": "/pt_BR",
-      "expires": 1759356042,
+      "expires": 1759425138,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -45,14 +45,14 @@
       "value": "anonymous",
       "domain": ".adobe.com",
       "path": "/",
-      "expires": 1790805641,
+      "expires": 1790874738,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
     },
     {
       "name": "relay",
-      "value": "0060a3f0-f993-49d6-ad57-fa392a103fdd",
+      "value": "aff99618-c8ec-4567-8d3e-e20d0f2f7900",
       "domain": "ims-na1.adobelogin.com",
       "path": "/",
       "expires": -1,
@@ -82,7 +82,7 @@
     },
     {
       "name": "relay",
-      "value": "0060a3f0-f993-49d6-ad57-fa392a103fdd",
+      "value": "aff99618-c8ec-4567-8d3e-e20d0f2f7900",
       "domain": "auth.services.adobe.com",
       "path": "/",
       "expires": -1,
@@ -95,27 +95,27 @@
       "value": "va6",
       "domain": ".adobe.com",
       "path": "/",
-      "expires": 1759271483,
+      "expires": 1759340593,
       "httpOnly": false,
       "secure": true,
       "sameSite": "None"
     },
     {
       "name": "kndctr_9E1005A551ED61CA0A490D45_AdobeOrg_identity",
-      "value": "CiYyNjUwNzM1NDMxMzk1Mzk1NDQxMDc2MjEzNzcyNDU5NTQ5NjE2MVISCPqwkeWZMxABGAEqA1ZBNjAA8AH6sJHlmTM%3D",
+      "value": "CiY1OTcyNzE1NjkzNjYyNzUyMDcwMDgxODc3NzA3MTk3MTE0NzkwOFISCI%5FfioaaMxABGAEqA1ZBNjAA8AGP34qGmjM%3D",
       "domain": ".adobe.com",
       "path": "/",
-      "expires": 1793397643.374767,
+      "expires": 1793466740.166326,
       "httpOnly": false,
       "secure": true,
       "sameSite": "None"
     },
     {
       "name": "AMCV_9E1005A551ED61CA0A490D45%40AdobeOrg",
-      "value": "MCMID|26507354313953954410762137724595496161",
+      "value": "MCMID|59727156936627520700818777071971147908",
       "domain": ".adobe.com",
       "path": "/",
-      "expires": 1792965643,
+      "expires": 1793034740,
       "httpOnly": false,
       "secure": true,
       "sameSite": "None"
@@ -125,14 +125,14 @@
       "value": "F0Pa1/PRN6h2NWOhIYrPx5hH15CuFlrcsKDOxE16pXuFnV131BVyCqSTVumEtD6c",
       "domain": "idg.adobe.com",
       "path": "/",
-      "expires": 1761861644.173941,
+      "expires": 1761930740.662375,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
     },
     {
       "name": "relay",
-      "value": "0060a3f0-f993-49d6-ad57-fa392a103fdd",
+      "value": "aff99618-c8ec-4567-8d3e-e20d0f2f7900",
       "domain": "federatedid-na1.services.adobe.com",
       "path": "/",
       "expires": -1,
@@ -152,10 +152,10 @@
     },
     {
       "name": "DT",
-      "value": "DI1DWRJMUmkQ4yKvSnxPoC-zw",
+      "value": "DI16vIocpyZTM2zGfer9Ivb-w",
       "domain": "wpp.okta.com",
       "path": "/",
-      "expires": 1793829648.235819,
+      "expires": 1793898745.431969,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
@@ -165,14 +165,14 @@
       "value": "gustavo.hesse@vml.com",
       "domain": "wpp.okta.com",
       "path": "/",
-      "expires": 1790805654,
+      "expires": 1790874751,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
     },
     {
       "name": "JSESSIONID",
-      "value": "392F73BC6AF63645AA357234A000503C",
+      "value": "8D3D786393CEB54241F1C4359E9F1463",
       "domain": "wpp.okta.com",
       "path": "/",
       "expires": -1,
@@ -182,7 +182,7 @@
     },
     {
       "name": "idx",
-      "value": "eyJ6aXAiOiJERUYiLCJ2ZXIiOiIxIiwiYWxpYXMiOiJlbmNyeXB0aW9ua2V5Iiwib2lkIjoiMDBvazZocHJNOGV1eUl3Mms0MTUiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIiwieHNpZCI6ImlkeEVpZ3F2VVg4UzZDcWluWkFZQW5WSUEifQ..uikPRYZ0TCJny0Q6.PWyh-v6WGTc4SBPUUXXhyt6i1wb4dy25Rbp0Cmwj8_Mzreigd01Je-wXfx_Bsd-Uxhn2Rn-XC8wPxE8vOuiBvEBUf8DjDkpGSPOTpWM67XOmlEiRXTxvrUv_VTqFB_RA5wq4iayHjS3jbkarGtup2VjjPXQBhSb7vn-i-GO09NYJcpWGnEv8f_RCDpsuZFkAq3uSfjRzESZ5rwwMpSjI9IRWbJP0iJsEbonUKv723HMzLTbT9g8dQe4RGdboDQraW5JLaCVAHYikXFrIPRGKxcL-wX0JZ8X1duO0LyCMx-eUYeQjUc0M7Yq2ci0D2xByfOEaQcnzemmEKIsXDvIX0puR72doQr1xp-EmS1l4A0Tn63abbm7SKoQpqg904g6lY2yvm7FkA8bdBz7QJSQKpIP_zSoh1tWNA0r2npWsMu0B3HCLAa-uOfncu2pgIabojWiA1GocrTCRFb6pkoZZ-F94ZTmBI2OhD6cjCqs_mjJTipxdbYdayrZrXmHx0ycol9ZmAib-aV820XHn1SWXU2FX6SHUGUbqqNl-2w_FjvzaF54kl0HAF6ttjSXRBNB-l9-lJ7t2N7NKpzew-89LTcCRX3yftut-UKMw3-9iHeMa8J7ZlxZ9GMDIH0tQO5PfbhUNIvvDgTAkEefLblY5d0nMrU8_cRtJ86MnEyJR8DAF6d0Ona9KScuDKG9FJbw5C_UF8OwvzbGVpNcYEgftncIWuosITBG03hRFj33T3UGkVg_uM0ezEbAuTklJ46zsliKJIgJaYP-PheO_IWyRLs1WlmmniJBpU4TXiWcgK_S0O6-SmONelihIlHoF7D3IShHxaKZWyNxuJwWyt3l17vpbJF8mtl15KPX3KExoMX5P_YUr2Uqv95GqjEBbzqQQdTb3BAKiDenVBpgFGZGXTrDyYeHZ88OnNwWOu3B6f0Xm1HbCWSKlS07rTOY2VF4Hy95cy0TQ_xQK39lOH8uqjV4fgwpyMtXhFFQKDwosgj21aS-z1GkQHc2Un2FQXRfmfo0UT3yyJH73edGewWXspBMJMTUFkI9XV7sBfuqWCXT0m-km2_lqC2qXNDbEH_8U2_UX03PogW-KdcQJdEC3iwe624H4yNBzZlFJZLJWr40aZiFGm-zTUeHOGfRCN4koSw.qu7Os4RO-l6eeDCZiWZsGg",
+      "value": "eyJ6aXAiOiJERUYiLCJ2ZXIiOiIxIiwiYWxpYXMiOiJlbmNyeXB0aW9ua2V5Iiwib2lkIjoiMDBvazZocHJNOGV1eUl3Mms0MTUiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIiwieHNpZCI6ImlkeFUxcDJnME1GUm5LVFBjUUpTUXVwZUEifQ..cf0xCoVwyLL_BZm5.vxkFlpygoOYs1dIPjJoaAR0DTuhDIeA55yV0QHJ5bOf3ZBqg-yd0FeAvkJsTlQx-l1M_U36R3KLpVHcf4DMV7uXkE6nzKT31P3isoGjzltSpzSzsSRfdQQNRc162zR1vq7po7qcmHwyfRIm8kYla21AbrsNh_GdD154453cHdraSEYkTFCUSv29URSPTdZPZynms_0IWVqtA-jkb1EUxmBFc7LpXnWxdbUA7npQ77XxH55hfeF5chCApUjp6Jel31HYTQoxQffeq1Xf-kNDrMTYe9iOPKRQMii5xnq-x2vyPXFktOyboa_EK_UfGRqvaNvCi__wRckxwr6vAkp89Q06PVs3fMw31OuZhadx2_0XDWWpRusoS8jdH4-wkskNlg4ZTlQxn2SW9UPoJXLGTAPhAJoScF6O9UQnsNalVagq_EFf6TFgyNXMZR_VwS3TXkJbDqESjFECBM1PPPlwjy6wX_wkM-5ZzN1IkOWlYoStg27tdncgOfHHoIyZctPXCegUX8v0KbHcb6UuzjKwwb2Psq-cBEktIlaXEb8nlmoOKgZ6eFTqwCWtS5xQw9zdNVfwvehOd5uhMUT7CCWIHTXOEjEGmgdFByUzQ7z19cn7u2Oe7nGJvg-XICeBhRdqoVkgQx_kerleY-5dOH1F1qbgNPOuZxsijWURZq2aN7myb_7OarLeemLi8QjXmtKWFlYtDFD1y_aVhALpxrAVE9qyPczV8HOsoFvUrKUKlXOPaCTEWTOjRdUsrZGp_jAfZ8uL7YlMBCzRts1csU2QDuCwsQscv68q-ekDAZ6akdYyxXbilmEae4_K5bKU9jms_kKZ_ad9OD78Apyp6LYsJCpkRYfcltehQS3pJ6QtSz4TxZkHk0gbPkP-Vysd_ln9b-6BzI7XqWGhn52riiBhVC16Y-hZsuuMKEWINfBmQ01WvI2v4GVvnCVPxxZzSXtF7NqPHWwJrwZT_QPR2HV7vPObxeM99Hzmce06BfcSqi045gYejOFKDA3XJOMNqodQfxmBKkRaheOIZj1CstwODjy6ZGveCZEVJgjK02nVHZhCf4T46HINAzD-lcUBdMcPbyyuqrwEJupQL3EG28iJwyZua042kPqxzPZSOt3dmMkPi5Z8JW7f5SKvfqMMr9SM.4GFT_vJ4l7UxvW9kNQkaqA",
       "domain": "wpp.okta.com",
       "path": "/",
       "expires": -1,
@@ -192,30 +192,30 @@
     },
     {
       "name": "luf_-618377426",
-      "value": "eyJ6aXAiOiJERUYiLCJ2ZXIiOiIxIiwiYWxpYXMiOiJlbmNyeXB0aW9ua2V5Iiwib2lkIjoiMDBvazZocHJNOGV1eUl3Mms0MTUiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIiwidGltZXN0YW1wIjoxNzU5MjY5NjcxMDYyfQ..dEGLfosHxUWRpEcg.dpcKCEwcRQ-4Yy2DAjDWlqKZkLdpXTSZhbRwkdWf8SwgXVw8Akf08SnM-k14l1HPiW5Vug78vCPxQ_ubhFko7SNWaq-PhTQ-BSfQZ2N-7U3-5WjYBx_vCTEHNXjmJioRohfxu94b8r0I-K96DzHaCl5HKQCw_ZNY3MK58ADmhftZrmhHhtLOVvlE9tUw9O1_S0F-El_eP-pabejASMVWvajurT-2BPKvIbu31Yci_0UGWbtud7HY1C0czAZ7GSCkYtpnDk78sABBck4a6YRDk_YKm78jE7DHybtwq7Wgnidp.2fSNTCJPftXejLAPbzPf5A",
+      "value": "eyJ6aXAiOiJERUYiLCJ2ZXIiOiIxIiwiYWxpYXMiOiJlbmNyeXB0aW9ua2V5Iiwib2lkIjoiMDBvazZocHJNOGV1eUl3Mms0MTUiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIiwidGltZXN0YW1wIjoxNzU5MzM4NzgxMTk1fQ..KrJ81nBaC11u-ZH5.rcNAO-cFAZrWDDmKX1O0oDCnaLGRmcHrrC3k9xYEek15U1jsyJGJpSjTEbxcDkq3dWNE5_SYqaxXzGwOAgDL-iqmkkJd6LAt8NUBsYGclwuXNJijS0xDiqJaibRLzWNmwb1ELEL_9f-SMMq_3oMtUKJJIhqvVQzxMF8trEle25yt5vUkKw3b4Su9swNMYfuClYVdhxDSVF7gVihyaB01-P3Rb24a1Mm3GyWuROS1dA5bJxfgbyRCMkn6l8d5HiU8nIhiKfXIcEZDkO4i6h48rfDUORLSEOEl1EjrHwj6cfU9.0ZyM2xwG4A6amlgMMag7yg",
       "domain": "wpp.okta.com",
       "path": "/",
-      "expires": 1761861674.18489,
+      "expires": 1761930783.865037,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
     },
     {
       "name": "filter-profile-map",
-      "value": "AWahFaMYl9_a6zpEPqkMUEvkEUhGR0WMuqL5ExikQHLNp4BqeJWhFOwv033gQHRXBCKf2W8_uDDTWh-OXVstzt1EobeD2yRnKtulVf0p7vJ8mt-Z0lUBnQR4RrGYzGAsw5dooYvh3wYEmHVDq4QHRFzPA3LKr39jDMFUGpP-jLflFgOAuRPCnB37fXpOzyXxhDf9e3BN8pFiJOvdTVVNJwQtvfTmxXoK-NodiMNERgwlc0F7X5vOJZYmk7NAWR44uQ",
+      "value": "ATXWVR5wwHZPEbDa5EifN7mqmCDC5i39WyCmQ71Tl_uK_ppbSNCI4jOkmErf2LHkGEqalIFtx6iUxY9RSb3AtPT257Zx5g8uVI9S7Oje-cNnGW-aRYCGP4-GSdmONQyh-YEr3fN1vNcg0HV5Z12g_fG3AuxHt72YP7HP3bNeoAZXoZUr---QqYj4TebzP32O9ZKa6bsEIvhnPaU8fm5PBJZhVJRihQHBQmUuybRAnXtNn5jEiG98F7CpUEQF7ycyYA",
       "domain": ".services.adobe.com",
       "path": "/",
-      "expires": 1790805676.086545,
+      "expires": 1790874785.836911,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
     },
     {
       "name": "filter-profile-map-permanent",
-      "value": "AS11GVVgCPhzicf6cKd__6b2fNh9eHcLD7PwWz2u-qlVMiwh-4BqpvYbb0jOzthUjKd9FjqYUFh244_uqJzRk4Gkhy9TWHttsQ0_i-gnOfy2M1w3S_BZdAfNGCzf8k7HZPLhga3dprXkb0ID0zvAMvDDDLGtCRFYPzvD_5bkzX6mxm4w7h-779HH1l03DE7JVjhgnScUIQZD8p8Cefl5GB-NVlys4-gypD_Qh9O2vFIj0DyFfn9_D6cd9TZHmz50yg",
+      "value": "AQ0FQztI_Y73s0fNvsOLKxHINHa3T4ARf-uLqYvREn1mbWFbscTVPlWKlo18YlSNGIxpJDENyN5mkg9xVmGJ4Lbn354M5G9YqmD0SyFhytMmlhcekaOjdr6ahop1J7gVNJHx7SzEOnxu4U3gtjPoWcrppDefuQYVPX7VxWL2uuuiOYq2bRzp68N5loOTX6msG5PbyeHK-DfbFW-IuTzhixHoqB67KGhEmSJILihY8IFdQnwfthVcij4y4Bw2tcXdfA",
       "domain": ".services.adobe.com",
       "path": "/",
-      "expires": 1790805676.086584,
+      "expires": 1790874785.836939,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
@@ -225,14 +225,14 @@
       "value": "Account:IMS:Process:Complete",
       "domain": ".adobe.com",
       "path": "/",
-      "expires": 1759271476,
+      "expires": 1759340586,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
     },
     {
       "name": "relay",
-      "value": "0060a3f0-f993-49d6-ad57-fa392a103fdd",
+      "value": "aff99618-c8ec-4567-8d3e-e20d0f2f7900",
       "domain": "adobeid-na1.services.adobe.com",
       "path": "/",
       "expires": -1,
@@ -242,7 +242,7 @@
     },
     {
       "name": "s_ims",
-      "value": "https://ims-na1.adobelogin.com/ims/session/v1/ZmRkNTAwM2MtYWZkZi00YjI1LTljMTAtMTdlYzEyMzM2YmU1LS1CNkVCMUUzQzY2NTkyNjNBMEE0OTVFOUZAand0LmNvbQ",
+      "value": "https://ims-na1.adobelogin.com/ims/session/v1/MDNmOTdkZTQtMDI5Ni00ZjljLWIwOTAtMmMwMGQwOGI1M2ZmLS1CNkVCMUUzQzY2NTkyNjNBMEE0OTVFOUZAand0LmNvbQ",
       "domain": ".adobe.com",
       "path": "/",
       "expires": -1,
@@ -262,40 +262,80 @@
     },
     {
       "name": "fg",
-      "value": "Z2TKS3R5FLM5QDUKFAQVIHAAGM======",
+      "value": "Z2VSS3R5FLM5QDUKFAQVIHAAGM======",
       "domain": "adobeid-na1.services.adobe.com",
       "path": "/",
-      "expires": 1759356079.152257,
+      "expires": 1759425189.049612,
       "httpOnly": false,
       "secure": true,
       "sameSite": "None"
     },
     {
       "name": "ims_sid",
-      "value": "AblEaMjJKptq4QbX9NK7OHLx-Ub6WpvGZThJCvFu0jEUYOn0eOhsNvGI_jE9pCC36n6gzMwZGUae0zrkU_OPVuPd7xyEAo3udkMLnI2sapMh99iajnWw1-fIkaEhLftgTy3sCDlqK91-B-mGcmuyj8e0G19HCvMVj-U_n7JQ_xMVhdeGRa4Ft9-o_cTZTqUi_g22cwBItZmnmhTuVs1wLxjaApe3F1GWBPlPbZG75lBCrVSBH6i9BntDqLL4aGUb7g1VUGHIfXQc1F-eAoXJPrhdjAyymXLuxB1f6C7wEbb6zlSR8Ikeoh480EOmZnQZ8J6T5JvZZKEwM0laW4uqNinGryuMnHgDRY2YvggIiKasSgGaPEGBnN28dFTNpwHeKJGY7bOOCoRFnPmo6j55gaOCfTkFqUAQV1eIV1cm91CrfzimKJAdSjJnIUI4MDdk6yb7Rpt2dccVQvnqU-7WvyQovuIACE83jHFxutUFLDrkeNNzUwXBgpLPOuXT8SpCojBwi1w89o5Tkyf6Qy-ktusa6oEf9pCsEvTC2EpoaymG2l-XAT9aWhHC3KNGt_CxKaXsWZBSkP7MOaw7PKkvX3j2XsXYpgHwLuzVq-O3Mk_e8bpz8WhUkFpXXVKpvkrpqtC4j7IhXNEXyase2kF07J_2cOlAOTj2QZcG8NY50AsMmig7K6-Pueimbs9YIFZP2qtJWoP68U1uhxNhQc-l12lnaW7gNpXyjyozqPvhfNJHtz96NYaFes_UXmO7L3Q",
+      "value": "Afgji_bYyseLy9PFg_c295aQOzq32zt5nV6JBDWioxT3vKAeX6MIXlnRiydampanWU-xJ1ryfaq2nCbWIhNTfdSKKYul1UEbrpkVpnUypcIvtMeKt8OrfotW9aEXIxrE7dKZYFskLeZDO4dj2mQN8oNzfNNhUOonRZll1gjx9TNCDJKq_XyNFTAs6tdatz8nmSNJwiJATlkW9D4yV_p2E59Osdu2-91mkV7nmSdj_bMLM9zJ2PW11lVN30KdC8pQj4H4MsWkZbZ-fZHCXdOKCSlqpWdcsqBTw0U1VLIMAPg3bAm_numDDdCoRLqAldFzRkzpkHK7Puu9C6Xs2ysr7qnGqBFL4d1tTFc_vVPmq1WQVakpMaWUvYRC4cvQ31XT9OvVQLVUDcPPUgKROZqxNjWkjeD2eFJlxc8owdcgQHnYYYaF2ctwJxT1qDCQ2c6Iomy-PsW7GNRXmAfGwjaC0hrvrLctJcbThnmiVMJ3v_n28jmyWTVPBDA8dMyud8jGEwcBZ7tAxV7qvcmrIi8uAg7rBOA2AmL3q0eYoVsjNAuuWna_GOWHqgxRvB_nvHk9KqgbVE_uQUeEt2239HzziRn34pLoEfAG6mQMt8sXrZg285vUOVWCdrVtRjfbNUAziCH0pefQBOddqtWI-woymU9qJtCbwSZjkeirLAFkKKXZfYjQPxiKpJ2MPobvR9ebVUvIZ1M-z5jQxPUH_88wWTGXFTHyjhnwiplXcFgnAx5sXfDYqF_GXCaJE9mRa-s",
       "domain": ".services.adobe.com",
       "path": "/",
-      "expires": 1790826631.152284,
+      "expires": 1790895741.049641,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
     },
     {
       "name": "aux_sid",
-      "value": "AR3_WVlPOm78uIaWqD7bUWX4CErNoF9KL-1x4b69djpAJugdQi3BIIpTYKheAawgIXEGfDbGu3Fcrafcv8jb0UZ0CU2smyBIXJYtP8HGQ6e_7vgHEAnZjdwdrym6agWrOcXUoEh_POQbdHRCpnRYIzzqELBbxxaWbVHgQtTnPf8CTtbKobwgvBssL0AEtmm3PCMWOIJ66HCxnWuIYJyHDMOV4P-WSTcFthNaDeXmktIiFSxw2FQxEQgPNGVcCeZgQ6Np1Dh5g4thw9cPDYV7y02ExntBh8ICeNJwkKI7swqgfjVHBpZjucHm-_zhSLd0GS3sM-PqA1pv22egoCvFQ72arYY_cyH1lvtnHedIDCk_TKXiOCDlEXEP9uSmzT5cr8Tupy6jsLIvg4o76JL1u_9gNDnkGs9RBnpmJPnPzVSbIRWyALK4hQcfExwuUYradRBmbc4RSOXDaycv_IHz46LjjmzoYcWUbXnBGjPQlL8LMWqHSH9r2a--iwKeXsybNNwz7ihBvw7CY4-re5elq7xmnFQc3yBiYRMN1q32uvehXFCRNCLo_tOYIvP2rQvFkwpXvaUcKSVs5ML4mtNxP_4Bl1s5Q1zSA4pJei0yKgLguEnc6Vg1YpgNUGOC_XK9G25y6xYWr2dYz6v2VBV4j2a2L8DQwRzKQEgCk4TcDvn2myAEJfBH5D1Xgly3zmzX-2Fy9G_sL1NbfyLNwNDm2DxT1c4i-gViPbQZCmgzWtdjjSFC6pgz59As5tWv-WU",
+      "value": "AZZmZaiLVaSQb_jkuBOBI2CRHMA8lHnpmedyOq1CJOJmFSo-8W4fZMptbNL45oqlUSCC5UIrbXicxga9n1iOI2s3_Yn56dRDErHx_QWrXzmAul3eyfiXosbaRN6f8rpUZsMVuanAo_CdpjbHug2Wb3JRJKPX0bPNsIdui_XMNmsr_eZlBiMn_m7TfJIlhzQbEaLGl4PajuqmkebXV3UlwHxbsFl7MZUXbPDw8y1y8KgbxK3iwyoeqpG2N0f42rjEgLn_j65vGacMKv6uRLG7v0VmAVMJ6omjUGAXHbvR29wqNrmlhqQMaySWnMgmByA_fwOkA6mf1kuHTMv-wiUW09iKIat-cD-gdEAJJONXw2SeSgLBxo7lz7-IOmMs8nQuiWYc-60ZasxlOiYTzrimjZowVLLhyQlmmPiw2Hkax4YNZfh3M-GfIhhPNdsxiWLoFpacEKctmBYk6vvmeMfxsWM9ebuVyH6oLZc1qzHP-EwEDQc1Z8BRwHrptGW-Mr6HDHsv4XOAZzY_kD1WJUJwAzQH4_pstmlsPUJQr7mZ7i9QCDcXP9mDq9mJ29ryh6hGi10VPoBtMNQPDscQ4ygGD4tkWnaowGewB4Tg2FSmVfrkfLEFutZGRjuzfDkWzEbST85O9ikKExdYy1D008NliHGcXAc3L9xud3phxJsw1ZJjLQC_H0yuBN-sP-8aGfcCDXM2ehSPLq_cNNQRYD-VcjtfbJqr8o4Dk2OESqAKktlxJY4dzsAlbOffTV_eyGE",
       "domain": ".adobe.com",
       "path": "/",
-      "expires": 1790826631.152327,
+      "expires": 1790895741.049676,
       "httpOnly": true,
       "secure": true,
       "sameSite": "None"
     },
     {
-      "name": "s_fid",
-      "value": "184CF42784C6E42C-26E64BF42AF8DEC4",
+      "name": "apt.sid",
+      "value": "AP-DFHK5XLSAWVI-2-1759338791181-21735277",
+      "domain": ".experience.adobe.com",
+      "path": "/",
+      "expires": 1759340591,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "apt.uid",
+      "value": "AP-DFHK5XLSAWVI-2-1759338791182-99449578.0.2.87657805-0b9b-4658-9ba6-0d3150e92aee",
+      "domain": ".experience.adobe.com",
+      "path": "/",
+      "expires": 1790874791,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kndctr_8F99160E571FC0427F000101_AdobeOrg_cluster",
+      "value": "va6",
       "domain": ".adobe.com",
       "path": "/",
-      "expires": 1793829682.05139,
+      "expires": 1759340592,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "kndctr_8F99160E571FC0427F000101_AdobeOrg_identity",
+      "value": "CiY4OTc5NTk5NDczOTIzMDE3MTc5MjA3MDcwMDYxOTU5NjIzNDI4OFISCJHwjYaaMxABGAEqA1ZBNjAA8AGR8I2GmjM=",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1793466791,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "s_fid",
+      "value": "7FB3BD0FAFFB8EAE-22A1EADC0CB0C573",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1793898792.03555,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -311,51 +351,11 @@
       "sameSite": "Lax"
     },
     {
-      "name": "kndctr_8F99160E571FC0427F000101_AdobeOrg_cluster",
-      "value": "va6",
-      "domain": ".adobe.com",
-      "path": "/",
-      "expires": 1759271482,
-      "httpOnly": false,
-      "secure": true,
-      "sameSite": "None"
-    },
-    {
-      "name": "kndctr_8F99160E571FC0427F000101_AdobeOrg_identity",
-      "value": "CiY0ODkyODYyMDg5MzYzMjEzNzY2NDA3NTgyMjc4MDY0OTY0MTYxNlISCK3Yk-WZMxABGAEqA1ZBNjAA8AGt2JPlmTM=",
-      "domain": ".adobe.com",
-      "path": "/",
-      "expires": 1793397681,
-      "httpOnly": false,
-      "secure": true,
-      "sameSite": "None"
-    },
-    {
-      "name": "apt.sid",
-      "value": "AP-DFHK5XLSAWVI-2-1759269681843-72563313",
-      "domain": ".experience.adobe.com",
-      "path": "/",
-      "expires": 1759271482,
-      "httpOnly": false,
-      "secure": true,
-      "sameSite": "Lax"
-    },
-    {
-      "name": "apt.uid",
-      "value": "AP-DFHK5XLSAWVI-2-1759269681843-95969639.0.2.87657805-0b9b-4658-9ba6-0d3150e92aee",
-      "domain": ".experience.adobe.com",
-      "path": "/",
-      "expires": 1790805681,
-      "httpOnly": false,
-      "secure": true,
-      "sameSite": "Lax"
-    },
-    {
       "name": "s_vi_wx7Bu8cxxx7Fpx7Fsr8ex7Eszz8fdyr",
-      "value": "[CS]v4|346E29976FA12C8A-600013FAC64F86CB|68DC532F[CE]",
+      "value": "[CS]v4|346EB092CFA68089-60001BD102572FF3|68DD6125[CE]",
       "domain": ".omtrdc.net",
       "path": "/",
-      "expires": 1793829682.201784,
+      "expires": 1793898792.384778,
       "httpOnly": false,
       "secure": true,
       "sameSite": "None"
@@ -371,7 +371,7 @@
         },
         {
           "name": "unifiedShellSession",
-          "value": "N|{\"243483227\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"orgName\":\"Dell\",\"tenantId\":\"dell\"}],\"userType\":\"eoa\"},\"1358856445\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"3ECBBA1458927EBB0A495C5C@AdobeOrg\",\"orgName\":\"WPP - WT\",\"tenantId\":\"wppwt\"}],\"userType\":\"fed\"},\"1876735776\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"A59523F2637E33070A495E59@AdobeOrg\",\"orgName\":\"WPP - All Users\",\"tenantId\":\"wunderman1\"}],\"userType\":\"eoa\"},\"shellOrgAccountMap\":{\"3ECBBA1458927EBB0A495C5C@AdobeOrg\":\"1358856445\",\"A59523F2637E33070A495E59@AdobeOrg\":\"1876735776\",\"4DD80861515CAB990A490D45@AdobeOrg\":\"243483227\"},\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"3ECBBA1458927EBB0A495C5C@AdobeOrg\",\"orgName\":\"WPP - WT\",\"tenantId\":\"wppwt\"},{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"A59523F2637E33070A495E59@AdobeOrg\",\"orgName\":\"WPP - All Users\",\"tenantId\":\"wunderman1\"},{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"orgName\":\"Dell\",\"tenantId\":\"dell\"}],\"session\":\"1759269673969_60be14e1-c866-4b1f-86e6-1325f1770f4f_uw2\",\"activeOrg\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"featureFlags\":{\"launchdarkly/4DD80861515CAB990A490D45@AdobeOrg\":{\"aep-co-pilot\":{\"aem_product_router_enabled\":\"false\",\"aem_product_router_version\":\"v0.1\",\"aep-copilot-agent-selector\":\"copilot_v25\",\"aep-copilot-doc-index-path\":\"data/index/finetuned/section_level_index/v16\",\"aep-copilot-doc-score-type\":\"max_inner_product\",\"agent-orchestrator-version\":\"ao_v0\",\"always-on-icon\":\"false\",\"annotation-platform\":\"false\",\"annotations-enabled\":\"false\",\"ao_manifest_id\":\"aiassistant_p1_manifest\",\"application-user-permissions-enabled\":\"true\",\"application_enablement\":\"AEP_AJO_AUDIENCE_MIGRATION\",\"assistant-permissions-enabled\":\"false\",\"collection_name_mapping\":\"{\\\"sapphire\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"ajo_b2b_docs\\\"}},\\\"aemshell\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"aep\\\":{\\\"multimodal_retrieval\\\":{\\\"collection_name\\\":\\\"multimodal_content_v7\\\"},\\\"question_retrieval\\\":{\\\"collection_name\\\":\\\"aep_question_index_collection\\\",\\\"index_version\\\":\\\"question_index_v0\\\"},\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aep_docs_collection_v13\\\"}},\\\"cce\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aep_docs_collection_v10\\\"}},\\\"cja\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"cja_docs_v3\\\"}},\\\"aem-home-ui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"genstudio\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"genstudio_docs_v2\\\"},\\\"question_retrieval\\\":{\\\"collection_name\\\":\\\"aep_question_index_collection\\\",\\\"index_version\\\":\\\"question_index_v0\\\"}},\\\"cloudmanagerui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"experiencemanagerui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"aem\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs_v2\\\"}},\\\"workfront\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"workfront_docs_v2\\\"}}}\",\"completion-request-content-moderation\":\"false\",\"contextual-usage-insight\":\"true\",\"demo_flag_enabled\":\"false\",\"elapsed_time_to_allow_llm_based_suggestions\":\"20\",\"enable_custom_oos_message\":\"true\",\"enable_reasoning_engine\":\"true\",\"enable_rule_based_oos\":\"true\",\"final_response_content_moderation\":\"false\",\"ingestion_service_async_processing\":\"{\\\"2D56118865A10BCA0A495E50@AdobeOrg\\\":[],\\\"6FC947105BB267B70A495EE9@AdobeOrg\\\":[],\\\"2C9E184E65A10AD60A495E29@AdobeOrg\\\":[]}\",\"is_ao_enabled_for_user\":\"false\",\"large_file_enabled\":\"{}\",\"operational_insights_collaboration_feature_flag\":\"{\\\"core\\\":\\\"aep_ajo_audience_migration\\\",\\\"deltas\\\":[\\\"entity_info\\\"]}\",\"operator_readiness\":\"[{\\\"skill_id\\\":\\\"ProductKnowledge\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"OperationalInsights\\\"},{\\\"skill_id\\\":\\\"Visualization\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"Data Q&A\\\"},{\\\"skill_id\\\":\\\"Anomaly Detection\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"Forecasting\\\"},{\\\"skill_id\\\":\\\"CreateTicket\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"SurfaceTicketStatus\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"AbortTicketCreation\\\"}]\",\"qac-pool-vesion-summit\":\"v5\",\"query-autocomplete-pool-selector\":\"aep/v11\",\"show_charts\":\"false\",\"use_bge_embeddings\":\"false\",\"use_inline_markdown_in_final_response\":\"false\",\"use_markdown_doc_index\":\"false\"},\"unified-shell\":{\"BusinessRules_Daily\":\"true\",\"GenStudio\":\"false\",\"a-new-flag\":\"false\",\"acc-enabled\":\"false\",\"adobemixmodeler-enabled\":\"false\",\"advertising-ssc-enabled\":\"false\",\"aec-home-nav-enabled\":\"false\",\"aem-ai-assistant-enabled\":\"false\",\"aem-content-ai-admin-enabled\":\"false\",\"aem-exp-success-studio-enabled\":\"false\",\"aem-headless-cf\":\"true\",\"aem-mfe-sandbox-enabled\":\"false\",\"aem-mystique-hub-enabled\":\"false\",\"aem-on-prem-enabled\":\"false\",\"aem-pages-enabled\":\"true\",\"aem-service-worker\":\"false\",\"aep-datamanagement-federated-data\":\"false\",\"aep-datasets-v-2-enabled\":\"false\",\"aep-exl-resources-widget-enabled\":\"false\",\"aep-federated-data\":\"false\",\"aep-home-customization-enabled\":\"false\",\"aep-midnight-home-enabled\":\"false\",\"aep-offers-components-v-2-enabled\":\"true\",\"aep-offers-v-2-enabled\":\"true\",\"aep-pueblo-enabled\":\"false\",\"aep-queries-v-2-enabled\":\"true\",\"aep-role-poc\":\"false\",\"aep-schemas-v-2-enabled\":\"false\",\"aep-spa-enabled\":\"true\",\"aep-ui-identity-v2-enabled\":\"false\",\"aep-usecase-pueblo-ftux-enabled\":\"false\",\"aep-work-hub-enabled\":\"true\",\"aep.test.ld.flag\":\"false\",\"ai-chat-history-enabled\":\"false\",\"ai-composer-agent-scheduler-enabled\":\"false\",\"ajo-ai-home-enabled\":\"false\",\"ajo-enabled\":\"true\",\"ajo-exl-resources-widget-enabled\":\"true\",\"ajo-frequency-rules-enabled\":\"false\",\"ajo-halo-enabled\":\"true\",\"amplify-enabled\":\"false\",\"analytics-acceleration\":\"true\",\"analytics-enabled-urls\":\"true\",\"analytics-roles-dialog-enabled\":\"false\",\"analytics-tab-session\":\"true\",\"annotations-enabled\":\"false\",\"annotations-non-technical\":\"false\",\"approvals-workflow\":\"true\",\"approvals-workflow-block-self-approval\":\"false\",\"approvals-workflow-tags-objects\":\"true\",\"arion-ai-assistant-enabled\":\"false\",\"arion-enabled\":\"false\",\"asset-usages-explorer-enabled\":\"false\",\"assets-essentials-enabled\":\"false\",\"assets-essentials-in-shell\":\"true\",\"assurance-capability-enabled\":\"false\",\"assurance-root-enabled\":\"false\",\"beta-use-cases-enabled\":\"false\",\"bizible-enabled\":\"false\",\"bizible-internal-enabled\":\"false\",\"brand-intelligence-enabled\":\"false\",\"business-rule-journey-enabled\":\"true\",\"business-rules-beta-enabled\":\"false\",\"business-rules-channel-count\":\"true\",\"business-rules-channel-hourly\":\"false\",\"business-rules-channels-enabled\":\"true\",\"business-rules-frequency-well\":\"true\",\"business-rules-ga-enabled\":\"true\",\"business-rules-journey-count\":\"false\",\"business-rules-journey-hourly\":\"false\",\"cja-roles-dialog-enabled\":\"true\",\"cjm-enabled\":\"false\",\"cjm-enabled-alpha\":\"ALL\",\"cjm-global-search-enabled\":\"true\",\"cjm-performance-metrics-enabled\":\"false\",\"cjm-settings-enabled\":\"false\",\"cjm.ui.destination\":\"false\",\"cloud-manager-spa-enabled\":\"true\",\"cmk-aws-enabled\":\"false\",\"cmk-enabled\":\"true\",\"co-pilot-review-enabled\":\"false\",\"commerce-enabled\":\"false\",\"composed-app-page-titles\":\"false\",\"content-hub-enabled\":\"false\",\"core-assets-enabled\":\"true\",\"core-assets-v2\":\"false\",\"core-services-enabled\":\"true\",\"custom-home-ga\":\"true\",\"custom-home-library-disabled\":\"cjm-ai-home,cjm-home,data-collection-home,experiencePlatformUI-home,sapphireHome\",\"custom-home-resizing-disabled\":\"cjm-ai-home,cjm-home,data-collection-home,experiencePlatformUI-home,sapphireHome\",\"custom-left-nav-bottom-section-enabled\":\"false\",\"custom-left-nav-enabled\":\"false\",\"customer-attributes-enabled\":\"true\",\"data-collection-enabled\":\"false\",\"data-onboarding-enabled\":\"false\",\"demo-quiet-mode\":\"false\",\"disable-x-twitter-for-help-center\":\"false\",\"dx-agent-ui-chat-history-widget\":\"false\",\"dx-agent-ui-debug-widget\":\"false\",\"dx-agent-ui-discovery-widget\":\"false\",\"dx-agent-ui-widget-panel\":\"false\",\"dxue-aia-share\":\"false\",\"dxue-forms-enabled\":\"false\",\"dynamic-chat-enabled\":\"false\",\"ea-ajo-mab\":\"false\",\"ea-hypothesis\":\"true\",\"ea-insights\":\"true\",\"ea-m-3-enabled\":\"true\",\"ea-opportunities\":\"true\",\"ea-opportunities-target\":\"false\",\"ea-opportunity-details\":\"true\",\"ea-overview\":\"false\",\"ea-treatment-validation\":\"true\",\"ea-upload-image\":\"false\",\"enable-agora-collaborations\":\"true\",\"enable-ajo-alerts\":\"false\",\"enable-ajob2b-recents\":\"true\",\"enable-business-rules-whatsapp\":\"true\",\"enable-coveo-for-unified-help-search\":\"false\",\"enable-custom-links-widget\":\"false\",\"enable-data-collection-in-nav\":\"true\",\"enable-experiment-validator\":\"false\",\"enable-fi-repackaging\":\"true\",\"enable-forms-listing-ajo\":\"false\",\"enable-gen-studio-app-selector\":\"false\",\"enable-journeys-next\":\"false\",\"enable-roles-modal\":\"true\",\"enable-smb-ui\":\"false\",\"enable-triggers-subservice\":\"true\",\"exc-home-page_controlrollout\":\"LIVEVERSION\",\"exc-offers-enabled\":\"false\",\"exl-resources-target-enabled\":\"true\",\"exl-resources-widget-enabled\":\"true\",\"experience-manager-home-enabled\":\"true\",\"experimentation-hub-enabled\":\"false\",\"fast-token\":\"true\",\"firefly-enabled-list\":\"false\",\"floodgate-on-shell-enabled\":\"false\",\"foundry-enabled\":\"false\",\"fusion-ai-assistant-enabled\":\"false\",\"genstudio-ai-assistant-enabled\":\"false\",\"genstudio-foundation-enabled\":\"false\",\"genstudio-home-customization-enabled\":\"true\",\"genstudio-ojas-enabled\":\"false\",\"griffon-spa-enabled\":\"true\",\"growth-catalyst-enabled\":\"false\",\"health-care-enabled\":\"false\",\"help-center-feedback-disabled\":\"NONE\",\"home-dashboard-enabled\":\"true\",\"home-search-enabled\":\"true\",\"immersive-ai-enabled\":\"false\",\"intelligent-services-poc-enabled\":\"false\",\"ivo-ui-assistant-enabled\":\"false\",\"landing-unified-search\":\"true\",\"launch-amazon-secret-enabled\":\"true\",\"launch-app-configurations-enabled\":\"false\",\"launch-app-surfaces-enabled\":\"false\",\"launch-data-streams-beta-enabled\":\"true\",\"launch-data-streams-enabled\":\"false\",\"launch-monitoring-enabled\":\"false\",\"launch-server-properties-enabled\":\"false\",\"launch-spa-enabled\":\"true\",\"loyalty-challenge-enabled\":\"false\",\"loyalty-challenges\":\"false\",\"mark-test-org-rollout\":\"false\",\"marketo-enabled\":\"true\",\"marketo-engage-ai-assistant-enabled\":\"false\",\"marketo-measure-v2-enabled\":\"false\",\"marketo-rollout\":\"EXTERNAL\",\"marketo-template-converter\":\"false\",\"new-devconsole-enabled\":\"true\",\"new-profile-enabled\":\"true\",\"new-profile-org-switcher-enabled\":\"false\",\"next-gen-aia-disabled-apps\":\"aem-home-ui,aemshell,platformAnalytics,experienceManagerUI,cloudManagerUi,platformAnalytics,workfront,GenStudio,target-activities,target-audiences,target-setup,target-offers,target-products\\n\",\"next-gen-aia-enabled\":\"false\",\"office-hours-demo\":\"false\",\"on-demand-learning-enabled\":\"false\",\"pass-authentication-enabled\":\"true\",\"pba-enabled-apps\":\"all\",\"percentage-rollout-test\":\"false\",\"personalised-search\":\"true\",\"pipeline-accelerator-permission-enabled\":\"false\",\"plays-sidenav\":\"false\",\"preferences-slack-enabled\":\"false\",\"privacy-ui-enabled\":\"true\",\"project-m-enabled\":\"true\",\"project-m-sidenav\":\"false\",\"project-m-workhub\":\"false\",\"project-orion-enabled\":\"false\",\"project-pangea-enabled\":\"false\",\"pueblo-shell-search-enabled\":\"false\",\"pueblo-thunderbird\":\"true\",\"pulse-ans-migration\":\"false\",\"pulse-ans-migration-write\":\"false\",\"pulse-slack-enabled\":\"true\",\"pulse-ss-enabled\":\"false\",\"quarry-admin-enabled\":\"false\",\"quick-access-customization\":\"true\",\"release-toggles-enabled\":\"false\",\"route-cjm\":\"true\",\"route-data-collection-home\":\"true\",\"route-landing\":\"true\",\"sandbox-switcher-v2-enabled\":\"true\",\"sapphire-account-lists-enabled\":\"true\",\"sapphire-admin-config-ui\":\"false\",\"sapphire-admin-permissions\":\"false\",\"sapphire-brand-kit\":\"false\",\"sapphire-buying-group-enabled\":\"false\",\"sapphire-channels-config\":\"true\",\"sapphire-config-ui\":\"false\",\"sapphire-content-localisation\":\"false\",\"sapphire-content-template-listing\":\"false\",\"sapphire-email-listing\":\"true\",\"sapphire-email-template-listing\":\"true\",\"sapphire-enabled\":\"false\",\"sapphire-fragments-listing\":\"true\",\"sapphire-home\":\"true\",\"sapphire-image-listing\":\"true\",\"sapphire-image-listing-ga\":\"false\",\"sapphire-insights-dashboard-enabled\":\"false\",\"sapphire-landing-page-templates\":\"false\",\"sapphire-landing-pages-listing\":\"false\",\"sapphire-left-nav-beta-updates\":\"false\",\"sapphire-permissions-enabled\":\"true\",\"sapphire-person-journeys-enabled\":\"false\",\"sapphire-sales-permissions\":\"false\",\"scramjet-spa-enabled\":\"true\",\"service-workers-enabled\":\"ON\",\"shell-ai-auto-hide-welcome-back\":\"false\",\"shell-ai-chat-aem-collection-picker\":\"false\",\"shell-ai-chat-aem-docs\":\"false\",\"shell-ai-chat-aem-lh\":\"false\",\"shell-ai-chat-beta-feature-indicator\":\"false\",\"shell-ai-chat-bookmarks-enabled\":\"false\",\"shell-ai-chat-contextual-nudge\":\"false\",\"shell-ai-chat-dialog-enabled\":\"false\",\"shell-ai-chat-enabled\":\"false\",\"shell-ai-chat-enabled-by-sandbox\":\"off-value\",\"shell-ai-chat-prompt-autocomplete\":\"true\",\"shell-ai-chat-prompt-cohort-mapping\":\"true\",\"shell-ai-chat-support-ticket-beta\":\"true\",\"shell-ai-chat-ui-tabs\":\"false\",\"shell-ai-collapse-operational-insight-explanation\":\"false\",\"shell-ai-enable-localized-responses\":\"false\",\"shell-ai-multimodal\":\"true\",\"shell-ai-new-welcome-back-experience\":\"false\",\"shell-ai-threads\":\"false\",\"show-approvals-tab\":\"false\",\"show-er-modeler\":\"false\",\"show-ftux-get-started-widget\":\"sapphireHome,experiencePlatformUI-home\",\"support-assistant-enabled\":\"false\",\"swo-admin-integrations-enabled\":\"false\",\"swo-calendar-config\":\"true\",\"swo-chat-inbox\":\"false\",\"swo-consultants\":\"true\",\"swo-crm-configurations\":\"false\",\"swo-emails\":\"false\",\"swo-engagement-plan\":\"false\",\"swo-home\":\"false\",\"swo-leads\":\"false\",\"swo-meetings-list\":\"true\",\"t-mobile-banner-enabled\":\"false\",\"tags-at-sandbox-enabled\":\"false\",\"tags-beta-enabled\":\"false\",\"tags-collection-enabled\":\"false\",\"tags-enabled\":\"true\",\"tags-rule-enabled\":\"false\",\"tags-suggestion-enabled\":\"false\",\"target-activities-enabled\":\"^(?!.*activitydetails).*\",\"target-activities-enabled-test\":\"false\",\"target-ai-assistant-enabled\":\"false\",\"target-audiences-spa-enabled\":\"OfF_fAlSe\",\"target-offers-enabled\":\"\\\\/target\\\\/offers(?:\\\\/(?!image-library).*)*$\",\"target-products-enabled\":\"\\\\/target\\\\/products\\\\/?(feeds|algorithms|productSearch|catalogs|exclusions|designs|$)\",\"target-setup-enabled\":\"OfF_fAlSe\",\"test-flag-cache\":\"false\",\"test-new-contexts\":\"false\",\"theme-support\":\"true\",\"triggers-bypass-enabled\":\"false\",\"triggersUI-enabled\":\"false\",\"tux-disabled-apps\":\"commerceInstanceDiscovery,landing,pulse,userPreferences\",\"tux-pilot-enabled\":\"SURVEYB\",\"ucp-enabled\":\"false\",\"ucp-for-all\":\"true\",\"unified-customer-portal-enabled\":\"false\",\"unified-home-enabled\":\"false\",\"unified-search\":\"true\",\"unified-search-disable-nouns\":\"offer,placement,activity\",\"unified-search-enable-recents\":\"false\",\"upf-approval-workflow\":\"false\",\"upf-enabled\":\"true\",\"upf-policy-edit-disabled\":\"true\",\"upf-policy-sandbox-configuration\":\"true\",\"upf-watchtower\":\"true\",\"use-cases-enabled\":\"true\",\"user-consent-enabled\":\"true\",\"user-consent-v2-enabled\":\"false\",\"vista-ai-assistant-enabled\":\"false\",\"windrose-enabled\":\"false\",\"work-hub-enabled\":\"false\",\"workfront-ai-assistant-enabled\":\"true\",\"workfront-fusion-enabled\":\"true\",\"workfront-suborg-filter\":\"[]\",\"workfront-tasks-widget-enabled\":\"false\",\"workfront-enabled\":\"true\"}},\"floodgate/4DD80861515CAB990A490D45@AdobeOrg\":{\"unified-shell\":{\"agora-measurement-report\":\"true\",\"enable-agora-collaborations\":\"true\"}}}}"
+          "value": "N|{\"243483227\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"orgName\":\"Dell\",\"tenantId\":\"dell\"}],\"userType\":\"eoa\"},\"1358856445\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"3ECBBA1458927EBB0A495C5C@AdobeOrg\",\"orgName\":\"WPP - WT\",\"tenantId\":\"wppwt\"}],\"userType\":\"fed\"},\"1876735776\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"A59523F2637E33070A495E59@AdobeOrg\",\"orgName\":\"WPP - All Users\",\"tenantId\":\"wunderman1\"}],\"userType\":\"eoa\"},\"shellOrgAccountMap\":{\"3ECBBA1458927EBB0A495C5C@AdobeOrg\":\"1358856445\",\"A59523F2637E33070A495E59@AdobeOrg\":\"1876735776\",\"4DD80861515CAB990A490D45@AdobeOrg\":\"243483227\"},\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"3ECBBA1458927EBB0A495C5C@AdobeOrg\",\"orgName\":\"WPP - WT\",\"tenantId\":\"wppwt\"},{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"A59523F2637E33070A495E59@AdobeOrg\",\"orgName\":\"WPP - All Users\",\"tenantId\":\"wunderman1\"},{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"orgName\":\"Dell\",\"tenantId\":\"dell\"}],\"session\":\"1759338784168_9b32a2ce-392a-4cbc-8917-b6755ed5c38d_uw2\",\"activeOrg\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"featureFlags\":{\"launchdarkly/4DD80861515CAB990A490D45@AdobeOrg\":{\"aep-co-pilot\":{\"aem_product_router_enabled\":\"false\",\"aem_product_router_version\":\"v0.1\",\"aep-copilot-agent-selector\":\"copilot_v25\",\"aep-copilot-doc-index-path\":\"data/index/finetuned/section_level_index/v16\",\"aep-copilot-doc-score-type\":\"max_inner_product\",\"agent-orchestrator-version\":\"ao_v0\",\"always-on-icon\":\"false\",\"annotation-platform\":\"false\",\"annotations-enabled\":\"false\",\"ao_manifest_id\":\"aiassistant_p1_manifest\",\"application-user-permissions-enabled\":\"true\",\"application_enablement\":\"AEP_AJO_AUDIENCE_MIGRATION\",\"assistant-permissions-enabled\":\"false\",\"collection_name_mapping\":\"{\\\"aep\\\":{\\\"multimodal_retrieval\\\":{\\\"collection_name\\\":\\\"multimodal_content_v7\\\"},\\\"question_retrieval\\\":{\\\"collection_name\\\":\\\"aep_question_index_collection\\\",\\\"index_version\\\":\\\"question_index_v0\\\"},\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aep_docs_collection_v13\\\"}},\\\"aem-home-ui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"sapphire\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"ajo_b2b_docs\\\"}},\\\"experiencemanagerui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"aem\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs_v2\\\"}},\\\"workfront\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"workfront_docs_v2\\\"}},\\\"cce\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aep_docs_collection_v10\\\"}},\\\"cja\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"cja_docs_v3\\\"}},\\\"genstudio\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"genstudio_docs_v2\\\"},\\\"question_retrieval\\\":{\\\"index_version\\\":\\\"question_index_v0\\\",\\\"collection_name\\\":\\\"aep_question_index_collection\\\"}},\\\"aemshell\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"cloudmanagerui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}}}\",\"completion-request-content-moderation\":\"false\",\"contextual-usage-insight\":\"true\",\"demo_flag_enabled\":\"false\",\"elapsed_time_to_allow_llm_based_suggestions\":\"20\",\"enable_custom_oos_message\":\"true\",\"enable_reasoning_engine\":\"true\",\"enable_rule_based_oos\":\"true\",\"final_response_content_moderation\":\"false\",\"ingestion_service_async_processing\":\"{\\\"6FC947105BB267B70A495EE9@AdobeOrg\\\":[],\\\"2C9E184E65A10AD60A495E29@AdobeOrg\\\":[],\\\"2D56118865A10BCA0A495E50@AdobeOrg\\\":[]}\",\"is_ao_enabled_for_user\":\"false\",\"large_file_enabled\":\"{}\",\"operational_insights_collaboration_feature_flag\":\"{\\\"core\\\":\\\"aep_ajo_audience_migration\\\",\\\"deltas\\\":[\\\"entity_info\\\"]}\",\"operator_readiness\":\"[{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"ProductKnowledge\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"OperationalInsights\\\"},{\\\"skill_id\\\":\\\"Visualization\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"Data Q&A\\\"},{\\\"skill_id\\\":\\\"Anomaly Detection\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"Forecasting\\\"},{\\\"skill_id\\\":\\\"CreateTicket\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"SurfaceTicketStatus\\\"},{\\\"skill_id\\\":\\\"AbortTicketCreation\\\",\\\"ready\\\":\\\"True\\\"}]\",\"qac-pool-vesion-summit\":\"v5\",\"query-autocomplete-pool-selector\":\"aep/v11\",\"show_charts\":\"false\",\"use_bge_embeddings\":\"false\",\"use_inline_markdown_in_final_response\":\"false\",\"use_markdown_doc_index\":\"false\"},\"unified-shell\":{\"BusinessRules_Daily\":\"true\",\"GenStudio\":\"false\",\"a-new-flag\":\"false\",\"acc-enabled\":\"false\",\"adobemixmodeler-enabled\":\"false\",\"advertising-ssc-enabled\":\"false\",\"aec-home-nav-enabled\":\"false\",\"aem-ai-assistant-enabled\":\"false\",\"aem-content-ai-admin-enabled\":\"false\",\"aem-exp-success-studio-enabled\":\"false\",\"aem-headless-cf\":\"true\",\"aem-mfe-sandbox-enabled\":\"false\",\"aem-mystique-hub-enabled\":\"false\",\"aem-on-prem-enabled\":\"false\",\"aem-pages-enabled\":\"true\",\"aem-service-worker\":\"false\",\"aep-datamanagement-federated-data\":\"false\",\"aep-datasets-v-2-enabled\":\"false\",\"aep-exl-resources-widget-enabled\":\"false\",\"aep-federated-data\":\"false\",\"aep-home-customization-enabled\":\"false\",\"aep-midnight-home-enabled\":\"false\",\"aep-offers-components-v-2-enabled\":\"true\",\"aep-offers-v-2-enabled\":\"true\",\"aep-pueblo-enabled\":\"false\",\"aep-queries-v-2-enabled\":\"true\",\"aep-role-poc\":\"false\",\"aep-schemas-v-2-enabled\":\"false\",\"aep-spa-enabled\":\"true\",\"aep-ui-identity-v2-enabled\":\"false\",\"aep-usecase-pueblo-ftux-enabled\":\"false\",\"aep-work-hub-enabled\":\"true\",\"aep.test.ld.flag\":\"false\",\"ai-chat-history-enabled\":\"false\",\"ai-composer-agent-scheduler-enabled\":\"false\",\"ajo-ai-home-enabled\":\"false\",\"ajo-enabled\":\"true\",\"ajo-exl-resources-widget-enabled\":\"true\",\"ajo-frequency-rules-enabled\":\"false\",\"ajo-halo-enabled\":\"true\",\"amplify-enabled\":\"false\",\"analytics-acceleration\":\"true\",\"analytics-enabled-urls\":\"true\",\"analytics-roles-dialog-enabled\":\"false\",\"analytics-tab-session\":\"true\",\"annotations-enabled\":\"false\",\"annotations-non-technical\":\"false\",\"approvals-workflow\":\"true\",\"approvals-workflow-block-self-approval\":\"false\",\"approvals-workflow-tags-objects\":\"true\",\"arion-ai-assistant-enabled\":\"false\",\"arion-enabled\":\"false\",\"asset-usages-explorer-enabled\":\"false\",\"assets-essentials-enabled\":\"false\",\"assets-essentials-in-shell\":\"true\",\"assurance-capability-enabled\":\"false\",\"assurance-root-enabled\":\"false\",\"beta-use-cases-enabled\":\"false\",\"bizible-enabled\":\"false\",\"bizible-internal-enabled\":\"false\",\"brand-intelligence-enabled\":\"false\",\"business-rule-journey-enabled\":\"true\",\"business-rules-beta-enabled\":\"false\",\"business-rules-channel-count\":\"true\",\"business-rules-channel-hourly\":\"false\",\"business-rules-channels-enabled\":\"true\",\"business-rules-frequency-well\":\"true\",\"business-rules-ga-enabled\":\"true\",\"business-rules-journey-count\":\"false\",\"business-rules-journey-hourly\":\"false\",\"cja-roles-dialog-enabled\":\"true\",\"cjm-enabled\":\"false\",\"cjm-enabled-alpha\":\"ALL\",\"cjm-global-search-enabled\":\"true\",\"cjm-performance-metrics-enabled\":\"false\",\"cjm-settings-enabled\":\"false\",\"cjm.ui.destination\":\"false\",\"cloud-manager-spa-enabled\":\"true\",\"cmk-aws-enabled\":\"false\",\"cmk-enabled\":\"true\",\"co-pilot-review-enabled\":\"false\",\"commerce-enabled\":\"false\",\"composed-app-page-titles\":\"false\",\"content-hub-enabled\":\"false\",\"core-assets-enabled\":\"true\",\"core-assets-v2\":\"false\",\"core-services-enabled\":\"true\",\"custom-home-ga\":\"true\",\"custom-home-library-disabled\":\"cjm-ai-home,cjm-home,data-collection-home,experiencePlatformUI-home,sapphireHome\",\"custom-home-resizing-disabled\":\"cjm-ai-home,cjm-home,data-collection-home,experiencePlatformUI-home,sapphireHome\",\"custom-left-nav-bottom-section-enabled\":\"false\",\"custom-left-nav-enabled\":\"false\",\"customer-attributes-enabled\":\"true\",\"data-collection-enabled\":\"false\",\"data-onboarding-enabled\":\"false\",\"demo-quiet-mode\":\"false\",\"disable-x-twitter-for-help-center\":\"false\",\"dx-agent-ui-chat-history-widget\":\"false\",\"dx-agent-ui-debug-widget\":\"false\",\"dx-agent-ui-discovery-widget\":\"false\",\"dx-agent-ui-widget-panel\":\"false\",\"dxue-aia-share\":\"false\",\"dxue-forms-enabled\":\"false\",\"dynamic-chat-enabled\":\"false\",\"ea-ajo-mab\":\"false\",\"ea-hypothesis\":\"true\",\"ea-insights\":\"true\",\"ea-m-3-enabled\":\"true\",\"ea-opportunities\":\"true\",\"ea-opportunities-target\":\"false\",\"ea-opportunity-details\":\"true\",\"ea-overview\":\"false\",\"ea-treatment-validation\":\"true\",\"ea-upload-image\":\"false\",\"enable-agora-collaborations\":\"true\",\"enable-ajo-alerts\":\"false\",\"enable-ajob2b-recents\":\"true\",\"enable-business-rules-whatsapp\":\"true\",\"enable-coveo-for-unified-help-search\":\"false\",\"enable-custom-links-widget\":\"false\",\"enable-data-collection-in-nav\":\"true\",\"enable-experiment-validator\":\"false\",\"enable-fi-repackaging\":\"true\",\"enable-forms-listing-ajo\":\"false\",\"enable-gen-studio-app-selector\":\"false\",\"enable-journeys-next\":\"false\",\"enable-roles-modal\":\"true\",\"enable-smb-ui\":\"false\",\"enable-triggers-subservice\":\"true\",\"exc-home-page_controlrollout\":\"LIVEVERSION\",\"exc-offers-enabled\":\"false\",\"exl-resources-target-enabled\":\"true\",\"exl-resources-widget-enabled\":\"true\",\"experience-manager-home-enabled\":\"true\",\"experimentation-hub-enabled\":\"false\",\"fast-token\":\"true\",\"firefly-enabled-list\":\"false\",\"floodgate-on-shell-enabled\":\"false\",\"foundry-enabled\":\"false\",\"fusion-ai-assistant-enabled\":\"false\",\"genstudio-ai-assistant-enabled\":\"false\",\"genstudio-foundation-enabled\":\"false\",\"genstudio-home-customization-enabled\":\"true\",\"genstudio-ojas-enabled\":\"false\",\"griffon-spa-enabled\":\"true\",\"growth-catalyst-enabled\":\"false\",\"health-care-enabled\":\"false\",\"help-center-feedback-disabled\":\"NONE\",\"home-dashboard-enabled\":\"true\",\"home-search-enabled\":\"true\",\"immersive-ai-enabled\":\"false\",\"intelligent-services-poc-enabled\":\"false\",\"ivo-ui-assistant-enabled\":\"false\",\"landing-unified-search\":\"true\",\"launch-amazon-secret-enabled\":\"true\",\"launch-app-configurations-enabled\":\"false\",\"launch-app-surfaces-enabled\":\"false\",\"launch-data-streams-beta-enabled\":\"true\",\"launch-data-streams-enabled\":\"false\",\"launch-monitoring-enabled\":\"false\",\"launch-server-properties-enabled\":\"false\",\"launch-spa-enabled\":\"true\",\"loyalty-challenge-enabled\":\"false\",\"loyalty-challenges\":\"false\",\"mark-test-org-rollout\":\"false\",\"marketo-enabled\":\"true\",\"marketo-engage-ai-assistant-enabled\":\"false\",\"marketo-measure-v2-enabled\":\"false\",\"marketo-rollout\":\"EXTERNAL\",\"marketo-template-converter\":\"false\",\"new-devconsole-enabled\":\"true\",\"new-profile-enabled\":\"true\",\"new-profile-org-switcher-enabled\":\"false\",\"next-gen-aia-disabled-apps\":\"aem-home-ui,aemshell,platformAnalytics,experienceManagerUI,cloudManagerUi,platformAnalytics,workfront,GenStudio,target-activities,target-audiences,target-setup,target-offers,target-products\\n\",\"next-gen-aia-enabled\":\"false\",\"office-hours-demo\":\"false\",\"on-demand-learning-enabled\":\"false\",\"pass-authentication-enabled\":\"true\",\"pba-enabled-apps\":\"all\",\"percentage-rollout-test\":\"false\",\"personalised-search\":\"true\",\"pipeline-accelerator-permission-enabled\":\"false\",\"plays-sidenav\":\"false\",\"preferences-slack-enabled\":\"false\",\"privacy-ui-enabled\":\"true\",\"project-m-enabled\":\"true\",\"project-m-sidenav\":\"false\",\"project-m-workhub\":\"false\",\"project-orion-enabled\":\"false\",\"project-pangea-enabled\":\"false\",\"pueblo-shell-search-enabled\":\"false\",\"pueblo-thunderbird\":\"true\",\"pulse-ans-migration\":\"false\",\"pulse-ans-migration-write\":\"false\",\"pulse-slack-enabled\":\"true\",\"pulse-ss-enabled\":\"false\",\"quarry-admin-enabled\":\"false\",\"quick-access-customization\":\"true\",\"release-toggles-enabled\":\"false\",\"route-cjm\":\"true\",\"route-data-collection-home\":\"true\",\"route-landing\":\"true\",\"sandbox-switcher-v2-enabled\":\"true\",\"sapphire-account-lists-enabled\":\"true\",\"sapphire-admin-config-ui\":\"false\",\"sapphire-admin-permissions\":\"false\",\"sapphire-brand-kit\":\"false\",\"sapphire-buying-group-enabled\":\"false\",\"sapphire-channels-config\":\"true\",\"sapphire-config-ui\":\"false\",\"sapphire-content-localisation\":\"false\",\"sapphire-content-template-listing\":\"false\",\"sapphire-email-listing\":\"true\",\"sapphire-email-template-listing\":\"true\",\"sapphire-enabled\":\"false\",\"sapphire-fragments-listing\":\"true\",\"sapphire-home\":\"true\",\"sapphire-image-listing\":\"true\",\"sapphire-image-listing-ga\":\"false\",\"sapphire-insights-dashboard-enabled\":\"false\",\"sapphire-landing-page-templates\":\"false\",\"sapphire-landing-pages-listing\":\"false\",\"sapphire-left-nav-beta-updates\":\"false\",\"sapphire-permissions-enabled\":\"true\",\"sapphire-person-journeys-enabled\":\"false\",\"sapphire-sales-permissions\":\"false\",\"scramjet-spa-enabled\":\"true\",\"service-workers-enabled\":\"ON\",\"shell-ai-auto-hide-welcome-back\":\"false\",\"shell-ai-chat-aem-collection-picker\":\"false\",\"shell-ai-chat-aem-docs\":\"false\",\"shell-ai-chat-aem-lh\":\"false\",\"shell-ai-chat-beta-feature-indicator\":\"false\",\"shell-ai-chat-bookmarks-enabled\":\"false\",\"shell-ai-chat-contextual-nudge\":\"false\",\"shell-ai-chat-dialog-enabled\":\"false\",\"shell-ai-chat-enabled\":\"false\",\"shell-ai-chat-enabled-by-sandbox\":\"off-value\",\"shell-ai-chat-prompt-autocomplete\":\"true\",\"shell-ai-chat-prompt-cohort-mapping\":\"true\",\"shell-ai-chat-support-ticket-beta\":\"true\",\"shell-ai-chat-ui-tabs\":\"false\",\"shell-ai-collapse-operational-insight-explanation\":\"false\",\"shell-ai-enable-localized-responses\":\"false\",\"shell-ai-multimodal\":\"true\",\"shell-ai-new-welcome-back-experience\":\"false\",\"shell-ai-threads\":\"false\",\"show-approvals-tab\":\"false\",\"show-er-modeler\":\"false\",\"show-ftux-get-started-widget\":\"sapphireHome,experiencePlatformUI-home\",\"support-assistant-enabled\":\"false\",\"swo-admin-integrations-enabled\":\"false\",\"swo-calendar-config\":\"true\",\"swo-chat-inbox\":\"false\",\"swo-consultants\":\"true\",\"swo-crm-configurations\":\"false\",\"swo-emails\":\"false\",\"swo-engagement-plan\":\"false\",\"swo-home\":\"false\",\"swo-leads\":\"false\",\"swo-meetings-list\":\"true\",\"t-mobile-banner-enabled\":\"false\",\"tags-at-sandbox-enabled\":\"false\",\"tags-beta-enabled\":\"false\",\"tags-collection-enabled\":\"false\",\"tags-enabled\":\"true\",\"tags-rule-enabled\":\"false\",\"tags-suggestion-enabled\":\"false\",\"target-activities-enabled\":\"^(?!.*activitydetails).*\",\"target-activities-enabled-test\":\"false\",\"target-ai-assistant-enabled\":\"false\",\"target-audiences-spa-enabled\":\"OfF_fAlSe\",\"target-offers-enabled\":\"\\\\/target\\\\/offers(?:\\\\/(?!image-library).*)*$\",\"target-products-enabled\":\"\\\\/target\\\\/products\\\\/?(feeds|algorithms|productSearch|catalogs|exclusions|designs|$)\",\"target-setup-enabled\":\"OfF_fAlSe\",\"test-flag-cache\":\"false\",\"test-new-contexts\":\"false\",\"theme-support\":\"true\",\"triggers-bypass-enabled\":\"false\",\"triggersUI-enabled\":\"false\",\"tux-disabled-apps\":\"commerceInstanceDiscovery,landing,pulse,userPreferences\",\"tux-pilot-enabled\":\"SURVEYB\",\"ucp-enabled\":\"false\",\"ucp-for-all\":\"true\",\"unified-customer-portal-enabled\":\"false\",\"unified-home-enabled\":\"false\",\"unified-search\":\"true\",\"unified-search-disable-nouns\":\"offer,placement,activity\",\"unified-search-enable-recents\":\"false\",\"upf-approval-workflow\":\"false\",\"upf-enabled\":\"true\",\"upf-policy-edit-disabled\":\"true\",\"upf-policy-sandbox-configuration\":\"true\",\"upf-watchtower\":\"true\",\"use-cases-enabled\":\"true\",\"user-consent-enabled\":\"true\",\"user-consent-v2-enabled\":\"false\",\"vista-ai-assistant-enabled\":\"false\",\"windrose-enabled\":\"false\",\"work-hub-enabled\":\"false\",\"workfront-ai-assistant-enabled\":\"true\",\"workfront-fusion-enabled\":\"true\",\"workfront-suborg-filter\":\"[]\",\"workfront-tasks-widget-enabled\":\"false\",\"workfront-enabled\":\"true\"}},\"floodgate/4DD80861515CAB990A490D45@AdobeOrg\":{\"unified-shell\":{\"agora-measurement-report\":\"true\",\"enable-agora-collaborations\":\"true\"}}}}"
         },
         {
           "name": "spectrumTheme",
@@ -383,7 +383,7 @@
         },
         {
           "name": "shellStorageExpiration",
-          "value": "{\"shellUserConsent\":2074629678007,\"spectrumTheme\":2074629678007,\"unifiedShellSession\":0,\"tenantMap\":1761861679429,\"lastLogins\":1759356079614}"
+          "value": "{\"shellUserConsent\":2074698787851,\"spectrumTheme\":2074698787852,\"unifiedShellSession\":0,\"tenantMap\":1761930789133,\"lastLogins\":1759425189556}"
         },
         {
           "name": "tenantMap",
@@ -391,15 +391,15 @@
         },
         {
           "name": "adobeMetrics.deviceId",
-          "value": "e70f5121-9e48-11f0-8739-d94713b3819a"
+          "value": "c80e8a11-9ee9-11f0-8523-9133f7af37ea"
         },
         {
           "name": "settingsSession",
-          "value": "{\"950007254\":\"MDoxOSM4ODA0MDAyOCMyNj0xNDA0NzcyNCMxMz0xNDU0Nzk5MiAxNzU5MjY5Njc3Njkx\"}"
+          "value": "{\"950007254\":\"MDoxOSM4ODEyNTI1NyMyNj0xNDE1NTg1OCMxMz0xNDY1ODY1MiAxNzU5MzM4Nzg4MjE2\"}"
         },
         {
           "name": "lastLogins",
-          "value": "N|{\"1358856445\":[{\"appId\":\"workfront\",\"authId\":\"B6EB1E3C6659263A0A495E9F@jwt.com\",\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"lastLogin\":\"2025-09-30T21:42:38.000Z\",\"userId\":\"F6ED1E7C67BE1D020A495FE6@e03e2888630f8e20495fa3.e\"},{\"appId\":\"landing\",\"authId\":\"B6EB1E3C6659263A0A495E9F@jwt.com\",\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"lastLogin\":\"2025-09-30T21:58:24.000Z\",\"userId\":\"F6ED1E7C67BE1D020A495FE6@e03e2888630f8e20495fa3.e\"}]}"
+          "value": "N|{\"1358856445\":[{\"appId\":\"workfront\",\"authId\":\"B6EB1E3C6659263A0A495E9F@jwt.com\",\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"lastLogin\":\"2025-10-01T16:59:44.000Z\",\"userId\":\"F6ED1E7C67BE1D020A495FE6@e03e2888630f8e20495fa3.e\"},{\"appId\":\"landing\",\"authId\":\"B6EB1E3C6659263A0A495E9F@jwt.com\",\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"lastLogin\":\"2025-10-01T17:06:08.000Z\",\"userId\":\"F6ED1E7C67BE1D020A495FE6@e03e2888630f8e20495fa3.e\"}]}"
         },
         {
           "name": "banners",
@@ -424,70 +424,52 @@
       "localStorage": [
         {
           "name": "idgTokenLs",
-          "value": "f0bc795e-342c-4ff9-8a98-2a2790600c75"
+          "value": "46158ed1-8b90-490d-8b10-19e57e31f062"
         },
         {
           "name": "LOCAL_STORAGE_DEVICE_ID",
-          "value": "affa5cd8-252c-4448-a773-618a95845406"
+          "value": "c9a25619-e3ba-4692-84e9-521bb8a92ada"
         }
       ]
     }
   ],
   "uploadJobs": [
     {
-      "id": "2304b33f-ee16-4c15-a512-f9fc2273eff5",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "410fc3c0-d03f-41d8-a52d-dddad214c2ab",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
       "staged": {
-        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip",
+        "assetZip": "temp\\staging\\2025-10-01\\temp_1759338828086_8f08ea4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
         "finalMaterials": [
-          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_1x1.mp4",
-          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_4x5.mp4",
-          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_9x16.mp4",
-          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_VÃ­deo1_exclusivekits.pdf"
+          "temp\\staging\\2025-10-01\\temp_1759338828086_64aeeb5a_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\temp_1759338828086_7d05907f_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\temp_1759338828086_c7bf66b4_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\temp_1759338828086_44af6b11_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
         ]
       },
       "status": "staged",
-      "createdAt": 1759261921138,
-      "updatedAt": 1759261921138,
+      "createdAt": 1759338828087,
+      "updatedAt": 1759338828087,
       "fileNames": [
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip",
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_1x1.mp4",
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_4x5.mp4",
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_9x16.mp4",
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays_VÃ­deo1_exclusivekits.pdf"
+        "temp_1759338828086_8f08ea4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "temp_1759338828086_64aeeb5a_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "temp_1759338828086_7d05907f_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "temp_1759338828086_c7bf66b4_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "temp_1759338828086_44af6b11_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
       ]
     },
     {
-      "id": "64a8af98-b6ba-42a5-8d40-c67b0e131800",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "cb12d1ce-cf5b-4930-9491-6c99eff8a40e",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
       "staged": {
-        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip"
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759338828086_8f08ea4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
       },
       "status": "completed",
-      "createdAt": 1759261922069,
-      "updatedAt": 1759261993068,
+      "createdAt": 1759338835404,
+      "updatedAt": 1759338946958,
       "fileNames": [
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip"
-      ],
-      "summary": {
-        "message": "Upload(s) concluído(s) em sessão",
-        "fileCount": 4
-      }
-    },
-    {
-      "id": "886489ce-9a45-4a5e-95c0-a3d9b9c841f0",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
-      "staged": {
-        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip"
-      },
-      "status": "completed",
-      "createdAt": 1759268554682,
-      "updatedAt": 1759268569632,
-      "fileNames": [
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip"
+        "temp_1759338828086_8f08ea4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
       ],
       "summary": {
         "message": "Upload(s) concluído(s) em sessão",
@@ -495,104 +477,614 @@
       }
     },
     {
-      "id": "16365669-b27d-4c40-9dcc-5b0caf70b767",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "74a42269-76d5-45c2-95f9-bc2f0b83e044",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
       "staged": {
-        "assetZip": "temp/staging/2025-09-30/temp_1759269814871_06fa1f16_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
+        "assetZip": "temp\\staging\\2025-10-01\\temp_1759338889470_062ae31a_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
         "finalMaterials": [
-          "temp/staging/2025-09-30/temp_1759269814876_7ab48294_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-          "temp/staging/2025-09-30/temp_1759269814877_f37821fe_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-          "temp/staging/2025-09-30/temp_1759269814879_ae990197_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
-          "temp/staging/2025-09-30/temp_1759269814880_37b16a0b_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+          "temp\\staging\\2025-10-01\\temp_1759338889470_014cdd4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\temp_1759338889470_ccaec46e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\temp_1759338889470_978ff191_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\temp_1759338889470_83f4c5e8_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
         ]
       },
       "status": "staged",
-      "createdAt": 1759269814882,
-      "updatedAt": 1759269814882,
+      "createdAt": 1759338889470,
+      "updatedAt": 1759338889470,
       "fileNames": [
-        "temp_1759269814871_06fa1f16_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
-        "temp_1759269814876_7ab48294_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-        "temp_1759269814877_f37821fe_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-        "temp_1759269814879_ae990197_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
-        "temp_1759269814880_37b16a0b_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+        "temp_1759338889470_062ae31a_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "temp_1759338889470_014cdd4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "temp_1759338889470_ccaec46e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "temp_1759338889470_978ff191_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "temp_1759338889470_83f4c5e8_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
       ]
     },
     {
-      "id": "449092c5-9172-426d-9cf2-297ceffbeea1",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "f1e78f69-bb28-477a-bbf8-6c0cc3c079a8",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
       "staged": {
-        "assetZip": "temp/staging/2025-09-30/temp_1759269836335_d7f69ccb_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759338889470_062ae31a_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      },
+      "status": "staged",
+      "createdAt": 1759338890995,
+      "updatedAt": 1759338890995,
+      "fileNames": [
+        "temp_1759338889470_062ae31a_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      ]
+    },
+    {
+      "id": "aab8c2f2-7ac5-4cc9-872b-9a56c931eeea",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
         "finalMaterials": [
-          "temp/staging/2025-09-30/temp_1759269836337_cb28746c_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-          "temp/staging/2025-09-30/temp_1759269836339_38e47232_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-          "temp/staging/2025-09-30/temp_1759269836341_80b815d6_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
-          "temp/staging/2025-09-30/temp_1759269836342_907e91e2_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+          "temp\\staging\\2025-10-01\\temp_1759339099682_2910c568_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\temp_1759339099682_8270afe9_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\temp_1759339099683_75d27abd_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\temp_1759339099683_d304f460_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
         ]
       },
       "status": "staged",
-      "createdAt": 1759269836344,
-      "updatedAt": 1759269836344,
+      "createdAt": 1759339099683,
+      "updatedAt": 1759339099683,
       "fileNames": [
-        "temp_1759269836335_d7f69ccb_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
-        "temp_1759269836337_cb28746c_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-        "temp_1759269836339_38e47232_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-        "temp_1759269836341_80b815d6_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
-        "temp_1759269836342_907e91e2_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+        "temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "temp_1759339099682_2910c568_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "temp_1759339099682_8270afe9_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "temp_1759339099683_75d27abd_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "temp_1759339099683_d304f460_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
       ]
     },
     {
-      "id": "dbcc0a18-22d5-49c7-9701-7c638e2e721d",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "ffa4f9d5-cf21-46bf-8462-1d02145e2833",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
       "staged": {
-        "assetZip": "temp/staging/2025-09-30/temp_1759269814871_06fa1f16_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip"
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      },
+      "status": "staged",
+      "createdAt": 1759339101740,
+      "updatedAt": 1759339101740,
+      "fileNames": [
+        "temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      ]
+    },
+    {
+      "id": "04e1360b-b7c3-4f47-8a75-710c8b78ed1c",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      },
+      "status": "completed",
+      "createdAt": 1759339194117,
+      "updatedAt": 1759339217539,
+      "fileNames": [
+        "temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 1
+      }
+    },
+    {
+      "id": "3122aa6d-229b-441b-b648-6cc1319ce6a0",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      },
+      "status": "completed",
+      "createdAt": 1759339318881,
+      "updatedAt": 1759339341722,
+      "fileNames": [
+        "temp_1759339099682_8c20e323_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 1
+      }
+    },
+    {
+      "id": "766aa4e9-c7c1-42a6-862e-c116937eed8c",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\temp_1759339322596_91cd7b5b_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\temp_1759339322596_21ec165e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\temp_1759339322596_e8393caf_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\temp_1759339322597_4abd7f31_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\temp_1759339322597_60e37fe7_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759339322597,
+      "updatedAt": 1759339322597,
+      "fileNames": [
+        "temp_1759339322596_91cd7b5b_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "temp_1759339322596_21ec165e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "temp_1759339322596_e8393caf_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "temp_1759339322597_4abd7f31_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "temp_1759339322597_60e37fe7_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+      ]
+    },
+    {
+      "id": "58c635eb-3560-40d6-88ba-05aa884dc887",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\temp_1759339454975_59ed7013_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\temp_1759339454975_95cac532_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\temp_1759339454975_c07fa33c_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\temp_1759339454975_d76cacbb_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\temp_1759339454976_5f897bff_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759339454976,
+      "updatedAt": 1759339454976,
+      "fileNames": [
+        "temp_1759339454975_59ed7013_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "temp_1759339454975_95cac532_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "temp_1759339454975_c07fa33c_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "temp_1759339454975_d76cacbb_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "temp_1759339454976_5f897bff_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+      ]
+    },
+    {
+      "id": "3fd27c91-adfe-4c69-8ebd-8f396d590910",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759339454975_59ed7013_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      },
+      "status": "completed",
+      "createdAt": 1759339459818,
+      "updatedAt": 1759339551574,
+      "fileNames": [
+        "temp_1759339454975_59ed7013_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "277b0dc4-69df-4af3-a343-ab8a2739bae3",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759340344044,
+      "updatedAt": 1759340344044,
+      "fileNames": [
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+      ]
+    },
+    {
+      "id": "e362a4e1-a22a-4684-aabf-3f75c22389f3",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\temp_1759338828086_8f08ea4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
       },
       "status": "failed",
-      "createdAt": 1759269838709,
-      "updatedAt": 1759269848218,
+      "createdAt": 1759340468111,
+      "updatedAt": 1759340479706,
       "fileNames": [
-        "temp_1759269814871_06fa1f16_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip"
+        "temp_1759338828086_8f08ea4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
       ],
-      "error": "ENOENT: no such file or directory, stat 'F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-09-30\\temp_1759269814871_06fa1f16_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip'"
+      "error": "ENOENT: no such file or directory, stat 'F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759338828086_8f08ea4e_2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip'"
     },
     {
-      "id": "1cfbccdc-2d32-4f68-aacc-b7a72ccd3d1d",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "0d965d12-2fc3-4708-8d1f-b56136dca1cb",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
       "staged": {
-        "assetZip": "temp/staging/2025-09-30/temp_1759269996454_775d2a33_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
+        "assetZip": "temp\\staging\\2025-10-01\\28e1d457\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
         "finalMaterials": [
-          "temp/staging/2025-09-30/temp_1759269996459_1f8476ff_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf",
-          "temp/staging/2025-09-30/temp_1759269996461_27725ec6_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-          "temp/staging/2025-09-30/temp_1759269996463_86bcae39_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-          "temp/staging/2025-09-30/temp_1759269996464_71c86ecd_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4"
+          "temp\\staging\\2025-10-01\\5b97abed\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\b008ea6c\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\a6216de4\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\67863331\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
         ]
       },
       "status": "staged",
-      "createdAt": 1759269996466,
-      "updatedAt": 1759269996466,
+      "createdAt": 1759340469103,
+      "updatedAt": 1759340469103,
       "fileNames": [
-        "temp_1759269996454_775d2a33_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
-        "temp_1759269996459_1f8476ff_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf",
-        "temp_1759269996461_27725ec6_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-        "temp_1759269996463_86bcae39_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-        "temp_1759269996464_71c86ecd_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4"
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
       ]
     },
     {
-      "id": "fc63e961-8274-45d8-b378-9c44e0531be9",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "182036f3-dc25-4061-a8d7-32b7df4ab47f",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
       "staged": {
-        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\Downloads\\staging\\2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip"
+        "assetZip": "temp\\staging\\2025-10-01\\698616f8\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\63ff1a89\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+          "temp\\staging\\2025-10-01\\8c94975d\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+          "temp\\staging\\2025-10-01\\7dae8f1b\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+          "temp\\staging\\2025-10-01\\bf01a1e4\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759340538669,
+      "updatedAt": 1759340538669,
+      "fileNames": [
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.pdf",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_4x5.png",
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_9x16.png"
+      ]
+    },
+    {
+      "id": "2e2af3de-b633-469a-83d6-4a5447ebe879",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\698616f8\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
       },
       "status": "completed",
-      "createdAt": 1759270002748,
-      "updatedAt": 1759270015080,
+      "createdAt": 1759340539602,
+      "updatedAt": 1759340664100,
       "fileNames": [
-        "2601G0179_0046_5480053_br_csg_con_fy26q3w10_smv_jscon_wtn-holiday_Holidays.zip"
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "d72bcda0-1bb0-41f3-be7a-3d1bb55e6088",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c991c90044ef2a5a0f6867babc4bcd",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\698616f8\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      },
+      "status": "failed",
+      "createdAt": 1759346776079,
+      "updatedAt": 1759346829000,
+      "fileNames": [
+        "2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4.zip"
+      ],
+      "error": "ENOENT: no such file or directory, stat 'F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\8c94975d\\2601G0179_0044_5481967_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static4_1x1.png'"
+    },
+    {
+      "id": "977a6082-d9b9-4413-aedc-4b4ca936c003",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/workfront/project/68c9805a00c381dab007616994d6a3e7",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\0c60c0eb\\2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\390d0562\\2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1.pdf",
+          "temp\\staging\\2025-10-01\\aa412cb6\\2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1_1x1.png",
+          "temp\\staging\\2025-10-01\\36750384\\2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1_4x5.png",
+          "temp\\staging\\2025-10-01\\7b434d41\\2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759347021587,
+      "updatedAt": 1759347021587,
+      "fileNames": [
+        "2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1.zip",
+        "2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1.pdf",
+        "2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1_1x1.png",
+        "2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1_4x5.png",
+        "2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1_9x16.png"
+      ]
+    },
+    {
+      "id": "40058b2a-1974-443f-b27e-e2cac4762620",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/workfront/project/68c9805a00c381dab007616994d6a3e7",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\0c60c0eb\\2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1.zip"
+      },
+      "status": "completed",
+      "createdAt": 1759347024787,
+      "updatedAt": 1759347149024,
+      "fileNames": [
+        "2601G0179_0069_5480156_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Static1.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "2482f6c1-00fe-4e37-8e1a-db2325c81bf3",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97dfe00ab6445f2e0d571577b5528/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\30373d8f\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\1e154366\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.pdf",
+          "temp\\staging\\2025-10-01\\4130f299\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.png",
+          "temp\\staging\\2025-10-01\\860fe281\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_mockup.png",
+          "temp\\staging\\2025-10-01\\c518cccf\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759347584498,
+      "updatedAt": 1759347584498,
+      "fileNames": [
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.zip",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.pdf",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.png",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_mockup.png",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.png"
+      ]
+    },
+    {
+      "id": "5901b55b-37fe-4ff1-9506-8083adc42b3d",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97dfe00ab6445f2e0d571577b5528/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\8428197a\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\7d20e7d0\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.pdf",
+          "temp\\staging\\2025-10-01\\684f23bd\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.png",
+          "temp\\staging\\2025-10-01\\f434a66a\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_mockup.png",
+          "temp\\staging\\2025-10-01\\bf6c69a6\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759349239846,
+      "updatedAt": 1759349239846,
+      "fileNames": [
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.zip",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.pdf",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura.png",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_mockup.png",
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.png"
+      ]
+    },
+    {
+      "id": "84fd1532-a02e-4dcd-ae56-d9f6a55b8bc5",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97dfe00ab6445f2e0d571577b5528/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\8428197a\\2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.zip"
+      },
+      "status": "completed",
+      "createdAt": 1759349248908,
+      "updatedAt": 1759349325387,
+      "fileNames": [
+        "2601G0179_0043_5479874_br_csg_gam_fy26q3w10_sm_jscon_wtn-holiday_Holidays_AW_Moldura_wireframe.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "5c76dea2-320c-4e00-aff1-68aefb4fd9e3",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\bce64bf1\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\9a598b47\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+          "temp\\staging\\2025-10-01\\b7036951\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+          "temp\\staging\\2025-10-01\\23464f21\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+          "temp\\staging\\2025-10-01\\92e0e5e5\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759350479649,
+      "updatedAt": 1759350479649,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+      ]
+    },
+    {
+      "id": "b809c987-c1ef-4718-af34-64b9708341d5",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\bce64bf1\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip"
+      },
+      "status": "failed",
+      "createdAt": 1759350481259,
+      "updatedAt": 1759350554347,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 1
+      },
+      "error": "File chooser não abriu após clicar Document"
+    },
+    {
+      "id": "ca9b9bd9-28db-4222-aabb-84bdc4bd2502",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\0ea69be8\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\1d2dcb48\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+          "temp\\staging\\2025-10-01\\67a97d74\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+          "temp\\staging\\2025-10-01\\cba5693e\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+          "temp\\staging\\2025-10-01\\854ba946\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759350712272,
+      "updatedAt": 1759350712272,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+      ]
+    },
+    {
+      "id": "0d3d2abb-a08b-46a5-8139-f30c431404fd",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\0ea69be8\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip"
+      },
+      "status": "failed",
+      "createdAt": 1759350714450,
+      "updatedAt": 1759350792824,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 1
+      },
+      "error": "File chooser não abriu após clicar Document"
+    },
+    {
+      "id": "2e2e46d1-a679-453a-9419-800c93c8f7db",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\39c71c5c\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\a78d6aef\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+          "temp\\staging\\2025-10-01\\c6e8ae36\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+          "temp\\staging\\2025-10-01\\1785e9aa\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+          "temp\\staging\\2025-10-01\\bf4d8c93\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759351295080,
+      "updatedAt": 1759351295080,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+      ]
+    },
+    {
+      "id": "4638c83e-fe94-4f0b-9607-514f86a8fcfb",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "finalMaterials": [
+          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\a78d6aef\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\c6e8ae36\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\1785e9aa\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\bf4d8c93\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+        ]
+      },
+      "status": "failed",
+      "createdAt": 1759351347642,
+      "updatedAt": 1759351373741,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+      ],
+      "error": "Opção Document não encontrada ou não clicável"
+    },
+    {
+      "id": "b9682aa5-9361-4d53-a0f0-cb08d2f03973",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\7f5c6566\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\7ab45fad\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+          "temp\\staging\\2025-10-01\\84209a6d\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+          "temp\\staging\\2025-10-01\\09eb0259\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+          "temp\\staging\\2025-10-01\\dfdd6b25\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+        ]
+      },
+      "status": "canceled",
+      "createdAt": 1759351573319,
+      "updatedAt": 1759351583993,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_1x1.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_4x5.png",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2_9x16.png"
+      ]
+    },
+    {
+      "id": "17226a26-3ca4-4fbd-b8c5-1c62f8aad973",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\7f5c6566\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip"
+      },
+      "status": "staged",
+      "createdAt": 1759351575020,
+      "updatedAt": 1759351575020,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip"
+      ]
+    },
+    {
+      "id": "d47d7039-a434-463c-bd24-a50e04f928df",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\ea3288d5\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\e70ec087\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759351608585,
+      "updatedAt": 1759351608585,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf"
+      ]
+    },
+    {
+      "id": "5d35dcd3-5742-40fb-bb79-cce60414aec1",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "finalMaterials": [
+          "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\e70ec087\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf"
+        ]
+      },
+      "status": "completed",
+      "createdAt": 1759351610826,
+      "updatedAt": 1759351627132,
+      "fileNames": [
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf"
       ],
       "summary": {
         "message": "Upload(s) concluído(s) em sessão",
@@ -600,46 +1092,22 @@
       }
     },
     {
-      "id": "b3d8d1f8-9393-4caa-a445-22f8eece0903",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "id": "5915e3f1-de0c-4c79-9363-1e829a19ca3d",
+      "userId": "cmg88uuyx0000uxt0gsqzshht",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c98e470100dac5d6bfb6669f2d1504/documents?locale=en-US&localeOriginal=en-US",
       "staged": {
-        "assetZip": "temp\\staging\\2025-10-01\\temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
+        "assetZip": "temp\\staging\\2025-10-01\\52fbc5b0\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
         "finalMaterials": [
-          "temp\\staging\\2025-10-01\\temp_1759287926385_bc30e7ac_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-          "temp\\staging\\2025-10-01\\temp_1759287926385_2564f240_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-          "temp\\staging\\2025-10-01\\temp_1759287926386_8eb552a7_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
-          "temp\\staging\\2025-10-01\\temp_1759287926386_97e2bdf8_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+          "temp\\staging\\2025-10-01\\14446144\\2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf"
         ]
       },
       "status": "staged",
-      "createdAt": 1759287926386,
-      "updatedAt": 1759287926386,
+      "createdAt": 1759351753825,
+      "updatedAt": 1759351753825,
       "fileNames": [
-        "temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
-        "temp_1759287926385_bc30e7ac_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
-        "temp_1759287926385_2564f240_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
-        "temp_1759287926386_8eb552a7_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
-        "temp_1759287926386_97e2bdf8_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
+        "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf"
       ]
-    },
-    {
-      "id": "3a3f8eae-6bc1-45cf-af96-87a29837c267",
-      "userId": "cmg6s0o3a0000ux78g292fviz",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
-      "staged": {
-        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_VÃ­deo1.zip"
-      },
-      "status": "completed",
-      "createdAt": 1759287927156,
-      "updatedAt": 1759288001617,
-      "fileNames": [
-        "temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_VÃ­deo1.zip"
-      ],
-      "summary": {
-        "message": "Upload(s) concluído(s) em sessão",
-        "fileCount": 4
-      }
     }
   ]
 }
