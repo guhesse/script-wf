@@ -44,9 +44,8 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --legacy-peer-deps
 
-# Instalar Playwright (CACHE)
-RUN --mount=type=cache,target=/root/.cache/ms-playwright \
-    npx playwright install chromium --with-deps
+# Instalar Playwright (SEM cache mount para persistir)
+RUN npx playwright install chromium --with-deps
 
 # ============================================
 # Stage 2: BUILDER (LIGHT - muda frequente)
@@ -71,9 +70,9 @@ RUN npm run build
 # ============================================
 FROM base AS production
 
-# Copiar node_modules do stage dependencies
+# Copiar node_modules e Playwright do stage dependencies
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=dependencies /root/.cache/ms-playwright /root/.cache/ms-playwright
+COPY --from=dependencies /root/.cache /root/.cache
 
 # Copiar build do stage builder
 COPY --from=builder /app/dist ./dist
