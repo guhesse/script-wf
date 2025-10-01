@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      # Usar BuildKit para cache melhor
+      cache_from:
+        - script-wf-backend:latest
+        - script-wf-backend:dependencies
+      target: production  # ou 'builder' para debug
+    image: script-wf-backend:latest
+    # ...existing config...
