@@ -14,4 +14,4 @@ echo "================================"
 
 cd /var/www/script-wf
 
-docker-compose -f docker-compose.prod.yml exec $SERVICE sh
+docker compose -f docker-compose.prod.yml exec $SERVICE sh
