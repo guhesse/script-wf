@@ -118,7 +118,23 @@ export class TimelineService {
         if (useSessionMode) {
             try {
                 this.logger.log('🧩 Abrindo browser otimizado (sessão única) para ações: ' + sessionActions.map(a => a.action).join(', '));
-                const { browser: b, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
+                // CONFIGURAÇÃO ESPECIAL PARA WORKFRONT - SEM OTIMIZAÇÕES AGRESSIVAS
+                this.logger.log('⚙️ Configurando browser sem otimizações agressivas para Workfront:');
+                this.logger.log('   - blockHeavy: false (permite imagens/fonts/mídia)');
+                this.logger.log('   - serviceWorkers: allow (permite service workers)');
+                this.logger.log('   - reducedMotion: no-preference (permite animações)');
+                this.logger.log('   - extraHeaders: {} (sem Save-Data)');
+                this.logger.log('   - bloqueios: disabled (sem bloqueio de recursos)');
+                
+                const { browser: b, context } = await createOptimizedContext({ 
+                    headless, 
+                    storageStatePath: await WorkfrontDomHelper.ensureStateFile(), 
+                    viewport: { width: 1366, height: 900 },
+                    blockHeavy: false,  // ❌ NÃO bloquear recursos pesados no Workfront
+                    extraHeaders: {},   // ❌ NÃO usar Save-Data que pode quebrar interface
+                    extraBlockDomains: [], // ❌ NÃO bloquear domínios extras
+                    shortCircuitGlobs: []  // ❌ NÃO short-circuit nenhum endpoint
+                });
                 browser = b;
                 page = await context.newPage();
                 await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
@@ -844,9 +860,16 @@ export class TimelineService {
                     
                     // Se chegou na última tentativa, forçar reload
                     if (attempts === maxAttempts) {
-                        this.logger.warn(`⚠️ Interface ainda incompleta após ${maxAttempts} tentativas. Forçando reload...`);
-                        await page.reload({ waitUntil: 'networkidle' });
-                        await page.waitForTimeout(8000);
+                        this.logger.warn(`⚠️ Interface ainda incompleta após ${maxAttempts} tentativas. Forçando reload com timeout maior...`);
+                        try {
+                            await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+                            await page.waitForTimeout(10000);
+                        } catch (reloadError) {
+                            this.logger.error(`❌ Erro no reload: ${reloadError.message}`);
+                            this.logger.log('🔄 Tentando navegação direta novamente...');
+                            await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: 60000 });
+                            await page.waitForTimeout(10000);
+                        }
                         
                         const afterReload = await page.evaluate(() => ({
                             workfrontElements: document.querySelectorAll('[class*="workfront"], [data-testid*="workfront"]').length,
