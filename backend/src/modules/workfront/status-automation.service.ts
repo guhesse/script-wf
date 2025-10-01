@@ -39,7 +39,7 @@ export class StatusAutomationService {
         maxAttempts?: number;
         retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-    const { projectUrl, headless = resolveHeadless(), maxAttempts = 4, retryDelay = 3500 } = params;
+        const { projectUrl, headless = resolveHeadless(), maxAttempts = 4, retryDelay = 3500 } = params;
         const deliverableStatus = FORCE_STATUS; // ignora param externo
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
@@ -51,7 +51,7 @@ export class StatusAutomationService {
 
         this.logger.log(`📦 Alterando status do Deliverable para '${deliverableStatus}' (forçado)`);
         const url = this.ensureOverviewUrl(projectUrl);
-    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
+        const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
 
         try {
             const page = await context.newPage();
@@ -68,13 +68,13 @@ export class StatusAutomationService {
                     this.logger.log(`✅ Status atualizado para '${deliverableStatus}' (tentativa ${attempt})`);
                     success = true;
                     return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}'` };
-                } catch (e:any) {
+                } catch (e: any) {
                     lastErr = e;
                     this.logger.error(`❌ Tentativa ${attempt} falhou: ${e?.message}`);
                     if (attempt < maxAttempts) {
                         this.logger.log(`🔁 Recarregando página e aguardando ${retryDelay}ms antes de nova tentativa...`);
                         await page.waitForTimeout(300);
-                        try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch {}
+                        try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch { }
                         await page.waitForTimeout(retryDelay);
                     }
                 }
@@ -120,12 +120,12 @@ export class StatusAutomationService {
                 await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
                 await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
                 return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}' (sessão reutilizada)` };
-            } catch (e:any) {
+            } catch (e: any) {
                 lastErr = e;
                 this.logger.error(`❌ Erro in-session tentativa ${attempt}: ${e?.message}`);
                 if (attempt < maxAttempts) {
                     this.logger.log(`🔁 (sessão) reload + espera ${retryDelay}ms antes de retry`);
-                    try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch {}
+                    try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch { }
                     await page.waitForTimeout(retryDelay);
                 }
             }
@@ -150,7 +150,7 @@ export class StatusAutomationService {
         let fastOk = false;
         try {
             this.logger.log('⚡ Aplicando modo rápido: setValue + eventos + salvar direto');
-            await input.click({ force: true }).catch(() => {});
+            await input.click({ force: true }).catch(() => { });
             // Limpa e preenche usando API de alto nível
             await input.fill('');
             await input.fill(deliverableStatus);
@@ -162,24 +162,24 @@ export class StatusAutomationService {
             }, deliverableStatus);
             await page.waitForTimeout(80);
             // Fecha dropdowns / sugestões que possam bloquear Save
-            await page.keyboard.press('Escape').catch(() => {});
+            await page.keyboard.press('Escape').catch(() => { });
             await page.waitForTimeout(60);
             fastOk = true;
-        } catch (e:any) {
+        } catch (e: any) {
             this.logger.warn('⚠️ Modo rápido falhou, tentando fallback de digitação: ' + e?.message);
         }
 
         if (!fastOk) {
             // Fallback antigo (resumido)
             try {
-                await input.click({ force: true }).catch(() => {});
-                await page.keyboard.press('Control+A').catch(() => {});
-                await page.keyboard.press('Delete').catch(() => {});
+                await input.click({ force: true }).catch(() => { });
+                await page.keyboard.press('Control+A').catch(() => { });
+                await page.keyboard.press('Delete').catch(() => { });
                 await page.waitForTimeout(60);
                 await page.keyboard.insertText(deliverableStatus);
                 await page.waitForTimeout(200);
-                await page.keyboard.press('Escape').catch(() => {});
-            } catch (e:any) {
+                await page.keyboard.press('Escape').catch(() => { });
+            } catch (e: any) {
                 this.logger.warn('⚠️ Fallback de digitação também falhou: ' + e?.message);
             }
         }
@@ -193,7 +193,7 @@ export class StatusAutomationService {
             if (currentVal && currentVal !== deliverableStatus) {
                 this.logger.warn(`⚠️ Valor no input pós-save difere: '${currentVal}' (esperado '${deliverableStatus}')`);
             }
-        } catch {}
+        } catch { }
     }
 
     // === Auxiliares novos ===
