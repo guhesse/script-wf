@@ -42,12 +42,12 @@ export class ShareAndCommentDto {
 
     @ApiProperty({ enum: UserTeam, description: 'Equipe para compartilhar e mencionar', required: false, default: UserTeam.CAROL })
     @IsOptional()
-    @IsEnum(UserTeam)
+    @IsEnum(() => UserTeam)
     selectedUser?: UserTeam = UserTeam.CAROL;
 
     @ApiProperty({ enum: CommentType, description: 'Tipo do comentário', required: false, default: CommentType.ASSET_RELEASE })
     @IsOptional()
-    @IsEnum(CommentType)
+    @IsEnum(() => CommentType)
     commentType?: CommentType = CommentType.ASSET_RELEASE;
 
     @ApiProperty({ description: 'Executar navegador em modo headless', required: false, default: false })
