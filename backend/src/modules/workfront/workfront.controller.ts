@@ -821,15 +821,27 @@ export class WorkfrontController {
     { name: 'file', maxCount: 1 }
   ], {
     storage: diskStorage({
-      destination: (req, file, cb) => {
-        const uploadId = req.params.uploadId;
-        const timestamp = new Date().toISOString().slice(0, 10);
-        const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp);
-        cb(null, tempDir);
+      destination: async (req, file, cb) => {
+        try {
+          const uploadId = req.params.uploadId;
+          const timestamp = new Date().toISOString().slice(0, 10);
+          const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp);
+          
+          // Garantir que o diretório existe
+          await fs.mkdir(tempDir, { recursive: true });
+          
+          console.log(`📁 Diretório preparado: ${tempDir}`);
+          cb(null, tempDir);
+        } catch (error) {
+          console.error('❌ Erro ao criar diretório:', error);
+          cb(error as Error, '');
+        }
       },
       filename: (req, file, cb) => {
         const uploadId = req.params.uploadId;
-        cb(null, `${uploadId}_${file.originalname}`);
+        const filename = `${uploadId}_${file.originalname}`;
+        console.log(`📄 Arquivo será salvo como: ${filename}`);
+        cb(null, filename);
       }
     })
   }))
@@ -839,12 +851,25 @@ export class WorkfrontController {
     @CurrentUser() user?: AuthUser
   ) {
     try {
+      this.logger.log(`📥 Recebendo upload para ID: ${uploadId}`);
+      this.logger.log(`📝 Arquivos recebidos:`, files);
+
       if (!files.file || files.file.length === 0) {
+        this.logger.error(`❌ Nenhum arquivo enviado para uploadId: ${uploadId}`);
         throw new HttpException('Nenhum arquivo enviado', HttpStatus.BAD_REQUEST);
       }
 
       const uploadedFile = files.file[0];
-      this.logger.log(`Arquivo recebido: ${uploadedFile.filename} (${uploadedFile.size} bytes)`);
+      this.logger.log(`✅ Arquivo recebido: ${uploadedFile.filename} (${uploadedFile.size} bytes)`);
+      this.logger.log(`📁 Salvo em: ${uploadedFile.path}`);
+      
+      // Verificar se o arquivo foi realmente salvo
+      try {
+        const stats = await fs.stat(uploadedFile.path);
+        this.logger.log(`🔍 Arquivo confirmado no disco: ${stats.size} bytes`);
+      } catch (statError) {
+        this.logger.error(`❌ Arquivo não encontrado no disco: ${uploadedFile.path}`, statError);
+      }
 
       // Agendar limpeza após 10 minutos
       setTimeout(() => {
@@ -859,7 +884,7 @@ export class WorkfrontController {
         path: uploadedFile.path
       };
     } catch (error) {
-      this.logger.error(`Erro no upload ${uploadId}:`, error);
+      this.logger.error(`❌ Erro no upload ${uploadId}:`, error);
       throw new HttpException(
         { success: false, message: (error as Error).message },
         HttpStatus.INTERNAL_SERVER_ERROR
