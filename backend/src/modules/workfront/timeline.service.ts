@@ -138,58 +138,12 @@ export class TimelineService {
                 browser = b;
                 page = await context.newPage();
                 
-                // ESTRATÉGIA CRÍTICA: Navegar diretamente para o iframe URL primeiro
-                const projectMatch = projectUrl.match(/project\/([a-f0-9]{10,})/);
-                if (projectMatch) {
-                    const projectId = projectMatch[1];
-                    const directWorkfrontUrl = `https://dell.my.workfront.adobe.com/project/${projectId}/documents`;
-                    
-                    this.logger.log(`🎯 [CRITICAL] Navegando DIRETAMENTE para Workfront (bypass experience.adobe): ${directWorkfrontUrl}`);
-                    
-                    try {
-                        // Tentar navegação direta primeiro
-                        await page.goto(directWorkfrontUrl, { waitUntil: 'networkidle', timeout: 60000 });
-                        await page.waitForTimeout(5000); // Aguardar carregamento completo
-                        
-                        // Verificar se interface carregou
-                        const interfaceLoaded = await page.evaluate(() => {
-                            return {
-                                hasAddButton: !!document.querySelector('[data-testid="add-new"], button[class*="add-new"]'),
-                                hasTables: document.querySelectorAll('table, [class*="table"]').length > 0,
-                                hasDocumentArea: !!document.querySelector('[class*="document"], [data-testid*="document"]'),
-                                totalElements: document.querySelectorAll('*').length
-                            };
-                        });
-                        
-                        this.logger.log(`📊 Interface após navegação direta: addBtn=${interfaceLoaded.hasAddButton}, tables=${interfaceLoaded.hasTables}, docArea=${interfaceLoaded.hasDocumentArea}, total=${interfaceLoaded.totalElements}`);
-                        
-                        if (!interfaceLoaded.hasAddButton && !interfaceLoaded.hasTables) {
-                            // Se não carregou, tentar pela URL experience.adobe
-                            this.logger.warn('⚠️ Interface não carregou diretamente. Tentando via experience.adobe...');
-                            await page.goto(projectUrl, { waitUntil: 'networkidle', timeout: 60000 });
-                            await page.waitForTimeout(5000);
-                        }
-                    } catch (navErr: any) {
-                        this.logger.warn(`⚠️ Navegação direta falhou (${navErr.message}). Usando URL original...`);
-                        await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-                        await page.waitForTimeout(5000);
-                    }
-                } else {
-                    // Fallback: usar URL original
-                    await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-                    await page.waitForTimeout(5000);
-                }
+                // Navegar direto para a URL do projeto (simples e rápido)
+                this.logger.log(`🌐 Navegando para: ${projectUrl}`);
+                await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                await page.waitForTimeout(3000); // Timeout reduzido
                 
-                // FORÇA ESPERA POR ELEMENTOS CRÍTICOS
-                try {
-                    this.logger.log('⏳ Aguardando elementos críticos do Workfront...');
-                    await page.waitForSelector('[data-testid="add-new"], button[class*="add"], #add-new-button', { timeout: 30000 });
-                    this.logger.log('✅ Elementos críticos encontrados!');
-                } catch (waitErr) {
-                    this.logger.warn('⚠️ Timeout aguardando elementos. Continuando mesmo assim...');
-                }
-                
-                // Agora sim usar frame locator ou page direto
+                // Resolver contexto (frame ou page direta)
                 frame = await this.resolveWorkfrontContext(page);
                 await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
             } catch (e: any) {
@@ -559,9 +513,7 @@ export class TimelineService {
 
     private async navigateAndUploadSingle(frame: any, page: Page, folder: string, filePath: string) {
         try {
-            // DIAGNÓSTICO CRÍTICO ANTES DA NAVEGAÇÃO
-            await this.performAuthenticationDiagnostic(page);
-            // Resolver frame real do Workfront (evita frameLocator estático vazio)
+            // Diagnóstico removido - otimização de performance
             const wfFrame = await this.getWorkfrontFrame(page);
             if (!wfFrame) {
                 throw new Error('Frame Workfront não encontrado (getWorkfrontFrame retornou null)');
@@ -577,21 +529,16 @@ export class TimelineService {
             }
 
             await this.uploadThroughDialogRobust(wfFrame, page, [filePath]);
-            
-            // VERIFICAÇÃO CRÍTICA: Upload realmente funcionou?
-            await this.verifyUploadSuccess(wfFrame, page, filePath, folder);
+            // Verificação removida - Workfront processa em background
         } catch (error) {
-            // DIAGNÓSTICO COMPLETO QUANDO FALHA
-            await this.performAccessDiagnostic(page, folder);
-            this.logger.error(`❌ [TIMELINE] Falha na navegação para ${folder}: ${error.message}`);
+            this.logger.error(`❌ [TIMELINE] Falha no upload para ${folder}: ${error.message}`);
             throw error;
         }
     }
 
     private async navigateAndUploadMultiple(frame: any, page: Page, folder: string, filePaths: string[]) {
         try {
-            // DIAGNÓSTICO CRÍTICO ANTES DA NAVEGAÇÃO
-            await this.performAuthenticationDiagnostic(page);
+            // Diagnóstico removido - já feito no início do workflow
             const wfFrame = await this.getWorkfrontFrame(page);
             if (!wfFrame) {
                 throw new Error('Frame Workfront não encontrado (getWorkfrontFrame retornou null)');
@@ -602,9 +549,7 @@ export class TimelineService {
             this.logger.log(`✅ [TIMELINE] Navegação bem-sucedida para: ${folder}`);
             await this.uploadThroughDialogRobust(wfFrame, page, filePaths);
         } catch (error) {
-            // DIAGNÓSTICO COMPLETO QUANDO FALHA
-            await this.performAccessDiagnostic(page, folder);
-            this.logger.error(`❌ [TIMELINE] Falha na navegação para ${folder}: ${error.message}`);
+            this.logger.error(`❌ [TIMELINE] Falha no upload para ${folder}: ${error.message}`);
             throw error;
         }
     }
@@ -780,6 +725,10 @@ export class TimelineService {
         const isRealFrame = !!frame.url;
         this.logger.log(`🔍 [UPLOAD-R] Tipo de frame: ${isRealFrame ? 'Frame real' : 'FrameLocator'}`);
         
+        // Setup file chooser listener ANTES de qualquer clique (muito importante!)
+        this.logger.log(`🎯 [UPLOAD-R] Preparando listener de file chooser (timeout 30s)...`);
+        const chooserPromise = page.waitForEvent('filechooser', { timeout: 30000 });
+        
         // Seletores do botão Add new
         const addSelectors = [
             'button[data-testid="add-new"]',
@@ -801,7 +750,7 @@ export class TimelineService {
                     
                     if (isVisible) {
                         await btn.click({ delay: 30, timeout: 5000 });
-                        await page.waitForTimeout(800); // Aguardar menu abrir
+                        await page.waitForTimeout(800); // Aguardar menu aparecer
                         opened = true;
                         this.logger.log(`✅ [UPLOAD-R] Botão Add new clicado: ${sel}`);
                         break;
@@ -818,7 +767,7 @@ export class TimelineService {
             throw new Error('Botão Add new não encontrado ou não clicável');
         }
 
-        // Abrir opção Document
+        // Clicar opção Document (file chooser já tem listener ativo)
         const docSelectors = [
             'li[data-test-id="upload-file"]',
             'li.select-files-button',
@@ -826,7 +775,7 @@ export class TimelineService {
             '[role="menuitem"]:has-text("Document")'
         ];
         
-        let chooser = null;
+        let docClicked = false;
         for (const sel of docSelectors) {
             try {
                 this.logger.log(`🔍 [UPLOAD-R] Tentando opção Document: ${sel}`);
@@ -834,23 +783,16 @@ export class TimelineService {
                 const count = await m.count();
                 
                 if (count > 0) {
-                    const isVisible = await m.isVisible().catch(() => false);
-                    this.logger.log(`   📊 Opção encontrada (count=${count}, visible=${isVisible})`);
+                    this.logger.log(`   📊 Opção encontrada (count=${count}) - tentando clicar com force...`);
                     
-                    if (isVisible) {
-                        // Setup listener ANTES de clicar
-                        const chooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-                        await m.click({ timeout: 5000 });
-                        this.logger.log(`✅ [UPLOAD-R] Opção Document clicada: ${sel}`);
-                        
-                        // Aguardar file chooser
-                        try {
-                            chooser = await chooserPromise;
-                            this.logger.log(`✅ [UPLOAD-R] File chooser aberto`);
-                            break;
-                        } catch (chooserErr) {
-                            this.logger.error(`❌ File chooser não apareceu: ${chooserErr.message}`);
-                        }
+                    // Tentar clicar COM FORCE mesmo se não visível (menus dropdown podem ter visibilidade complexa)
+                    try {
+                        await m.click({ timeout: 3000, force: true });
+                        this.logger.log(`✅ [UPLOAD-R] Document clicado: ${sel}`);
+                        docClicked = true;
+                        break;
+                    } catch (clickErr) {
+                        this.logger.warn(`⚠️ Click falhou em ${sel}: ${clickErr.message}`);
                     }
                 }
             } catch (err) {
@@ -858,18 +800,30 @@ export class TimelineService {
             }
         }
         
-        if (!chooser) {
+        if (!docClicked) {
+            this.logger.error('❌ [UPLOAD-R] Não conseguiu clicar Document');
+            await this.captureDebugScreenshot(page, 'no-document-option', 'Document option not clickable');
+            throw new Error('Opção Document não encontrada ou não clicável');
+        }
+        
+        // Aguardar file chooser aparecer
+        let chooser = null;
+        try {
+            chooser = await chooserPromise;
+            this.logger.log(`✅ [UPLOAD-R] File chooser aberto com sucesso`);
+        } catch (chooserErr) {
+            this.logger.error(`❌ File chooser timeout: ${chooserErr.message}`);
             await this.captureDebugScreenshot(page, 'no-file-chooser', 'File chooser did not open');
             throw new Error('File chooser não abriu após clicar Document');
         }
         
-        // Enviar arquivos
+        // Enviar arquivos diretamente (já salvos com nome correto)
         await chooser.setFiles(filePaths);
         this.logger.log(`📤 [UPLOAD-R] ${filePaths.length} arquivo(s) enviado(s)`);
         
-        // Aguardar processamento com tempo MUITO mais longo
-        const waitTime = Math.max(8000, filePaths.length * 5000); // Mínimo 8s, 5s por arquivo
-        this.logger.log(`⏳ [UPLOAD-R] Aguardando ${waitTime}ms para processamento completo...`);
+        // Aguardar processamento otimizado - Workfront processa em background
+        const waitTime = Math.max(6000, filePaths.length * 3000); // Mínimo 6s, 3s por arquivo (otimizado)
+        this.logger.log(`⏳ [UPLOAD-R] Aguardando ${waitTime}ms para processamento...`);
         await page.waitForTimeout(waitTime);
     }
 
@@ -1360,9 +1314,8 @@ export class TimelineService {
     }
 
     private getOriginalFileName(filePath: string): string {
-        const base = path.basename(filePath);
-        const match = base.match(/^temp_\d+_[a-z0-9]+_(.+)$/);
-        return match ? match[1] : base;
+        // Arquivos agora são salvos diretamente com nome correto (sem prefixo temp_)
+        return path.basename(filePath);
     }
 
     private async performPageStructureDiagnostic(page: Page) {
@@ -1541,6 +1494,8 @@ export class TimelineService {
             this.logger.error(`❌ Erro durante diagnóstico de estrutura: ${error.message}`);
         }
     }
+
+    // REMOVIDO: prepareCleanFileNames - arquivos agora são salvos diretamente com nome correto
 
     private async captureDebugScreenshot(page: Page, identifier: string, description: string) {
         try {

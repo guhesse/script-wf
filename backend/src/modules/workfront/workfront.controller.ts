@@ -762,16 +762,17 @@ export class WorkfrontController {
         storagePath: string;
       }> = [];
 
-      // Criar diretório temporário baseado na data
+      // Timestamp base para todos os uploads desta sessão
       const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp);
-      await fs.mkdir(tempDir, { recursive: true });
 
-      // Gerar paths locais temporários para cada arquivo
+      // Gerar paths locais para cada arquivo (SEM prefixo temp_)
       for (const fileInfo of body.files) {
-        const uploadId = `temp_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
-        const tempFileName = `${uploadId}_${fileInfo.name}`;
-        const localPath = path.join(tempDir, tempFileName);
+        const uploadId = crypto.randomUUID().slice(0, 8); // ID único por arquivo
+        const tempFileName = fileInfo.name; // Nome original sem prefixo
+        
+        // Usar subdiretório por uploadId para evitar colisões
+        const fileDir = path.join(process.cwd(), 'temp', 'staging', timestamp, uploadId);
+        const localPath = path.join(fileDir, tempFileName);
         const relativePath = path.relative(process.cwd(), localPath);
 
         uploadUrls.push({
@@ -825,7 +826,8 @@ export class WorkfrontController {
         try {
           const uploadId = req.params.uploadId;
           const timestamp = new Date().toISOString().slice(0, 10);
-          const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp);
+          // Usar subdiretório único por uploadId para evitar colisões
+          const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp, uploadId);
           
           // Garantir que o diretório existe
           await fs.mkdir(tempDir, { recursive: true });
@@ -838,8 +840,8 @@ export class WorkfrontController {
         }
       },
       filename: (req, file, cb) => {
-        const uploadId = req.params.uploadId;
-        const filename = `${uploadId}_${file.originalname}`;
+        // Salvar com nome original (SEM prefixo uploadId)
+        const filename = file.originalname;
         console.log(`📄 Arquivo será salvo como: ${filename}`);
         cb(null, filename);
       }
@@ -1025,9 +1027,12 @@ export class WorkfrontController {
         throw new HttpException('steps deve ser um array não vazio', HttpStatus.BAD_REQUEST);
       }
 
+      // SANITIZAR: Remover prefixos temp_ antigos dos nomes de arquivo
+      const sanitizedSteps = this.sanitizeWorkflowSteps(steps);
+
       const result = await this.timelineService.executeWorkflow({
         projectUrl,
-        steps,
+        steps: sanitizedSteps,
         headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
         stopOnError: stopOnError || false,
         userId: user?.userId,
@@ -1167,6 +1172,83 @@ export class WorkfrontController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  /**
+   * Sanitiza steps do workflow removendo prefixos temp_ antigos dos nomes de arquivo
+   * Isso garante compatibilidade com jobs/requests antigos que tinham o prefixo
+   */
+  private sanitizeWorkflowSteps(steps: any[]): any[] {
+    return steps.map(step => {
+      if (!step.params) return step;
+
+      const sanitizedParams = { ...step.params };
+
+      // Sanitizar fileName (usado em share, comment)
+      if (sanitizedParams.fileName && typeof sanitizedParams.fileName === 'string') {
+        sanitizedParams.fileName = this.removeOldTempPrefix(sanitizedParams.fileName);
+      }
+
+      // Sanitizar assetZipPath (usado em upload)
+      if (sanitizedParams.assetZipPath && typeof sanitizedParams.assetZipPath === 'string') {
+        sanitizedParams.assetZipPath = this.updateFilePath(sanitizedParams.assetZipPath);
+      }
+
+      // Sanitizar finalMaterialPaths (array usado em upload)
+      if (Array.isArray(sanitizedParams.finalMaterialPaths)) {
+        sanitizedParams.finalMaterialPaths = sanitizedParams.finalMaterialPaths.map(
+          (p: string) => this.updateFilePath(p)
+        );
+      }
+
+      // Sanitizar selections (array usado em share)
+      if (Array.isArray(sanitizedParams.selections)) {
+        sanitizedParams.selections = sanitizedParams.selections.map((sel: any) => ({
+          ...sel,
+          fileName: sel.fileName ? this.removeOldTempPrefix(sel.fileName) : sel.fileName
+        }));
+      }
+
+      return { ...step, params: sanitizedParams };
+    });
+  }
+
+  /**
+   * Remove prefixo temp_TIMESTAMP_HASH_ de nomes de arquivo (somente nome, não path)
+   */
+  private removeOldTempPrefix(fileName: string): string {
+    const match = fileName.match(/^temp_\d+_[a-f0-9]+_(.+)$/);
+    return match ? match[1] : fileName;
+  }
+
+  /**
+   * Atualiza path completo removendo prefixo do basename e corrigindo estrutura de diretório
+   */
+  private updateFilePath(filePath: string): string {
+    const dir = path.dirname(filePath);
+    const basename = path.basename(filePath);
+    const cleanName = this.removeOldTempPrefix(basename);
+    
+    // Se o path contém estrutura antiga (temp/staging/YYYY-MM-DD/arquivo.ext)
+    // transformar para nova estrutura (temp/staging/YYYY-MM-DD/uploadId/arquivo.ext)
+    const parts = dir.split(path.sep);
+    const stagingIdx = parts.indexOf('staging');
+    
+    if (stagingIdx >= 0 && stagingIdx + 1 < parts.length) {
+      // Tem data após staging
+      const dateFolder = parts[stagingIdx + 1];
+      
+      // Se não tem uploadId folder após date (estrutura antiga)
+      if (stagingIdx + 2 >= parts.length || parts[stagingIdx + 2] === basename) {
+        // Gerar uploadId para estrutura nova
+        const uploadId = crypto.randomUUID().slice(0, 8);
+        const newDir = parts.slice(0, stagingIdx + 2).concat([uploadId]).join(path.sep);
+        return path.join(newDir, cleanName);
+      }
+    }
+    
+    // Path já está correto ou não é temp/staging, apenas limpar nome
+    return path.join(dir, cleanName);
   }
 
   @Post('upload/mark-used/:uploadId')
