@@ -15,10 +15,10 @@ echo "================================"
 cd /var/www/script-wf
 
 echo "⏹️  Parando $SERVICE..."
-docker compose -f docker compose.prod.yml stop $SERVICE
+docker compose -f docker-compose.prod.yml stop $SERVICE
 
 echo "🚀 Iniciando $SERVICE..."
-docker compose -f docker compose.prod.yml up -d $SERVICE
+docker compose -f docker-compose.prod.yml up -d $SERVICE
 
 echo ""
 echo "⏳ Aguardando..."
@@ -26,10 +26,10 @@ sleep 3
 
 echo ""
 echo "📊 Status:"
-docker compose -f docker compose.prod.yml ps $SERVICE
+docker compose -f docker-compose.prod.yml ps $SERVICE
 
 echo ""
 echo "✅ Restart concluído!"
 echo ""
 echo "Logs:"
-docker compose -f docker compose.prod.yml logs --tail=50 $SERVICE
+docker compose -f docker-compose.prod.yml logs --tail=50 $SERVICE
