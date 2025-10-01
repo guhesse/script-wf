@@ -69,10 +69,36 @@ export class UploadAutomationService {
             try { await page.waitForSelector('iframe[src*="workfront"], iframe[src*="experience"]', { timeout: 10000 }); } catch { }
             const frame = WorkfrontDomHelper.frameLocator(page);
             await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
+            
+            // Debug: informações da página atual
+            this.logger.log(`🌐 [DEBUG] URL atual: ${page.url()}`);
+            this.logger.log(`📄 [DEBUG] Título da página: ${await page.title()}`);
+            
+            // Screenshot inicial da página
+            await page.screenshot({ path: '/app/temp/debug_initial_page.png', fullPage: true });
+            this.logger.log('📸 Screenshot inicial salvo: /app/temp/debug_initial_page.png');
 
             // Asset Release
             if (assetZipPath && assetZipPath.trim()) {
-                await WorkfrontDomHelper.navigateToFolder(frame, page, 'Asset Release');
+                this.logger.log('🗂️ [DEBUG] Tentando navegar para pasta: Asset Release');
+                try {
+                    // Screenshot antes da navegação
+                    await page.screenshot({ path: '/app/temp/debug_before_asset_release.png', fullPage: true });
+                    this.logger.log('📸 Screenshot salvo: /app/temp/debug_before_asset_release.png');
+                    
+                    await WorkfrontDomHelper.navigateToFolder(frame, page, 'Asset Release');
+                    this.logger.log('✅ [DEBUG] Navegação para Asset Release bem-sucedida');
+                    
+                    // Screenshot após navegação bem-sucedida
+                    await page.screenshot({ path: '/app/temp/debug_after_asset_release.png', fullPage: true });
+                    this.logger.log('📸 Screenshot salvo: /app/temp/debug_after_asset_release.png');
+                } catch (error) {
+                    // Screenshot do erro
+                    await page.screenshot({ path: '/app/temp/debug_error_asset_release.png', fullPage: true });
+                    this.logger.error('❌ [DEBUG] Falha na navegação para Asset Release:', error);
+                    this.logger.log('📸 Screenshot do erro salvo: /app/temp/debug_error_asset_release.png');
+                    throw error;
+                }
                 const assetRes = await this.uploadSingleFile(frame, page, assetZipPath);
                 const baseName = path.basename(assetZipPath);
                 const est = estimates.perFile[baseName];
@@ -102,8 +128,15 @@ export class UploadAutomationService {
                 this.logger.log('[UPLOAD] Sem assetZipPath informado - pulando Asset Release');
             }
 
-            // Final Materials
-            await WorkfrontDomHelper.navigateToFolder(frame, page, 'Final Materials');
+            // Final Materials  
+            this.logger.log('🗂️ [DEBUG] Tentando navegar para pasta: Final Materials');
+            try {
+                await WorkfrontDomHelper.navigateToFolder(frame, page, 'Final Materials');
+                this.logger.log('✅ [DEBUG] Navegação para Final Materials bem-sucedida');
+            } catch (error) {
+                this.logger.error('❌ [DEBUG] Falha na navegação para Final Materials:', error);
+                throw error;
+            }
             const pdfs = finalMaterialPaths.filter(f => f.toLowerCase().endsWith('.pdf'));
             const others = finalMaterialPaths.filter(f => !f.toLowerCase().endsWith('.pdf'));
 

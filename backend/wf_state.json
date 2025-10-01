@@ -598,6 +598,48 @@
         "message": "Upload(s) concluído(s) em sessão",
         "fileCount": 1
       }
+    },
+    {
+      "id": "b3d8d1f8-9393-4caa-a445-22f8eece0903",
+      "userId": "cmg6s0o3a0000ux78g292fviz",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-01\\temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-01\\temp_1759287926385_bc30e7ac_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
+          "temp\\staging\\2025-10-01\\temp_1759287926385_2564f240_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
+          "temp\\staging\\2025-10-01\\temp_1759287926386_8eb552a7_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
+          "temp\\staging\\2025-10-01\\temp_1759287926386_97e2bdf8_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759287926386,
+      "updatedAt": 1759287926386,
+      "fileNames": [
+        "temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.zip",
+        "temp_1759287926385_bc30e7ac_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-1x1.mp4",
+        "temp_1759287926385_2564f240_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-4x5.mp4",
+        "temp_1759287926386_8eb552a7_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1-9x16.mp4",
+        "temp_1759287926386_97e2bdf8_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_Vídeo1.pdf"
+      ]
+    },
+    {
+      "id": "3a3f8eae-6bc1-45cf-af96-87a29837c267",
+      "userId": "cmg6s0o3a0000ux78g292fviz",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97ddc00b7e84fe16ea48fa27f8452",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-01\\temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_VÃ­deo1.zip"
+      },
+      "status": "completed",
+      "createdAt": 1759287927156,
+      "updatedAt": 1759288001617,
+      "fileNames": [
+        "temp_1759287926385_e45c3c3a_2601G0179_0057_5477538_br_csg_gam_fy26q3w10_smv_jscon_wtn-holiday_Holidays_AW_VÃ­deo1.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
     }
   ]
 }
