@@ -111,11 +111,11 @@ export class AddCommentResponseDto {
 // DTO para preview de comentário
 export class CommentPreviewDto {
     @ApiProperty({ enum: CommentType, description: 'Tipo de comentário' })
-    @IsEnum(() => CommentType)
+    @IsEnum(CommentType)
     commentType: CommentType;
 
     @ApiProperty({ enum: UserTeam, description: 'Equipe selecionada' })
-    @IsEnum(() => UserTeam)
+    @IsEnum(UserTeam)
     selectedUser: UserTeam;
 }
 
