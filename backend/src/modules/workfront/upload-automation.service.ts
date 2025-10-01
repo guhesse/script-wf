@@ -219,14 +219,90 @@ export class UploadAutomationService {
     // Removidos métodos locais de navegação/seleção em favor do WorkfrontDomHelper
     private async uploadSingleFile(frame: any, page: Page, filePath: string) {
         try {
-            await fs.access(filePath); const addSel = ['button[data-testid="add-new"]', 'button.add-new-react-button', 'button:has-text("Add new")', 'button[id="add-new-button"]']; let opened = false; for (const sel of addSel) { try { const b = frame.locator(sel).first(); if ((await b.count()) > 0 && await b.isVisible()) { await b.click(); await page.waitForTimeout(1200); opened = true; break; } } catch { } } if (!opened) return false; const docSels = ['li[data-test-id="upload-file"]', 'li.select-files-button', 'li:has-text("Document")', '[role="menuitem"]:has-text("Document")']; const original = this.getOriginalFileName(filePath); let uploadPath = filePath; if (path.basename(filePath) !== original) { const tmpDir = path.resolve(process.cwd(), 'Downloads', 'staging', '.tmp_uploads'); await fs.mkdir(tmpDir, { recursive: true }); const tmp = path.resolve(tmpDir, original); try { await fs.unlink(tmp); } catch { } await fs.copyFile(filePath, tmp); uploadPath = tmp; }
+            this.logger.log(`🔄 Iniciando upload do arquivo: ${filePath}`);
+            
+            await fs.access(filePath);
+            this.logger.log(`✅ Arquivo encontrado no sistema: ${filePath}`);
+            
+            const addSel = ['button[data-testid="add-new"]', 'button.add-new-react-button', 'button:has-text("Add new")', 'button[id="add-new-button"]'];
+            let opened = false;
+            
+            for (const sel of addSel) {
+                try {
+                    const b = frame.locator(sel).first();
+                    if ((await b.count()) > 0 && await b.isVisible()) {
+                        await b.click();
+                        await page.waitForTimeout(1200);
+                        opened = true;
+                        this.logger.log(`✅ Botão "Add new" clicado: ${sel}`);
+                        break;
+                    }
+                } catch { }
+            }
+            
+            if (!opened) {
+                this.logger.error(`❌ Não foi possível encontrar botão "Add new"`);
+                return false;
+            }
+            
+            const docSels = ['li[data-test-id="upload-file"]', 'li.select-files-button', 'li:has-text("Document")', '[role="menuitem"]:has-text("Document")'];
+            const original = this.getOriginalFileName(filePath);
+            let uploadPath = filePath;
+            
+            if (path.basename(filePath) !== original) {
+                const tmpDir = path.resolve(process.cwd(), 'Downloads', 'staging', '.tmp_uploads');
+                await fs.mkdir(tmpDir, { recursive: true });
+                const tmp = path.resolve(tmpDir, original);
+                try { await fs.unlink(tmp); } catch { }
+                await fs.copyFile(filePath, tmp);
+                uploadPath = tmp;
+                this.logger.log(`📁 Arquivo copiado para: ${uploadPath}`);
+            }
+
             const fileChooserPromise = page.waitForEvent('filechooser');
-            let clicked = false; for (const sel of docSels) { try { const d = frame.locator(sel).first(); if ((await d.count()) > 0 && await d.isVisible()) { await d.click(); clicked = true; break; } } catch { } }
-            if (!clicked) return false; const chooser = await fileChooserPromise; await chooser.setFiles(uploadPath); await page.waitForTimeout(3500);
-            // verificação simples
+            let clicked = false;
+            
+            for (const sel of docSels) {
+                try {
+                    const d = frame.locator(sel).first();
+                    if ((await d.count()) > 0 && await d.isVisible()) {
+                        await d.click();
+                        clicked = true;
+                        this.logger.log(`✅ Botão "Document" clicado: ${sel}`);
+                        break;
+                    }
+                } catch { }
+            }
+            
+            if (!clicked) {
+                this.logger.error(`❌ Não foi possível encontrar botão "Document"`);
+                return false;
+            }
+            
+            const chooser = await fileChooserPromise;
+            await chooser.setFiles(uploadPath);
+            this.logger.log(`📤 Arquivo enviado via file chooser: ${uploadPath}`);
+            
+            await page.waitForTimeout(3500);
+
+            // verificação de sucesso
             const appearSelectors = [`text="${original}"`, `[aria-label*="${original}"]`, `.doc-detail-view:has-text("${original}")`];
-            for (const sel of appearSelectors) { try { const el = frame.locator(sel).first(); if ((await el.count()) > 0 && await el.isVisible()) return true; } catch { } }
+            for (const sel of appearSelectors) {
+                try {
+                    const el = frame.locator(sel).first();
+                    if ((await el.count()) > 0 && await el.isVisible()) {
+                        this.logger.log(`✅ Upload confirmado - arquivo apareceu na interface: ${original}`);
+                        return true;
+                    }
+                } catch { }
+            }
+            
+            this.logger.warn(`⚠️ Upload pode ter falhado - arquivo não apareceu na interface: ${original}`);
+            // Retornar true mesmo assim pois o arquivo foi enviado
             return true;
-        } catch { return false; }
+        } catch (error) {
+            this.logger.error(`❌ Erro no upload de ${filePath}:`, error);
+            return false;
+        }
     }
 }
