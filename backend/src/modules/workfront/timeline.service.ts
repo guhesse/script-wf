@@ -809,20 +809,56 @@ export class TimelineService {
                 this.logger.log(`   - ${key}: ${value}`);
             });
             
-            // 9. Se interface não carregou, forçar reload
-            if (interfaceStatus.totalElements < 100 || !interfaceStatus.hasWorkfrontApp) {
-                this.logger.warn(`⚠️ Interface não carregou completamente! Tentando reload...`);
-                await page.reload({ waitUntil: 'domcontentloaded' });
-                await page.waitForTimeout(5000);
+            // 9. AGUARDAR CARREGAMENTO COMPLETO DA INTERFACE WORKFRONT
+            if (interfaceStatus.workfrontElements === 0 || interfaceStatus.tableElements === 0 || !interfaceStatus.isReactLoaded) {
+                this.logger.warn(`⚠️ Interface Workfront incompleta! Aguardando carregamento...`);
+                this.logger.warn(`   - workfrontElements: ${interfaceStatus.workfrontElements} (precisa >0)`);
+                this.logger.warn(`   - tableElements: ${interfaceStatus.tableElements} (precisa >0)`);
+                this.logger.warn(`   - isReactLoaded: ${interfaceStatus.isReactLoaded} (precisa true)`);
                 
-                // Re-verificar após reload
-                const afterReload = await page.evaluate(() => ({
-                    totalElements: document.querySelectorAll('*').length,
-                    hasWorkfrontApp: !!document.querySelector('[class*="app"], [id*="app"], main, [role="main"]'),
-                    buttonElements: document.querySelectorAll('button').length
-                }));
+                // Aguardar carregamento completo com múltiplas tentativas
+                let attempts = 0;
+                const maxAttempts = 10;
                 
-                this.logger.log(`🔄 Após reload: elementos=${afterReload.totalElements}, app=${afterReload.hasWorkfrontApp}, botões=${afterReload.buttonElements}`);
+                while (attempts < maxAttempts) {
+                    attempts++;
+                    this.logger.log(`🔄 Tentativa ${attempts}/${maxAttempts}: aguardando interface Workfront...`);
+                    
+                    await page.waitForTimeout(3000);
+                    
+                    const currentStatus = await page.evaluate(() => ({
+                        workfrontElements: document.querySelectorAll('[class*="workfront"], [data-testid*="workfront"], [class*="wf-"], [id*="workfront"]').length,
+                        tableElements: document.querySelectorAll('table, [class*="table"], [data-testid*="table"]').length,
+                        documentRows: document.querySelectorAll('tr, [class*="row"], [data-testid*="row"]').length,
+                        addButtons: document.querySelectorAll('[data-testid="add-new"], button[class*="add"], [class*="add-new"]').length,
+                        folderElements: document.querySelectorAll('[class*="folder"], [data-testid*="folder"]').length
+                    }));
+                    
+                    this.logger.log(`   📊 Status atual: workfront=${currentStatus.workfrontElements}, tables=${currentStatus.tableElements}, rows=${currentStatus.documentRows}, addBtns=${currentStatus.addButtons}, folders=${currentStatus.folderElements}`);
+                    
+                    // Condição de sucesso: tem elementos de tabela E botões de add
+                    if (currentStatus.tableElements > 0 && currentStatus.addButtons > 0) {
+                        this.logger.log(`✅ Interface Workfront carregada completamente! (tentativa ${attempts})`);
+                        break;
+                    }
+                    
+                    // Se chegou na última tentativa, forçar reload
+                    if (attempts === maxAttempts) {
+                        this.logger.warn(`⚠️ Interface ainda incompleta após ${maxAttempts} tentativas. Forçando reload...`);
+                        await page.reload({ waitUntil: 'networkidle' });
+                        await page.waitForTimeout(8000);
+                        
+                        const afterReload = await page.evaluate(() => ({
+                            workfrontElements: document.querySelectorAll('[class*="workfront"], [data-testid*="workfront"]').length,
+                            tableElements: document.querySelectorAll('table, [class*="table"]').length,
+                            addButtons: document.querySelectorAll('[data-testid="add-new"], [class*="add-new"]').length
+                        }));
+                        
+                        this.logger.log(`🔄 Após reload forçado: workfront=${afterReload.workfrontElements}, tables=${afterReload.tableElements}, addBtns=${afterReload.addButtons}`);
+                    }
+                }
+            } else {
+                this.logger.log(`✅ Interface Workfront já carregada completamente!`);
             }
             
             // 10. Capturar screenshot do estado de autenticação
@@ -958,31 +994,64 @@ export class TimelineService {
             // Aguardar um momento para o arquivo aparecer
             await page.waitForTimeout(3000);
             
-            // Procurar pelo arquivo na interface
+            // Procurar pelo arquivo na interface com seletores mais específicos
             const fileFound = await page.evaluate((searchName) => {
-                const selectors = [
-                    `[title*="${searchName}"]`,
-                    `[aria-label*="${searchName}"]`,
-                    `td:has-text("${searchName}")`,
-                    `*:has-text("${searchName}")`
+                // Tentar diferentes variações do nome
+                const searchVariations = [
+                    searchName,
+                    searchName.replace(/\s+/g, ' ').trim(),
+                    searchName.split('_').pop(), // parte final após último _
+                    searchName.substring(0, 50) // primeiros 50 caracteres
                 ];
                 
-                for (const selector of selectors) {
-                    try {
-                        const elements = document.querySelectorAll(selector);
-                        if (elements.length > 0) {
-                            return { found: true, selector, count: elements.length };
+                const selectors = [
+                    // Seletores específicos do Workfront
+                    'tr[data-testid*="document"] td',
+                    'tr[data-testid*="folder"] td', 
+                    '[class*="document-name"]',
+                    '[class*="file-name"]',
+                    'td[class*="name"]',
+                    // Seletores genéricos
+                    '[title*="SEARCH_TERM"]',
+                    '[aria-label*="SEARCH_TERM"]',
+                    'td:has-text("SEARCH_TERM")',
+                    '*[class*="cell"]:has-text("SEARCH_TERM")'
+                ];
+                
+                for (const variation of searchVariations) {
+                    for (const selectorTemplate of selectors) {
+                        try {
+                            const selector = selectorTemplate.replace('SEARCH_TERM', variation);
+                            const elements = document.querySelectorAll(selector);
+                            
+                            // Verificar se o texto realmente contém a variação
+                            for (const element of elements) {
+                                if (element.textContent && element.textContent.includes(variation)) {
+                                    return { 
+                                        found: true, 
+                                        selector: selector,
+                                        count: elements.length,
+                                        matchedText: element.textContent.trim(),
+                                        variation: variation
+                                    };
+                                }
+                            }
+                        } catch (e) {
+                            // Ignorar erros de seletor
                         }
-                    } catch (e) {
-                        // Ignorar erros de seletor
                     }
                 }
                 
-                return { found: false, selector: null, count: 0 };
+                return { found: false, selector: null, count: 0, matchedText: '', variation: '' };
             }, originalName);
             
             if (fileFound.found) {
-                this.logger.log(`✅ [VERIFY] Arquivo "${originalName}" encontrado na interface! (${fileFound.selector}, ${fileFound.count} elementos)`);
+                this.logger.log(`✅ [VERIFY] Arquivo encontrado na interface!`);
+                this.logger.log(`   📄 Procurado: "${originalName}"`);
+                this.logger.log(`   🎯 Encontrado: "${fileFound.matchedText}"`);
+                this.logger.log(`   🔍 Variação: "${fileFound.variation}"`);
+                this.logger.log(`   🎛️ Seletor: ${fileFound.selector}`);
+                this.logger.log(`   📊 Elementos: ${fileFound.count}`);
             } else {
                 this.logger.error(`❌ [VERIFY] Arquivo "${originalName}" NÃO encontrado na interface após upload!`);
                 
