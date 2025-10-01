@@ -45,7 +45,7 @@ function App() {
   if (!user) {
     return (
       <>
-        <AuthScreen onAuthenticated={() => {}} registerEnabled={true} />
+        <AuthScreen onAuthenticated={() => { }} registerEnabled={true} />
         <Toaster position="bottom-right" />
       </>
     );
@@ -58,9 +58,9 @@ function App() {
         <div className="fixed top-2 right-2 z-50 bg-amber-900/60 border border-amber-600/40 backdrop-blur px-4 py-2 rounded text-xs text-amber-200 shadow">
           <div className="flex items-center gap-3">
             <span>Workfront não conectado</span>
-            <Button 
-              size="sm" 
-              variant="secondary" 
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => setShowLoginWizard(true)}
             >
               Login Workfront
@@ -69,15 +69,15 @@ function App() {
         </div>
       )}
       <MainApplication onLogout={() => { /* handled inside main */ }} />
-      <WorkfrontLoginWizard 
-        open={showLoginWizard} 
+      <WorkfrontLoginWizard
+        open={showLoginWizard}
         onClose={() => {
           setShowLoginWizard(false);
           // Recheck login status after wizard closes
           checkLoginStatus().then(status => {
             setWfReady(!!status.loggedIn);
           }).catch(() => setWfReady(false));
-        }} 
+        }}
       />
       <Toaster position="bottom-right" />
     </>
