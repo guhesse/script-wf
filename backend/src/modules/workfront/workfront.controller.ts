@@ -18,7 +18,8 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
+import * as crypto from 'crypto';
 import type { Express } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { WorkfrontService } from './workfront.service';
@@ -731,7 +732,7 @@ export class WorkfrontController {
 
   // ===== ROTAS DE UPLOAD (staging) =====
   @Post('upload/prepare')
-  @ApiOperation({ summary: 'Preparar upload de arquivos via Bunny CDN' })
+  @ApiOperation({ summary: 'Preparar upload de arquivos para diretório temporário local' })
   @UseGuards(JwtAuthGuard)
   async prepareUpload(
     @Body() body: {
@@ -757,37 +758,34 @@ export class WorkfrontController {
         uploadId: string;
         uploadUrl: string;
         headers: Record<string, string>;
-        cdnUrl: string;
+        localPath: string;
         storagePath: string;
       }> = [];
 
-      // Gerar URL de upload para cada arquivo - TODOS vão para Bunny CDN
-      for (const fileInfo of body.files) {
-        const result = await this.bunnyUploadService.generateSignedUploadUrl({
-          fileName: fileInfo.name,
-          fileSize: fileInfo.size,
-          userId,
-          projectUrl: body.projectUrl,
-          brand: 'temp',
-          subfolder: 'staging',
-          expiresInMinutes: 120 // 2 horas para upload
-        });
+      // Criar diretório temporário baseado na data
+      const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp);
+      await fs.mkdir(tempDir, { recursive: true });
 
-        if (!result.success) {
-          throw new HttpException(
-            `Erro ao gerar URL para ${fileInfo.name}: ${result.error}`,
-            HttpStatus.INTERNAL_SERVER_ERROR
-          );
-        }
+      // Gerar paths locais temporários para cada arquivo
+      for (const fileInfo of body.files) {
+        const uploadId = `temp_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+        const tempFileName = `${uploadId}_${fileInfo.name}`;
+        const localPath = path.join(tempDir, tempFileName);
+        const relativePath = path.relative(process.cwd(), localPath);
 
         uploadUrls.push({
           fileName: fileInfo.name,
-          uploadId: result.uploadId!,
-          uploadUrl: result.uploadUrl!,
-          headers: result.headers!,
-          cdnUrl: result.cdnUrl!,
-          storagePath: result.storagePath!
+          uploadId,
+          uploadUrl: `/api/upload/${uploadId}`, // Endpoint para receber o arquivo
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          localPath: relativePath,
+          storagePath: relativePath
         });
+
+        this.logger.log(`Preparado upload local: ${relativePath} (ID: ${uploadId})`);
       }
 
       // Criar job de upload para rastreamento
@@ -806,7 +804,7 @@ export class WorkfrontController {
         uploads: uploadUrls,
         jobId: job.id,
         expiresInMinutes: 120,
-        message: `URLs de upload CDN geradas para ${uploadUrls.length} arquivos`
+        message: `Uploads temporários preparados para ${uploadUrls.length} arquivos`
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -814,6 +812,67 @@ export class WorkfrontController {
         { success: false, message: (error as Error).message },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  @Post('upload/:uploadId')
+  @ApiOperation({ summary: 'Receber arquivo via upload multipart' })
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'file', maxCount: 1 }
+  ], {
+    storage: diskStorage({
+      destination: (req, file, cb) => {
+        const uploadId = req.params.uploadId;
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp);
+        cb(null, tempDir);
+      },
+      filename: (req, file, cb) => {
+        const uploadId = req.params.uploadId;
+        cb(null, `${uploadId}_${file.originalname}`);
+      }
+    })
+  }))
+  async receiveUpload(
+    @Param('uploadId') uploadId: string,
+    @UploadedFiles() files: { file?: Express.Multer.File[] },
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      if (!files.file || files.file.length === 0) {
+        throw new HttpException('Nenhum arquivo enviado', HttpStatus.BAD_REQUEST);
+      }
+
+      const uploadedFile = files.file[0];
+      this.logger.log(`Arquivo recebido: ${uploadedFile.filename} (${uploadedFile.size} bytes)`);
+
+      // Agendar limpeza após 10 minutos
+      setTimeout(() => {
+        this.cleanupTempFile(uploadedFile.path);
+      }, 10 * 60 * 1000); // 10 minutos
+
+      return {
+        success: true,
+        uploadId,
+        fileName: uploadedFile.originalname,
+        size: uploadedFile.size,
+        path: uploadedFile.path
+      };
+    } catch (error) {
+      this.logger.error(`Erro no upload ${uploadId}:`, error);
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  private async cleanupTempFile(filePath: string) {
+    try {
+      await fs.unlink(filePath);
+      this.logger.log(`Arquivo temporário removido: ${filePath}`);
+    } catch (error) {
+      this.logger.warn(`Falha ao remover arquivo temporário ${filePath}:`, error.message);
     }
   }
 
@@ -872,48 +931,15 @@ export class WorkfrontController {
       const userId = user?.userId || 'anonymous';
       if (jobId) this.uploadJobs.markExecuting(jobId);
 
-      this.logger.log(`🚀 Upload para CDN concluído - simulando sucesso para Workfront: ${assetZipPath} + ${finalMaterialPaths.length} finals`);
+      this.logger.log(`🚀 Executando upload automation: ${assetZipPath} + ${finalMaterialPaths.length} finals`);
 
-      // TEMPORÁRIO: Como os arquivos já estão no CDN, vamos retornar sucesso sem fazer upload para Workfront
-      const totalFiles = (assetZipPath ? 1 : 0) + finalMaterialPaths.length;
-      const result = {
-        success: true,
-        message: `Upload CDN concluído com sucesso para ${totalFiles} arquivo(s)`,
-        results: [
-          ...(assetZipPath ? [{
-            type: 'asset-release' as const,
-            fileName: assetZipPath.split('_').slice(-1)[0] || assetZipPath,
-            uploadSuccess: true,
-            shareSuccess: true, 
-            commentSuccess: true,
-            message: 'Arquivo carregado no CDN'
-          }] : []),
-          ...finalMaterialPaths.map(path => ({
-            type: 'final-materials' as const,
-            fileName: path.split('_').slice(-1)[0] || path,
-            uploadSuccess: true,
-            shareSuccess: true,
-            commentSuccess: true,
-            message: 'Arquivo carregado no CDN'
-          }))
-        ],
-        summary: {
-          totalFiles,
-          uploadSuccesses: totalFiles,
-          shareSuccesses: totalFiles,
-          commentSuccesses: totalFiles,
-          errors: 0
-        }
-      };
-
-      // CÓDIGO ORIGINAL COMENTADO - os arquivos já estão no CDN
-      // const result = await this.uploadAutomationService.executeUploadPlan({
-      //   projectUrl,
-      //   selectedUser,
-      //   assetZipPath,
-      //   finalMaterialPaths,
-      //   headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
-      // });
+      const result = await this.uploadAutomationService.executeUploadPlan({
+        projectUrl,
+        selectedUser,
+        assetZipPath,
+        finalMaterialPaths,
+        headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
+      });
       if (jobId) this.uploadJobs.markCompleted(jobId, result.summary || result.message);
       return { ...result, jobId };
     } catch (error) {
