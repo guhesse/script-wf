@@ -510,15 +510,25 @@ export class TimelineService {
         try {
             // DIAGNÓSTICO CRÍTICO ANTES DA NAVEGAÇÃO
             await this.performAuthenticationDiagnostic(page);
-            
-            this.logger.log(`�️ [TIMELINE] Tentando navegar para pasta: ${folder}`);
-            await this.shareService.navigateToFolder(frame, page, folder);
-            this.logger.log(`✅ [TIMELINE] Navegação bem-sucedida para: ${folder}`);
-            
-            await this.uploadThroughDialog(frame, page, [filePath]);
+            // Resolver frame real do Workfront (evita frameLocator estático vazio)
+            const wfFrame = await this.getWorkfrontFrame(page);
+            if (!wfFrame) {
+                throw new Error('Frame Workfront não encontrado (getWorkfrontFrame retornou null)');
+            }
+
+            this.logger.log(`📂 [TIMELINE] Tentando navegar para pasta: ${folder}`);
+            try {
+                await this.navigateToFolderRobust(wfFrame, page, folder);
+                this.logger.log(`✅ [TIMELINE] Navegação bem-sucedida para: ${folder}`);
+            } catch (navErr: any) {
+                this.logger.error(`❌ Falha na navegação (estratégia robusta) para ${folder}: ${navErr.message}`);
+                throw navErr;
+            }
+
+            await this.uploadThroughDialogRobust(wfFrame, page, [filePath]);
             
             // VERIFICAÇÃO CRÍTICA: Upload realmente funcionou?
-            await this.verifyUploadSuccess(frame, page, filePath, folder);
+            await this.verifyUploadSuccess(wfFrame, page, filePath, folder);
         } catch (error) {
             // DIAGNÓSTICO COMPLETO QUANDO FALHA
             await this.performAccessDiagnostic(page, folder);
@@ -531,18 +541,172 @@ export class TimelineService {
         try {
             // DIAGNÓSTICO CRÍTICO ANTES DA NAVEGAÇÃO
             await this.performAuthenticationDiagnostic(page);
-            
+            const wfFrame = await this.getWorkfrontFrame(page);
+            if (!wfFrame) {
+                throw new Error('Frame Workfront não encontrado (getWorkfrontFrame retornou null)');
+            }
+
             this.logger.log(`🖼️ [TIMELINE] Tentando navegar para pasta: ${folder} (${filePaths.length} arquivos)`);
-            await this.shareService.navigateToFolder(frame, page, folder);
+            await this.navigateToFolderRobust(wfFrame, page, folder);
             this.logger.log(`✅ [TIMELINE] Navegação bem-sucedida para: ${folder}`);
-            
-            await this.uploadThroughDialog(frame, page, filePaths);
+            await this.uploadThroughDialogRobust(wfFrame, page, filePaths);
         } catch (error) {
             // DIAGNÓSTICO COMPLETO QUANDO FALHA
             await this.performAccessDiagnostic(page, folder);
             this.logger.error(`❌ [TIMELINE] Falha na navegação para ${folder}: ${error.message}`);
             throw error;
         }
+    }
+
+    /**
+     * Localiza o frame real do Workfront com retry incremental.
+     */
+    private async getWorkfrontFrame(page: Page): Promise<any | null> {
+        const maxMs = 15000;
+        const start = Date.now();
+        let attempt = 0;
+        let directTried = false;
+        while (Date.now() - start < maxMs) {
+            attempt++;
+            const frames = page.frames();
+            const info = frames.map(f => ({ url: f.url(), name: f.name() })).slice(0, 10);
+            this.logger.log(`🔎 [FRAME] Tentativa ${attempt}: totalFrames=${frames.length} => ${info.map(i => i.url).join(' | ')}`);
+            const wf = frames.find(f => /\.workfront\.adobe\.com\/project\//.test(f.url()));
+            if (wf) {
+                // Validação de cookie wf-auth
+                const cookies = await page.context().cookies();
+                const wfAuth = cookies.find(c => c.name === 'wf-auth');
+                if (!wfAuth) {
+                    this.logger.warn('⚠️ [FRAME] Cookie wf-auth ausente - sessão pode ser parcial. Considere reexecutar fluxo de login completo.');
+                }
+                this.logger.log(`✅ [FRAME] Frame Workfront encontrado: ${wf.url()}`);
+                return wf;
+            }
+            // Fallback: tentar URL direta se ainda não tentou e página base é experience.adobe.com
+            if (!directTried && /experience\.adobe\.com/.test(page.url()) && attempt === 5) {
+                const projectMatch = page.url().match(/project\/([a-f0-9]{10,})/);
+                if (projectMatch) {
+                    const projectId = projectMatch[1];
+                    const directUrl = `https://dell.my.workfront.adobe.com/project/${projectId}/documents`;
+                    this.logger.warn(`⚠️ [FRAME] Tentando fallback de navegação direta para: ${directUrl}`);
+                    try {
+                        await page.goto(directUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                        directTried = true;
+                        continue; // reavaliar frames
+                    } catch (err: any) {
+                        this.logger.error(`❌ [FRAME] Fallback URL direta falhou: ${err.message}`);
+                    }
+                }
+            }
+            await page.waitForTimeout(1000);
+        }
+        this.logger.error('❌ [FRAME] Frame do Workfront não localizado após timeout');
+        await this.captureDebugScreenshot(page, 'no-workfront-frame', 'No Workfront frame found');
+        return null;
+    }
+
+    /**
+     * Navegação robusta para pasta usando múltiplas estratégias (texto, índice, fallback scroll).
+     */
+    private async navigateToFolderRobust(frame: any, page: Page, folder: string) {
+        // Primeiro tentar via serviço existente (caso funcione em ambientes locais)
+        try {
+            await this.shareService.navigateToFolder(frame, page, folder);
+            return;
+        } catch { /* fallback custom abaixo */ }
+
+        this.logger.log(`🔁 [NAV] Usando fallback custom para localizar pasta: ${folder}`);
+        const normalized = folder.toLowerCase();
+        const folderCandidates = [
+            `text="${folder}"`,
+            `text=/^${folder}$/i`,
+            `xpath=//div[contains(@class,'folder')][contains(translate(.,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${normalized}')]`,
+            `[data-testid*="folder"]:has-text("${folder}")`,
+            `:text-matches("${folder}")`
+        ];
+        for (const sel of folderCandidates) {
+            try {
+                const loc = frame.locator(sel).first();
+                if (await loc.count() > 0 && await loc.isVisible()) {
+                    await loc.click({ delay: 50 });
+                    this.logger.log(`✅ [NAV] Pasta selecionada via seletor: ${sel}`);
+                    await page.waitForTimeout(1000);
+                    return;
+                }
+            } catch { /* tenta próximo */ }
+        }
+        throw new Error(`Folder '${folder}' não localizada em fallback custom`);
+    }
+
+    /**
+     * Estratégia robusta para abrir diálogo de upload e enviar múltiplos arquivos.
+     */
+    private async uploadThroughDialogRobust(frame: any, page: Page, filePaths: string[]) {
+        this.logger.log(`📁 [UPLOAD-R] Upload robusto de ${filePaths.length} arquivo(s)`);
+        // Seletores fortes do botão Add new presentes no DOM real enviado pelo usuário
+        const addSelectors = [
+            'button[data-testid="add-new"]',
+            '#add-new-button',
+            '#doc-central-add-new-dropdown-react-container button.add-new-react-button',
+            'button.add-new-react-button',
+            'button:has-text("Add new")'
+        ];
+        let opened = false;
+        for (const sel of addSelectors) {
+            try {
+                const btn = frame.locator(sel).first();
+                if (await btn.count() > 0 && await btn.isVisible()) {
+                    await btn.click({ delay: 30 });
+                    await page.waitForTimeout(400);
+                    opened = true;
+                    this.logger.log(`✅ [UPLOAD-R] Botão Add new clicado: ${sel}`);
+                    break;
+                }
+            } catch { }
+        }
+        if (!opened) {
+            this.logger.error('❌ [UPLOAD-R] Não conseguiu clicar Add new (tentará screenshot)');
+            await this.captureDebugScreenshot(page, 'no-add-new', 'Could not locate Add new');
+            throw new Error('Botão Add new não encontrado');
+        }
+
+        // Abrir opção Document
+        const docSelectors = [
+            'li[data-test-id="upload-file"]',
+            'li.select-files-button',
+            'li:has-text("Document")',
+            '[role="menuitem"]:has-text("Document")'
+        ];
+        let docClicked = false;
+        const filePromises: Promise<any>[] = [];
+        for (const filePath of filePaths) {
+            const original = this.getOriginalFileName(filePath);
+            const chooserPromise = page.waitForEvent('filechooser');
+            // Clicar item de menu somente na primeira vez (para múltiplos talvez precise reabrir)
+            if (!docClicked) {
+                for (const sel of docSelectors) {
+                    try {
+                        const m = frame.locator(sel).first();
+                        if (await m.count() > 0 && await m.isVisible()) {
+                            await m.click();
+                            docClicked = true;
+                            this.logger.log(`✅ [UPLOAD-R] Opção Document clicada: ${sel}`);
+                            break;
+                        }
+                    } catch { }
+                }
+            }
+            if (!docClicked) throw new Error('Opção Document não encontrada');
+            // File chooser
+            const chooser = await chooserPromise;
+            await chooser.setFiles(filePath);
+            this.logger.log(`📤 [UPLOAD-R] Enviado: ${filePath}`);
+            // Aguardar sinal de processamento inicial
+            filePromises.push(page.waitForTimeout(500));
+        }
+        await Promise.all(filePromises);
+        this.logger.log('🕒 [UPLOAD-R] Arquivos submetidos; aguardando breve estabilização');
+        await page.waitForTimeout(3000);
     }
 
     private async uploadThroughDialog(frame: any, page: Page, filePaths: string[]) {
