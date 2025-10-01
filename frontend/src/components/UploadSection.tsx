@@ -154,34 +154,30 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
             const result = await prepareResponse.json();
 
             if (result.success) {
-                // Fazer upload de cada arquivo para o CDN
+                // Fazer upload de cada arquivo para o servidor local
                 const allFiles = [assetZip, ...finalMaterials];
 
                 for (let i = 0; i < allFiles.length; i++) {
                     const file = allFiles[i];
                     const uploadInfo = result.uploads[i];
 
-                    // Upload direto para Bunny CDN
+                    // Upload para servidor local usando multipart/form-data
+                    const formData = new FormData();
+                    formData.append('file', file);
+
                     const uploadResponse = await fetch(uploadInfo.uploadUrl, {
-                        method: 'PUT',
+                        method: 'POST',
                         headers: {
-                            ...uploadInfo.headers,
-                            'Content-Type': file.type || 'application/octet-stream'
+                            'Authorization': `Bearer ${token}`
                         },
-                        body: file
+                        body: formData
                     });
 
                     if (!uploadResponse.ok) {
                         throw new Error(`Erro no upload de ${file.name}: ${uploadResponse.statusText}`);
                     }
 
-                    // Marcar arquivo como utilizado
-                    await fetch(`/api/upload/mark-used/${uploadInfo.uploadId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    console.log(`✅ Arquivo ${file.name} enviado com sucesso para ${uploadInfo.uploadUrl}`);
                 }
 
                 // Processar resposta - separar por extensão do arquivo (mais simples)
@@ -201,7 +197,7 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     setJobStatus('staged');
                 }
 
-                console.log('Arquivos enviados para CDN:', result);
+                console.log('Arquivos enviados para servidor:', result);
             }
         } catch (error) {
             console.error('Erro no upload:', error);
