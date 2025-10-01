@@ -7,7 +7,8 @@ import {
   History,
   FolderDown,
   FileText,
-  GalleryHorizontal
+  GalleryHorizontal,
+  MessageSquare
 } from 'lucide-react';
 import { ProjectHistory } from './ProjectHistory';
 import UploadSection from './UploadSection';
@@ -16,6 +17,7 @@ import BriefingContentViewer from './BriefingContentViewer';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import MastersGallery from './MastersGallery';
 import { useAppAuth } from '@/hooks/useAppAuth';
+import CommentsGenerator from './CommentsGenerator';
 
 interface MainApplicationProps {
   onLogout: () => void;
@@ -26,7 +28,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
   // Estados de pastas/seleção foram removidos (não utilizados neste componente após refatoração)
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
   const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters'>('upload');
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters' | 'comments'>('upload');
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
@@ -191,6 +193,16 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 <GalleryHorizontal className="h-5 w-5" />
                 <span className="font-medium">Masters</span>
               </button>
+              <button
+                onClick={() => setActiveSection('comments')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'comments'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+              >
+                <MessageSquare className="h-5 w-5" />
+                <span className="font-medium">Comentários Workfront</span>
+              </button>
             </nav>
           </div>
 
@@ -225,6 +237,11 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
             )}
             {activeSection === 'masters' && (
               <MastersGallery />
+            )}
+
+            {/* Comments Generator Section */}
+            {activeSection === 'comments' && (
+              <CommentsGenerator />
             )}
           </div>
         </div>
