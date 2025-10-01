@@ -34,14 +34,14 @@ const isPdf = (f: File) => /\.pdf$/i.test(f.name);
 const isImage = (f: File) => /\.(png|jpg|jpeg)$/i.test(f.name);
 const isVideo = (f: File) => /\.(mp4|mov|mkv)$/i.test(f.name);
 
-interface UploadInfo {
-    fileName: string;
-    uploadId: string;
-    uploadUrl: string;
-    headers: Record<string, string>;
-    cdnUrl: string;
-    storagePath: string;
-}
+// interface UploadInfo {
+//     fileName: string;
+//     uploadId: string;
+//     uploadUrl: string;
+//     headers: Record<string, string>;
+//     cdnUrl: string;
+//     storagePath: string;
+// }
 
 export default function UploadSection({ projectUrl, setProjectUrl, selectedUser, setSelectedUser, currentProject }: UploadSectionProps) {
     const [assetZip, setAssetZip] = useState<File | null>(null);
