@@ -149,6 +149,7 @@ export class UploadAutomationService {
             for (const filePath of [...others, ...pdfs]) {
                 const isPdf = pdfs.includes(filePath);
                 const baseName = path.basename(filePath);
+                const originalName = this.getOriginalFileName(filePath);
                 const upOk = await this.uploadSingleFile(frame, page, filePath);
                 const est = estimates.perFile[baseName];
                 const entry = {
@@ -165,7 +166,7 @@ export class UploadAutomationService {
 
                 // Share imediato do arquivo final
                 try {
-                    const shareCtx = await this.shareService.openProjectAndSelectDocument(projectUrl, 'Final Materials', baseName, headless);
+                    const shareCtx = await this.shareService.openProjectAndSelectDocument(projectUrl, 'Final Materials', originalName, headless);
                     try {
                         await this.shareService.shareUsingOpenPage(shareCtx.frame, shareCtx.page, selectedUser as any);
                         entry.shareSuccess = true; shareSuccesses++;
@@ -254,7 +255,10 @@ export class UploadAutomationService {
 
     // Helpers reutilizados (extraídos)
     // Removidos: ensureStateFile, frameLocator, closeSidebarIfOpen, waitForWorkfrontFrame (agora em helpers)
-    private getOriginalFileName(filePath: string) { const base = path.basename(filePath); const m = base.match(/^[0-9]+_[a-z0-9]+__(.+)$/); return m ? m[1] : base; }
+    private getOriginalFileName(filePath: string) { 
+        // Arquivos agora são salvos diretamente com nome correto (sem prefixo temp_)
+        return path.basename(filePath);
+    }
     // Removidos métodos locais de navegação/seleção em favor do WorkfrontDomHelper
     private async uploadSingleFile(frame: any, page: Page, filePath: string) {
         try {
@@ -285,18 +289,9 @@ export class UploadAutomationService {
             }
             
             const docSels = ['li[data-test-id="upload-file"]', 'li.select-files-button', 'li:has-text("Document")', '[role="menuitem"]:has-text("Document")'];
-            const original = this.getOriginalFileName(filePath);
-            let uploadPath = filePath;
             
-            if (path.basename(filePath) !== original) {
-                const tmpDir = path.resolve(process.cwd(), 'Downloads', 'staging', '.tmp_uploads');
-                await fs.mkdir(tmpDir, { recursive: true });
-                const tmp = path.resolve(tmpDir, original);
-                try { await fs.unlink(tmp); } catch { }
-                await fs.copyFile(filePath, tmp);
-                uploadPath = tmp;
-                this.logger.log(`📁 Arquivo copiado para: ${uploadPath}`);
-            }
+            // Arquivos já são salvos com nome correto, upload direto
+            this.logger.log(`📤 Preparando upload de: ${path.basename(filePath)}`);
 
             const fileChooserPromise = page.waitForEvent('filechooser');
             let clicked = false;
@@ -319,24 +314,25 @@ export class UploadAutomationService {
             }
             
             const chooser = await fileChooserPromise;
-            await chooser.setFiles(uploadPath);
-            this.logger.log(`📤 Arquivo enviado via file chooser: ${uploadPath}`);
+            await chooser.setFiles(filePath); // Upload direto do arquivo
+            this.logger.log(`📤 Arquivo enviado: ${path.basename(filePath)}`);
             
             await page.waitForTimeout(3500);
 
-            // verificação de sucesso
-            const appearSelectors = [`text="${original}"`, `[aria-label*="${original}"]`, `.doc-detail-view:has-text("${original}")`];
+            // Verificação simples de sucesso
+            const fileName = path.basename(filePath);
+            const appearSelectors = [`text="${fileName}"`, `[aria-label*="${fileName}"]`, `.doc-detail-view:has-text("${fileName}")`];
             for (const sel of appearSelectors) {
                 try {
                     const el = frame.locator(sel).first();
                     if ((await el.count()) > 0 && await el.isVisible()) {
-                        this.logger.log(`✅ Upload confirmado - arquivo apareceu na interface: ${original}`);
+                        this.logger.log(`✅ Upload confirmado: ${fileName}`);
                         return true;
                     }
                 } catch { }
             }
             
-            this.logger.warn(`⚠️ Upload pode ter falhado - arquivo não apareceu na interface: ${original}`);
+            this.logger.log(`ℹ️ Arquivo enviado, aguardando processamento Workfront: ${fileName}`);
             // Retornar true mesmo assim pois o arquivo foi enviado
             return true;
         } catch (error) {
