@@ -89,7 +89,7 @@ export class ProjectHistoryQueryDto {
 
     @ApiProperty({ required: false, enum: LinkStatus })
     @IsOptional()
-    @IsEnum(LinkStatus)
+    @IsEnum(() => LinkStatus)
     status?: LinkStatus;
 }
 

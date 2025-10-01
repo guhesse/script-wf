@@ -16,8 +16,11 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: docker/backend.Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile.dev
+      target: development
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     restart: unless-stopped
     environment:
       NODE_ENV: production

@@ -1,8 +1,12 @@
 services:
   backend:
     build:
-      context: .
-      dockerfile: docker/backend.Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: script-wf-backend-prod:latest
     restart: unless-stopped
     environment:
       NODE_ENV: production
