@@ -15,7 +15,7 @@ interface DirectUploadResult {
     success: boolean;
     uploadId: string;
     fileName: string;
-    cdnUrl: string;
+    localPath: string;
     storagePath: string;
 }
 
@@ -64,7 +64,7 @@ export const useDirectUpload = () => {
 
             const responseData = await prepareResponse.json();
             const firstUpload = responseData.uploads[0]; // Pegar o primeiro arquivo
-            const { uploadId, uploadUrl, headers, cdnUrl, storagePath } = firstUpload;
+            const { uploadId, uploadUrl, storagePath } = firstUpload;
 
             // Atualizar progresso - iniciando upload
             setUploadProgress(prev => ({
@@ -76,27 +76,21 @@ export const useDirectUpload = () => {
                 }
             }));
 
-            // Upload direto para o Bunny CDN
+            // Upload para servidor local usando multipart/form-data
+            const formData = new FormData();
+            formData.append('file', file);
+
             const uploadResponse = await fetch(uploadUrl, {
-                method: 'PUT',
+                method: 'POST',
                 headers: {
-                    ...headers,
-                    'Content-Type': file.type || 'application/octet-stream'
+                    'Authorization': `Bearer ${token}`
                 },
-                body: file
+                body: formData
             });
 
             if (!uploadResponse.ok) {
                 throw new Error(`Erro no upload: ${uploadResponse.statusText}`);
             }
-
-            // Marcar como utilizado
-            await fetch(`/api/upload/mark-used/${uploadId}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
 
             // Atualizar progresso - concluído
             setUploadProgress(prev => ({
@@ -112,7 +106,7 @@ export const useDirectUpload = () => {
                 success: true,
                 uploadId,
                 fileName: file.name,
-                cdnUrl,
+                localPath: storagePath,
                 storagePath
             };
 
