@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { LoginProgressState } from '../types/workfrontLogin';
-import { getLoginProgress, getLoginStatus, startLogin } from '../services/workfrontLoginService';
+import type { LoginProgressState, LoginCredentials } from '../types/workfrontLogin';
+import { getLoginProgress, getLoginStatus, startLogin, cancelLogin } from '../services/workfrontLoginService';
 
 export interface UseWFLoginOpts {
     initialIntervalMs?: number;
@@ -59,12 +59,12 @@ export function useWorkfrontLoginProgress(opts: UseWFLoginOpts = {}) {
         }
     }, [cfg.backoffFactor, cfg.maxIntervalMs, cfg.stopOnSuccessDelayMs]);
 
-    const start = useCallback(async () => {
+    const start = useCallback(async (options?: { headless?: boolean; credentials?: LoginCredentials }) => {
         setError(null);
         setProgress(null);
         nextDelayRef.current = cfg.initialIntervalMs;
         try {
-            const r = await startLogin();
+            const r = await startLogin(options);
             if (r.alreadyRunning) {
                 setAlreadyRunning(true);
             }
@@ -82,6 +82,18 @@ export function useWorkfrontLoginProgress(opts: UseWFLoginOpts = {}) {
         setRunning(false);
     }, []);
 
+    const cancel = useCallback(async () => {
+        try {
+            await cancelLogin();
+            stop();
+            setProgress(null);
+            setError(null);
+            setAlreadyRunning(false);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Erro ao cancelar login');
+        }
+    }, [stop]);
+
     useEffect(() => {
         return () => clearTimer();
     }, []);
@@ -95,5 +107,5 @@ export function useWorkfrontLoginProgress(opts: UseWFLoginOpts = {}) {
         })();
     }, []);
 
-    return { progress, status, running, error, alreadyRunning, start, stop };
+    return { progress, status, running, error, alreadyRunning, start, stop, cancel };
 }

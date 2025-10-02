@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+      cache_from:
+        - script-wf-backend-deps:latest
+        - script-wf-backend:latest
+    image: script-wf-backend:latest
+    container_name: script-wf-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/temp:/app/temp
+      - ./backend/uploads:/app/uploads
+      - ./backend/state:/app/state
+    environment:
+      NODE_ENV: production
+      WF_HEADLESS_DEFAULT: "true"

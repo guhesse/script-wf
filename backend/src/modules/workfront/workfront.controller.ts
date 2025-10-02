@@ -18,7 +18,8 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
+import * as crypto from 'crypto';
 import type { Express } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { WorkfrontService } from './workfront.service';
@@ -69,6 +70,7 @@ import { UploadJobsService } from './upload-jobs.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 import { resolveHeadless } from './utils/headless.util';
+import { BunnyUploadUrlService } from '../../services/bunny-upload-url.service';
 
 @ApiTags('Projetos')
 @Controller('api')
@@ -88,6 +90,7 @@ export class WorkfrontController {
     private readonly hoursAutomation: HoursAutomationService,
     private readonly timelineService: TimelineService,
     private readonly uploadJobs: UploadJobsService,
+    private readonly bunnyUploadService: BunnyUploadUrlService,
   ) { }
 
   @Get('health')
@@ -729,74 +732,215 @@ export class WorkfrontController {
 
   // ===== ROTAS DE UPLOAD (staging) =====
   @Post('upload/prepare')
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'assetZip', maxCount: 1 },
-    { name: 'finalMaterials', maxCount: 50 },
-  ], {
-    storage: diskStorage({
-      destination: (req, file, cb) => {
-        const base = path.resolve(process.cwd(), 'Downloads', 'staging');
-        fs.mkdirSync(base, { recursive: true });
-        cb(null, base);
-      },
-      filename: (req, file, cb) => {
-        // Preservar nome original do arquivo
-        const originalName = file.originalname;
-        // Apenas sanitizar caracteres perigosos, mantendo o nome
-        const safeName = originalName.replace(/[<>:"|?*\\]/g, '_');
-        cb(null, safeName);
-      }
-    })
-  }))
-
-  
+  @ApiOperation({ summary: 'Preparar upload de arquivos para diretório temporário local' })
   @UseGuards(JwtAuthGuard)
   async prepareUpload(
-    @UploadedFiles() files: any,
-    @Body() body: { projectUrl: string; selectedUser: 'carol' | 'giovana' | 'test'; jobId?: string },
+    @Body() body: {
+      files: Array<{ name: string; size: number; type?: string }>;
+      projectUrl: string;
+      selectedUser: 'carol' | 'giovana' | 'test';
+      jobId?: string;
+    },
     @CurrentUser() user?: AuthUser
   ) {
     try {
-      // DEBUG TEMP: remover depois
-      const rawAuth = (arguments as any)[0]?.headers?.authorization || 'N/A';
-      this.logger.log(`[debug] prepareUpload Authorization header: ${rawAuth}`);
-      if (!body?.projectUrl) throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
-      const assetZip = files?.assetZip?.[0];
-      const finals = files?.finalMaterials || [];
-      if (!assetZip) throw new HttpException('assetZip é obrigatório', HttpStatus.BAD_REQUEST);
-      if (finals.length === 0) throw new HttpException('finalMaterials é obrigatório', HttpStatus.BAD_REQUEST);
-
-      const staged = {
-        assetZip: assetZip ? path.resolve(assetZip.destination, assetZip.filename) : undefined,
-        finalMaterials: finals.map(f => path.resolve(f.destination, f.filename)),
-      };
-
-      // Identificação de usuário (stub simples) - em produção usar auth real
-  const userId = user?.userId || 'anonymous';
-      // Se foi passado jobId e existe, atualiza staged desse job (caso usuário queira refazer)
-      let jobId = body.jobId;
-      if (jobId) {
-        const existing = this.uploadJobs.getJob(jobId, userId, false);
-        if (!existing) jobId = undefined; // não pertence a ele
+      if (!body.projectUrl) {
+        throw new HttpException('projectUrl é obrigatório', HttpStatus.BAD_REQUEST);
       }
-      let job;
-      if (!jobId) {
-        job = this.uploadJobs.createJob({ userId, projectUrl: body.projectUrl, staged });
-      } else {
-        job = this.uploadJobs.getJob(jobId, userId, false)!;
-        // simples overwrite
-        (job as any).staged = staged; // para simplicidade; serviço não expôs update direto
+
+      if (!body.files || body.files.length === 0) {
+        throw new HttpException('Lista de arquivos é obrigatória', HttpStatus.BAD_REQUEST);
       }
+
+      const userId = user?.userId || 'anonymous';
+      const uploadUrls: Array<{
+        fileName: string;
+        uploadId: string;
+        uploadUrl: string;
+        headers: Record<string, string>;
+        localPath: string;
+        storagePath: string;
+      }> = [];
+
+      // Timestamp base para todos os uploads desta sessão
+      const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+      // Gerar paths locais para cada arquivo (SEM prefixo temp_)
+      for (const fileInfo of body.files) {
+        const uploadId = crypto.randomUUID().slice(0, 8); // ID único por arquivo
+        const tempFileName = fileInfo.name; // Nome original sem prefixo
+        
+        // Usar subdiretório por uploadId para evitar colisões
+        const fileDir = path.join(process.cwd(), 'temp', 'staging', timestamp, uploadId);
+        const localPath = path.join(fileDir, tempFileName);
+        const relativePath = path.relative(process.cwd(), localPath);
+
+        uploadUrls.push({
+          fileName: fileInfo.name,
+          uploadId,
+          uploadUrl: `/api/upload/${uploadId}`, // Endpoint para receber o arquivo
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          localPath: relativePath,
+          storagePath: relativePath
+        });
+
+        this.logger.log(`Preparado upload local: ${relativePath} (ID: ${uploadId})`);
+      }
+
+      // Criar job de upload para rastreamento
+      const job = this.uploadJobs.createJob({ 
+        userId, 
+        projectUrl: body.projectUrl, 
+        staged: {
+          // Simular paths locais para compatibilidade com sistema existente
+          assetZip: uploadUrls.find(u => u.fileName.toLowerCase().endsWith('.zip'))?.storagePath,
+          finalMaterials: uploadUrls.filter(u => !u.fileName.toLowerCase().endsWith('.zip')).map(u => u.storagePath)
+        }
+      });
+
       return {
         success: true,
-        staged,
+        uploads: uploadUrls,
         jobId: job.id,
-        status: job.status,
-        message: 'Arquivos salvos em staging com sucesso',
+        expiresInMinutes: 120,
+        message: `Uploads temporários preparados para ${uploadUrls.length} arquivos`
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      throw new HttpException({ success: false, message: (error as Error).message }, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('upload/:uploadId')
+  @ApiOperation({ summary: 'Receber arquivo via upload multipart' })
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'file', maxCount: 1 }
+  ], {
+    storage: diskStorage({
+      destination: async (req, file, cb) => {
+        try {
+          const uploadId = req.params.uploadId;
+          const timestamp = new Date().toISOString().slice(0, 10);
+          // Usar subdiretório único por uploadId para evitar colisões
+          const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp, uploadId);
+          
+          // Garantir que o diretório existe
+          await fs.mkdir(tempDir, { recursive: true });
+          
+          console.log(`📁 Diretório preparado: ${tempDir}`);
+          cb(null, tempDir);
+        } catch (error) {
+          console.error('❌ Erro ao criar diretório:', error);
+          cb(error as Error, '');
+        }
+      },
+      filename: (req, file, cb) => {
+        // Salvar com nome original (SEM prefixo uploadId)
+        const filename = file.originalname;
+        console.log(`📄 Arquivo será salvo como: ${filename}`);
+        cb(null, filename);
+      }
+    })
+  }))
+  async receiveUpload(
+    @Param('uploadId') uploadId: string,
+    @UploadedFiles() files: { file?: Express.Multer.File[] },
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      this.logger.log(`📥 Recebendo upload para ID: ${uploadId}`);
+      this.logger.log(`📝 Arquivos recebidos:`, files);
+
+      if (!files.file || files.file.length === 0) {
+        this.logger.error(`❌ Nenhum arquivo enviado para uploadId: ${uploadId}`);
+        throw new HttpException('Nenhum arquivo enviado', HttpStatus.BAD_REQUEST);
+      }
+
+      const uploadedFile = files.file[0];
+      this.logger.log(`✅ Arquivo recebido: ${uploadedFile.filename} (${uploadedFile.size} bytes)`);
+      this.logger.log(`📁 Salvo em: ${uploadedFile.path}`);
+      
+      // Verificar se o arquivo foi realmente salvo
+      try {
+        const stats = await fs.stat(uploadedFile.path);
+        this.logger.log(`🔍 Arquivo confirmado no disco: ${stats.size} bytes`);
+      } catch (statError) {
+        this.logger.error(`❌ Arquivo não encontrado no disco: ${uploadedFile.path}`, statError);
+      }
+
+      // Agendar limpeza após 10 minutos
+      setTimeout(() => {
+        this.cleanupTempFile(uploadedFile.path);
+      }, 10 * 60 * 1000); // 10 minutos
+
+      return {
+        success: true,
+        uploadId,
+        fileName: uploadedFile.originalname,
+        size: uploadedFile.size,
+        path: uploadedFile.path
+      };
+    } catch (error) {
+      this.logger.error(`❌ Erro no upload ${uploadId}:`, error);
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  private async cleanupTempFile(filePath: string) {
+    try {
+      await fs.unlink(filePath);
+      this.logger.log(`Arquivo temporário removido: ${filePath}`);
+    } catch (error) {
+      this.logger.warn(`Falha ao remover arquivo temporário ${filePath}:`, error.message);
+    }
+  }
+
+  @Post('upload/generate-direct-url')
+  @ApiOperation({ summary: 'Gerar URL para upload direto ao Bunny CDN (arquivos grandes)' })
+  @UseGuards(JwtAuthGuard)
+  async generateDirectUploadUrl(
+    @Body() body: { fileName: string; brand?: string; subfolder?: string },
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      if (!body.fileName) {
+        throw new HttpException('fileName é obrigatório', HttpStatus.BAD_REQUEST);
+      }
+
+      const result = await this.bunnyUploadService.generateSignedUploadUrl({
+        fileName: body.fileName,
+        brand: body.brand || 'temp',
+        subfolder: body.subfolder || 'staging',
+        expiresInMinutes: 60 // URL válida por 1 hora
+      });
+
+      if (!result.success) {
+        throw new HttpException(result.error || 'Erro ao gerar URL', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      return {
+        success: true,
+        uploadId: result.uploadId,
+        uploadUrl: result.uploadUrl,
+        headers: result.headers,
+        storagePath: result.storagePath,
+        cdnUrl: result.cdnUrl,
+        message: 'URL de upload direto gerada com sucesso'
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -821,7 +965,7 @@ export class WorkfrontController {
         selectedUser,
         assetZipPath,
         finalMaterialPaths,
-  headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
+        headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
       });
       if (jobId) this.uploadJobs.markCompleted(jobId, result.summary || result.message);
       return { ...result, jobId };
@@ -883,9 +1027,12 @@ export class WorkfrontController {
         throw new HttpException('steps deve ser um array não vazio', HttpStatus.BAD_REQUEST);
       }
 
+      // SANITIZAR: Remover prefixos temp_ antigos dos nomes de arquivo
+      const sanitizedSteps = this.sanitizeWorkflowSteps(steps);
+
       const result = await this.timelineService.executeWorkflow({
         projectUrl,
-        steps,
+        steps: sanitizedSteps,
         headless: resolveHeadless({ override: process.env.NODE_ENV === 'development' ? debugHeadless : undefined, allowOverride: true }),
         stopOnError: stopOnError || false,
         userId: user?.userId,
@@ -975,6 +1122,152 @@ export class WorkfrontController {
           message: (error as Error).message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // ===== ROTAS ADMINISTRATIVAS DE LIMPEZA =====
+  
+  @Get('admin/temp-uploads/stats')
+  @ApiOperation({ summary: 'Estatísticas de uploads temporários [ADMIN]' })
+  @UseGuards(JwtAuthGuard)
+  async getTempUploadStats(@CurrentUser() user?: AuthUser) {
+    try {
+      const stats = await this.bunnyUploadService.getStats();
+      return {
+        success: true,
+        stats,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('admin/temp-uploads/cleanup')
+  @ApiOperation({ summary: 'Executar limpeza manual de uploads temporários [ADMIN]' })
+  @UseGuards(JwtAuthGuard)
+  async manualCleanup(
+    @Body() body?: { includeUsedFiles?: boolean; usedFilesOlderThanHours?: number },
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      // Importar o serviço aqui para evitar dependência circular
+      const { CleanupSchedulerService } = await import('../../services/cleanup-scheduler.service');
+      const cleanupService = new CleanupSchedulerService(this.bunnyUploadService);
+      
+      const result = await cleanupService.manualCleanup(body || {});
+      
+      return {
+        success: true,
+        result,
+        message: `Limpeza manual concluída: ${result.totalDeleted} arquivos removidos`
+      };
+    } catch (error) {
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * Sanitiza steps do workflow removendo prefixos temp_ antigos dos nomes de arquivo
+   * Isso garante compatibilidade com jobs/requests antigos que tinham o prefixo
+   */
+  private sanitizeWorkflowSteps(steps: any[]): any[] {
+    return steps.map(step => {
+      if (!step.params) return step;
+
+      const sanitizedParams = { ...step.params };
+
+      // Sanitizar fileName (usado em share, comment)
+      if (sanitizedParams.fileName && typeof sanitizedParams.fileName === 'string') {
+        sanitizedParams.fileName = this.removeOldTempPrefix(sanitizedParams.fileName);
+      }
+
+      // Sanitizar assetZipPath (usado em upload)
+      if (sanitizedParams.assetZipPath && typeof sanitizedParams.assetZipPath === 'string') {
+        sanitizedParams.assetZipPath = this.updateFilePath(sanitizedParams.assetZipPath);
+      }
+
+      // Sanitizar finalMaterialPaths (array usado em upload)
+      if (Array.isArray(sanitizedParams.finalMaterialPaths)) {
+        sanitizedParams.finalMaterialPaths = sanitizedParams.finalMaterialPaths.map(
+          (p: string) => this.updateFilePath(p)
+        );
+      }
+
+      // Sanitizar selections (array usado em share)
+      if (Array.isArray(sanitizedParams.selections)) {
+        sanitizedParams.selections = sanitizedParams.selections.map((sel: any) => ({
+          ...sel,
+          fileName: sel.fileName ? this.removeOldTempPrefix(sel.fileName) : sel.fileName
+        }));
+      }
+
+      return { ...step, params: sanitizedParams };
+    });
+  }
+
+  /**
+   * Remove prefixo temp_TIMESTAMP_HASH_ de nomes de arquivo (somente nome, não path)
+   */
+  private removeOldTempPrefix(fileName: string): string {
+    const match = fileName.match(/^temp_\d+_[a-f0-9]+_(.+)$/);
+    return match ? match[1] : fileName;
+  }
+
+  /**
+   * Atualiza path completo removendo prefixo do basename e corrigindo estrutura de diretório
+   */
+  private updateFilePath(filePath: string): string {
+    const dir = path.dirname(filePath);
+    const basename = path.basename(filePath);
+    const cleanName = this.removeOldTempPrefix(basename);
+    
+    // Se o path contém estrutura antiga (temp/staging/YYYY-MM-DD/arquivo.ext)
+    // transformar para nova estrutura (temp/staging/YYYY-MM-DD/uploadId/arquivo.ext)
+    const parts = dir.split(path.sep);
+    const stagingIdx = parts.indexOf('staging');
+    
+    if (stagingIdx >= 0 && stagingIdx + 1 < parts.length) {
+      // Tem data após staging
+      const dateFolder = parts[stagingIdx + 1];
+      
+      // Se não tem uploadId folder após date (estrutura antiga)
+      if (stagingIdx + 2 >= parts.length || parts[stagingIdx + 2] === basename) {
+        // Gerar uploadId para estrutura nova
+        const uploadId = crypto.randomUUID().slice(0, 8);
+        const newDir = parts.slice(0, stagingIdx + 2).concat([uploadId]).join(path.sep);
+        return path.join(newDir, cleanName);
+      }
+    }
+    
+    // Path já está correto ou não é temp/staging, apenas limpar nome
+    return path.join(dir, cleanName);
+  }
+
+  @Post('upload/mark-used/:uploadId')
+  @ApiOperation({ summary: 'Marcar upload temporário como utilizado' })
+  @UseGuards(JwtAuthGuard)
+  async markUploadAsUsed(
+    @Param('uploadId') uploadId: string,
+    @CurrentUser() user?: AuthUser
+  ) {
+    try {
+      const success = await this.bunnyUploadService.markAsUsed(uploadId);
+      return {
+        success,
+        message: success ? 'Upload marcado como utilizado' : 'Falha ao marcar upload'
+      };
+    } catch (error) {
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
