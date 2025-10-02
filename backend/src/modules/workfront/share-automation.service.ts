@@ -253,7 +253,22 @@ export class ShareAutomationService {
                                 await btn.click();
                             });
                             
-                            await page.waitForTimeout(2500);
+                            // IMPORTANTE: Aguarda mais tempo pois o modal Spectrum tem animação
+                            // 1. Primeiro aguarda o underlay (fundo escuro) aparecer
+                            this.logger.log('⏳ Aguardando underlay aparecer...');
+                            try {
+                                await frameLocator.locator('[data-testid="underlay"]').first().waitFor({ 
+                                    state: 'visible', 
+                                    timeout: 2000 
+                                });
+                                this.logger.log('✅ Underlay apareceu');
+                            } catch {
+                                this.logger.warn('⚠️ Underlay não detectado, continuando...');
+                            }
+                            
+                            // 2. Aguarda o modal aparecer com animação slide-in
+                            this.logger.log('⏳ Aguardando modal do Spectrum aparecer (animação)...');
+                            await page.waitForTimeout(2000); // Tempo para animação completar
                             
                             if (await this.verifyShareModal(frameLocator)) {
                                 this.logger.log('✅ Modal de compartilhamento aberto com sucesso!');
@@ -359,15 +374,27 @@ export class ShareAutomationService {
     }
 
     public async verifyShareModal(frameLocator: any): Promise<boolean> {
+        // IMPORTANTE: O modal do Spectrum tem uma animação e aparece após o underlay
+        // Precisamos aguardar o underlay aparecer primeiro, depois o modal
+        
+        // 1. Verifica se o underlay (fundo escuro) apareceu
+        try {
+            const underlay = frameLocator.locator('[data-testid="underlay"].bCxaJG_is-open').first();
+            if ((await underlay.count()) > 0 && await underlay.isVisible()) {
+                this.logger.log('✅ Underlay do modal detectado (fundo escuro)');
+            }
+        } catch { }
+        
+        // 2. Aguarda o modal do Spectrum aparecer (tem animação)
         const modalSelectors = [
+            // Seletor específico do Workfront Spectrum
+            'section[data-testid="unified-share-dialog"].unified-share-dialog',
             '[data-testid="unified-share-dialog"]',
-            '[role="dialog"]',
-            '[role="dialog"][aria-modal="true"]',
-            '.share-modal',
-            '.share-dialog',
-            '[data-testid*="share-dialog"]',
-            '[class*="ShareModal"]',
-            '[class*="share-modal"]',
+            'section.unified-share-dialog',
+            // Fallbacks
+            '.spectrum-Dialog[role="dialog"]',
+            '[role="dialog"][data-testid="unified-share-dialog"]',
+            'div[data-testid="modal"] section[role="dialog"]',
         ];
         
         for (const sel of modalSelectors) {
@@ -379,17 +406,36 @@ export class ShareAutomationService {
                     const isVisible = await m.isVisible().catch(() => false);
                     if (isVisible) {
                         this.logger.log(`✅ Modal de share verificado com seletor: ${sel}`);
+                        
+                        // Verifica dupla: se o input de compartilhamento está presente
+                        try {
+                            const input = frameLocator.locator('input[role="combobox"][aria-autocomplete="list"]').first();
+                            if ((await input.count()) > 0) {
+                                this.logger.log('✅ Input de compartilhamento confirmado dentro do modal');
+                                return true;
+                            }
+                        } catch { }
+                        
                         return true;
                     }
                 }
             } catch { }
         }
         
-        // Verifica também por elementos típicos dentro do modal
+        // 3. Verifica também por elementos típicos dentro do modal (fallback)
         try {
-            const shareInput = frameLocator.locator('input[role="combobox"], input[aria-autocomplete="list"]').first();
+            const shareInput = frameLocator.locator('input[role="combobox"][aria-autocomplete="list"]').first();
             if ((await shareInput.count()) > 0 && await shareInput.isVisible()) {
                 this.logger.log('✅ Modal verificado pela presença do input de compartilhamento');
+                return true;
+            }
+        } catch { }
+        
+        // 4. Verifica pela presença do heading do modal
+        try {
+            const heading = frameLocator.locator('h2:has-text("Share")').first();
+            if ((await heading.count()) > 0 && await heading.isVisible()) {
+                this.logger.log('✅ Modal verificado pelo heading "Share"');
                 return true;
             }
         } catch { }
