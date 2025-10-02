@@ -56,12 +56,12 @@ export class ShareAutomationService {
         projectUrl: string,
         selections: ShareSelection[],
         selectedUser: TeamKey = 'carol',
-    headless = resolveHeadless(),
+        headless = resolveHeadless(),
     ): Promise<{ results: ShareResult[]; summary: { total: number; success: number; errors: number } }> {
         this.validateShareInputs(projectUrl, selections);
-    const statePath = await this.ensureStateFile();
-    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: statePath, viewport: { width: 1366, height: 900 } });
-    const page = await context.newPage();
+        const statePath = await this.ensureStateFile();
+        const { browser, context } = await createOptimizedContext({ headless, storageStatePath: statePath, viewport: { width: 1366, height: 900 } });
+        const page = await context.newPage();
         const results: ShareResult[] = [];
         let successCount = 0; let errorCount = 0;
 
@@ -106,10 +106,10 @@ export class ShareAutomationService {
         projectUrl: string,
         folderName: string,
         fileName: string,
-    headless = resolveHeadless(),
+        headless = resolveHeadless(),
     ): Promise<{ browser: Browser; page: Page; frame: any }> {
-    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
-    const page = await context.newPage();
+        const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
+        const page = await context.newPage();
 
         this.logger.log('🌍 Abrindo projeto...');
         await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
@@ -151,9 +151,9 @@ export class ShareAutomationService {
         folderName: string,
         fileName: string,
         selectedUser: TeamKey = 'carol',
-    headless = resolveHeadless(),
+        headless = resolveHeadless(),
     ): Promise<{ success: boolean; message?: string }> {
-    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
+        const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
 
         try {
             const page = await context.newPage();
@@ -187,7 +187,7 @@ export class ShareAutomationService {
 
     public async openShareModal(frameLocator: any, page: Page, opts: { ensureFresh?: boolean } = {}): Promise<void> {
         this.logger.log('🔓 Tentando abrir modal de compartilhamento...');
-        
+
         if (opts.ensureFresh) {
             // Fecha modal antigo se estiver aberto para evitar sobreposição
             try {
@@ -199,43 +199,43 @@ export class ShareAutomationService {
                 }
             } catch { }
         }
-        
+
         // Estratégias otimizadas - focando no botão real com SVG de share
         const shareStrategies = [
             // 1. Prioridade máxima: o botão exato do Workfront
             'button[data-testid="share"]',
             'button.css-ikvpst[data-testid="share"]',
-            
+
             // 2. Busca por botão com SVG de share específico
             'button:has(svg[title="Share"])',
             'button:has(svg path[d*="M7.67 14.42"])', // Path único do ícone de share
-            
+
             // 3. Busca por tooltip de share
             'button:has([data-testid="share-tooltip"])',
         ];
-        
+
         for (let attempt = 1; attempt <= 3; attempt++) {
             this.logger.log(`🔍 Tentativa ${attempt}/3 de abrir modal...`);
-            
+
             for (const sel of shareStrategies) {
                 try {
                     const btn = frameLocator.locator(sel).first();
                     const count = await btn.count();
-                    
+
                     if (count > 0) {
                         const isVisible = await btn.isVisible().catch(() => false);
-                        
+
                         if (isVisible) {
                             // Verifica se o botão está realmente clicável (não coberto por outro elemento)
                             const isEnabled = await btn.isEnabled().catch(() => true);
-                            
+
                             if (!isEnabled) {
                                 this.logger.warn(`⚠️ Botão encontrado mas está desabilitado: ${sel}`);
                                 continue;
                             }
-                            
+
                             this.logger.log(`✅ Botão Share encontrado com seletor: ${sel}`);
-                            
+
                             // Tenta clicar com força (ignora elementos sobrepostos)
                             await btn.click({ force: true }).catch(async () => {
                                 // Fallback: scroll até o elemento e clica
@@ -243,16 +243,16 @@ export class ShareAutomationService {
                                 await page.waitForTimeout(300);
                                 await btn.click();
                             });
-                            
+
                             // IMPORTANTE: Aguarda o underlay aparecer (confirma que modal abriu)
                             this.logger.log('⏳ Aguardando underlay aparecer...');
                             try {
-                                await frameLocator.locator('[data-testid="underlay"]').first().waitFor({ 
-                                    state: 'visible', 
-                                    timeout: 2000 
+                                await frameLocator.locator('[data-testid="underlay"]').first().waitFor({
+                                    state: 'visible',
+                                    timeout: 2000
                                 });
                                 this.logger.log('✅ Underlay apareceu - modal está aberto!');
-                                
+
                                 // Remove underlay para liberar acesso aos elementos
                                 try {
                                     await frameLocator.locator('[data-testid="underlay"]').first().evaluate((el: HTMLElement) => {
@@ -262,10 +262,10 @@ export class ShareAutomationService {
                                 } catch {
                                     this.logger.warn('⚠️ Não conseguiu remover underlay, continuando...');
                                 }
-                                
+
                                 // Aguarda animação do modal completar
                                 await page.waitForTimeout(1500);
-                                
+
                                 this.logger.log('✅ Modal pronto - retornando sucesso!');
                                 return;
                             } catch {
@@ -279,7 +279,7 @@ export class ShareAutomationService {
                     this.logger.warn(`⚠️ Erro ao tentar seletor ${sel}: ${e?.message}`);
                 }
             }
-            
+
             // Estratégia alternativa na segunda tentativa: buscar SVG específico do share
             if (attempt === 2) {
                 this.logger.log('🔎 Procurando por SVG de share específico...');
@@ -287,19 +287,19 @@ export class ShareAutomationService {
                     // Busca todos os SVGs com title="Share"
                     const shareSvgs = await frameLocator.locator('svg[title="Share"]').all();
                     this.logger.log(`📊 SVGs de Share encontrados: ${shareSvgs.length}`);
-                    
+
                     for (const svg of shareSvgs) {
                         try {
                             // Pega o botão pai do SVG
                             const parentBtn = svg.locator('xpath=ancestor::button[1]');
-                            
+
                             if ((await parentBtn.count()) > 0) {
                                 const isVisible = await parentBtn.isVisible();
                                 if (isVisible) {
                                     this.logger.log(`✅ Botão Share encontrado via SVG pai`);
                                     await parentBtn.click({ force: true });
                                     await page.waitForTimeout(2500);
-                                    
+
                                     if (await this.verifyShareModal(frameLocator)) {
                                         this.logger.log('✅ Modal aberto via SVG pai!');
                                         return;
@@ -312,22 +312,22 @@ export class ShareAutomationService {
                     this.logger.warn(`⚠️ Erro na busca por SVG: ${e?.message}`);
                 }
             }
-            
+
             // Espera entre tentativas
             if (attempt < 3) {
                 this.logger.log('⏳ Aguardando 1.5s antes de nova tentativa...');
                 await page.waitForTimeout(1500);
             }
         }
-        
+
         // Log final para debug - busca todos os data-testid disponíveis
         try {
-            const allTestIds = await frameLocator.locator('[data-testid]').evaluateAll((els: Element[]) => 
+            const allTestIds = await frameLocator.locator('[data-testid]').evaluateAll((els: Element[]) =>
                 els.map(el => el.getAttribute('data-testid')).filter(Boolean).slice(0, 30)
             );
             this.logger.error(`❌ data-testid disponíveis: ${JSON.stringify(allTestIds)}`);
         } catch { }
-        
+
         throw new Error('Modal de compartilhamento não abriu após 3 tentativas');
     }
 
@@ -371,11 +371,11 @@ export class ShareAutomationService {
     public async verifyShareModal(frameLocator: any): Promise<boolean> {
         // Estratégia pragmática: se o INPUT de compartilhamento está acessível, o modal está aberto!
         this.logger.log('🔍 Verificando input de compartilhamento...');
-        
+
         try {
             // Busca direta pelo input que vamos usar
             const input = frameLocator.locator('input[role="combobox"][aria-autocomplete="list"]').first();
-            
+
             if ((await input.count()) > 0) {
                 const isVisible = await input.isVisible().catch(() => false);
                 if (isVisible) {
@@ -384,7 +384,7 @@ export class ShareAutomationService {
                 }
             }
         } catch { }
-        
+
         this.logger.warn('⚠️ Input de compartilhamento não encontrado');
         return false;
     }
@@ -517,46 +517,43 @@ export class ShareAutomationService {
                         await this.navigateToFolder(frame, page, folder);
                         await page.waitForTimeout(800); // Espera adicional após navegação
                     }
-                    
+
                     // Seleciona documento
                     this.logger.log(`📄 Selecionando documento: ${fileName}`);
                     await this.selectDocument(frame, page, fileName);
-                    
+
                     // Espera adicional crucial para garantir que o documento está selecionado e a UI atualizou
                     await page.waitForTimeout(1200);
-                    
+
                     // Fecha sidebar se estiver aberta (pode bloquear o botão Share)
                     await this.closeSidebarIfOpen(frame, page);
-                    
+
                     // Tenta abrir modal de share
                     await this.openShareModal(frame, page, { ensureFresh: attempt > 1 });
-                    
+
                     // Adiciona usuários
                     await this.addUsersToShare(frame, page, this.getTeamUsers(selectedUser));
-                    
+
                     // Salva
                     await this.saveShare(frame, page);
-                    
+
                     results.push({ folder, fileName, success: true, message: `Compartilhado (tentativa ${attempt})` });
                     success++; shared = true; break;
                 } catch (e: any) {
                     lastErr = e;
                     this.logger.warn(`⚠️ Share tentativa ${attempt} falhou para ${fileName}: ${e?.message}`);
-                    
+
                     if (attempt < maxAttempts) {
                         this.logger.log(`🔄 Tentando novamente... (${attempt + 1}/${maxAttempts})`);
-                        
+
                         // Tenta fechar qualquer modal que possa estar aberto
                         try {
                             await page.keyboard.press('Escape');
                             await page.waitForTimeout(300);
                         } catch { }
-                        
-                        // Pequeno reload suave do frame (scroll) + pausa
-                        try { 
-                            await frame.locator('body').evaluate(() => window.scrollBy(0, 300)); 
-                        } catch { }
-                        
+
+
+
                         await page.waitForTimeout(1500); // Aumentado o delay entre tentativas
                     }
                 }

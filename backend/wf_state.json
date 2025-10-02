@@ -1108,6 +1108,48 @@
         "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.zip",
         "2601G0179_0044_5481806_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Static2.pdf"
       ]
+    },
+    {
+      "id": "ca26428d-10d7-470a-ac4b-d72f618ee1d1",
+      "userId": "cmg8reded0000uxs0547967ma",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97cb000b136ffb518de110d752ac8/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-02\\f3e1e5b2\\2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-02\\8addad80\\2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.png",
+          "temp\\staging\\2025-10-02\\c6e4f1f2\\2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura_mockup.png",
+          "temp\\staging\\2025-10-02\\12ad04d8\\2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura_wireframe.png",
+          "temp\\staging\\2025-10-02\\07928ce2\\2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1759369899658,
+      "updatedAt": 1759369899658,
+      "fileNames": [
+        "2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.zip",
+        "2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.png",
+        "2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura_mockup.png",
+        "2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura_wireframe.png",
+        "2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.pdf"
+      ]
+    },
+    {
+      "id": "a45042ee-202f-49ea-aee8-18bbe25a0069",
+      "userId": "cmg8reded0000uxs0547967ma",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68c97cb000b136ffb518de110d752ac8/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-02\\f3e1e5b2\\2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.zip"
+      },
+      "status": "completed",
+      "createdAt": 1759369908809,
+      "updatedAt": 1759370002045,
+      "fileNames": [
+        "2601G0179_0043_5479847_br_csg_con_fy26q3w10_sm_jscon_wtn-holiday_Holidays_Moldura.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
     }
   ]
 }
