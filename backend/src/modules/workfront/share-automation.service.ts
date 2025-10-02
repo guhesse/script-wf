@@ -186,33 +186,139 @@ export class ShareAutomationService {
     }
 
     public async openShareModal(frameLocator: any, page: Page, opts: { ensureFresh?: boolean } = {}): Promise<void> {
+        this.logger.log('🔓 Tentando abrir modal de compartilhamento...');
+        
         if (opts.ensureFresh) {
             // Fecha modal antigo se estiver aberto para evitar sobreposição
             try {
                 const closeOld = frameLocator.locator('[data-testid="unified-share-dialog"] button:has-text("Close")').first();
                 if ((await closeOld.count()) > 0 && await closeOld.isVisible()) {
+                    this.logger.log('🚪 Fechando modal antigo...');
                     await closeOld.click();
                     await page.waitForTimeout(500);
                 }
             } catch { }
         }
+        
+        // Estratégias otimizadas - focando no botão real com SVG de share
         const shareStrategies = [
+            // 1. Prioridade máxima: o botão exato do Workfront
             'button[data-testid="share"]',
+            'button.css-ikvpst[data-testid="share"]',
+            
+            // 2. Busca por botão com SVG de share específico
+            'button:has(svg[title="Share"])',
+            'button:has(svg path[d*="M7.67 14.42"])', // Path único do ícone de share
+            
+            // 3. Busca por tooltip de share
+            'button:has([data-testid="share-tooltip"])',
+            
+            // 4. Outras variações
+            'button[data-testid="share-button"]',
+            '[data-testid="share"]',
+            
+            // 5. Fallbacks genéricos
             'button:has-text("Share")',
-            'button:has-text("Compart")',
-            '[aria-label*="Share"]'
+            '[aria-label*="Share"]',
+            'button:has(svg):has-text("Share")', // Botão com SVG e texto Share
         ];
-        for (const sel of shareStrategies) {
-            try {
-                const btn = frameLocator.locator(sel).first();
-                if ((await btn.count()) > 0 && await btn.isVisible()) {
-                    await btn.click();
-                    await page.waitForTimeout(2000);
-                    if (await this.verifyShareModal(frameLocator)) return;
+        
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            this.logger.log(`🔍 Tentativa ${attempt}/3 de abrir modal...`);
+            
+            for (const sel of shareStrategies) {
+                try {
+                    const btn = frameLocator.locator(sel).first();
+                    const count = await btn.count();
+                    
+                    if (count > 0) {
+                        const isVisible = await btn.isVisible().catch(() => false);
+                        
+                        if (isVisible) {
+                            // Verifica se o botão está realmente clicável (não coberto por outro elemento)
+                            const isEnabled = await btn.isEnabled().catch(() => true);
+                            
+                            if (!isEnabled) {
+                                this.logger.warn(`⚠️ Botão encontrado mas está desabilitado: ${sel}`);
+                                continue;
+                            }
+                            
+                            this.logger.log(`✅ Botão Share encontrado com seletor: ${sel}`);
+                            
+                            // Tenta clicar com força (ignora elementos sobrepostos)
+                            await btn.click({ force: true }).catch(async () => {
+                                // Fallback: scroll até o elemento e clica
+                                await btn.scrollIntoViewIfNeeded();
+                                await page.waitForTimeout(300);
+                                await btn.click();
+                            });
+                            
+                            await page.waitForTimeout(2500);
+                            
+                            if (await this.verifyShareModal(frameLocator)) {
+                                this.logger.log('✅ Modal de compartilhamento aberto com sucesso!');
+                                return;
+                            } else {
+                                this.logger.warn('⚠️ Clique no botão Share não abriu o modal');
+                            }
+                        } else {
+                            this.logger.warn(`⚠️ Botão encontrado mas não está visível: ${sel}`);
+                        }
+                    }
+                } catch (e: any) {
+                    this.logger.warn(`⚠️ Erro ao tentar seletor ${sel}: ${e?.message}`);
                 }
-            } catch { }
+            }
+            
+            // Estratégia alternativa na segunda tentativa: buscar SVG específico do share
+            if (attempt === 2) {
+                this.logger.log('🔎 Procurando por SVG de share específico...');
+                try {
+                    // Busca todos os SVGs com title="Share"
+                    const shareSvgs = await frameLocator.locator('svg[title="Share"]').all();
+                    this.logger.log(`📊 SVGs de Share encontrados: ${shareSvgs.length}`);
+                    
+                    for (const svg of shareSvgs) {
+                        try {
+                            // Pega o botão pai do SVG
+                            const parentBtn = svg.locator('xpath=ancestor::button[1]');
+                            
+                            if ((await parentBtn.count()) > 0) {
+                                const isVisible = await parentBtn.isVisible();
+                                if (isVisible) {
+                                    this.logger.log(`✅ Botão Share encontrado via SVG pai`);
+                                    await parentBtn.click({ force: true });
+                                    await page.waitForTimeout(2500);
+                                    
+                                    if (await this.verifyShareModal(frameLocator)) {
+                                        this.logger.log('✅ Modal aberto via SVG pai!');
+                                        return;
+                                    }
+                                }
+                            }
+                        } catch { }
+                    }
+                } catch (e: any) {
+                    this.logger.warn(`⚠️ Erro na busca por SVG: ${e?.message}`);
+                }
+            }
+            
+            // Espera entre tentativas
+            if (attempt < 3) {
+                this.logger.log('⏳ Aguardando 1.5s antes de nova tentativa...');
+                await page.waitForTimeout(1500);
+            }
         }
-        throw new Error('Modal de compartilhamento não abriu');
+        
+        // Log final para debug - busca todos os data-testid disponíveis
+        try {
+            const allTestIds = await frameLocator.locator('[data-testid]').evaluateAll((els: Element[]) => 
+                els.map(el => el.getAttribute('data-testid')).filter(Boolean).slice(0, 30)
+            );
+            this.logger.error(`❌ data-testid disponíveis: ${JSON.stringify(allTestIds)}`);
+        } catch { }
+        
+        throw new Error('Modal de compartilhamento não abriu após 3 tentativas');
     }
 
     public async addUsersToShare(frameLocator: any, page: Page, users: { email: string; role: string }[]): Promise<void> {
@@ -253,11 +359,42 @@ export class ShareAutomationService {
     }
 
     public async verifyShareModal(frameLocator: any): Promise<boolean> {
-        const modalSelectors = ['[data-testid="unified-share-dialog"]', '[role="dialog"]'];
+        const modalSelectors = [
+            '[data-testid="unified-share-dialog"]',
+            '[role="dialog"]',
+            '[role="dialog"][aria-modal="true"]',
+            '.share-modal',
+            '.share-dialog',
+            '[data-testid*="share-dialog"]',
+            '[class*="ShareModal"]',
+            '[class*="share-modal"]',
+        ];
+        
         for (const sel of modalSelectors) {
-            const m = frameLocator.locator(sel).first();
-            if ((await m.count()) > 0 && await m.isVisible()) return true;
+            try {
+                const m = frameLocator.locator(sel).first();
+                const count = await m.count();
+                
+                if (count > 0) {
+                    const isVisible = await m.isVisible().catch(() => false);
+                    if (isVisible) {
+                        this.logger.log(`✅ Modal de share verificado com seletor: ${sel}`);
+                        return true;
+                    }
+                }
+            } catch { }
         }
+        
+        // Verifica também por elementos típicos dentro do modal
+        try {
+            const shareInput = frameLocator.locator('input[role="combobox"], input[aria-autocomplete="list"]').first();
+            if ((await shareInput.count()) > 0 && await shareInput.isVisible()) {
+                this.logger.log('✅ Modal verificado pela presença do input de compartilhamento');
+                return true;
+            }
+        } catch { }
+        
+        this.logger.warn('⚠️ Modal de compartilhamento não foi detectado');
         return false;
     }
 
@@ -383,22 +520,53 @@ export class ShareAutomationService {
             while (attempt < maxAttempts && !shared) {
                 attempt++;
                 try {
+                    // Navega para pasta se necessário
                     if (folder && folder !== 'root') {
+                        this.logger.log(`📁 Navegando para pasta: ${folder}`);
                         await this.navigateToFolder(frame, page, folder);
+                        await page.waitForTimeout(800); // Espera adicional após navegação
                     }
+                    
+                    // Seleciona documento
+                    this.logger.log(`📄 Selecionando documento: ${fileName}`);
                     await this.selectDocument(frame, page, fileName);
+                    
+                    // Espera adicional crucial para garantir que o documento está selecionado e a UI atualizou
+                    await page.waitForTimeout(1200);
+                    
+                    // Fecha sidebar se estiver aberta (pode bloquear o botão Share)
+                    await this.closeSidebarIfOpen(frame, page);
+                    
+                    // Tenta abrir modal de share
                     await this.openShareModal(frame, page, { ensureFresh: attempt > 1 });
+                    
+                    // Adiciona usuários
                     await this.addUsersToShare(frame, page, this.getTeamUsers(selectedUser));
+                    
+                    // Salva
                     await this.saveShare(frame, page);
+                    
                     results.push({ folder, fileName, success: true, message: `Compartilhado (tentativa ${attempt})` });
                     success++; shared = true; break;
                 } catch (e: any) {
                     lastErr = e;
                     this.logger.warn(`⚠️ Share tentativa ${attempt} falhou para ${fileName}: ${e?.message}`);
+                    
                     if (attempt < maxAttempts) {
-                        // pequeno reload suave do frame (scroll) + pausa
-                        try { await frame.locator('body').evaluate(() => window.scrollBy(0, 300)); } catch { }
-                        await page.waitForTimeout(700);
+                        this.logger.log(`🔄 Tentando novamente... (${attempt + 1}/${maxAttempts})`);
+                        
+                        // Tenta fechar qualquer modal que possa estar aberto
+                        try {
+                            await page.keyboard.press('Escape');
+                            await page.waitForTimeout(300);
+                        } catch { }
+                        
+                        // Pequeno reload suave do frame (scroll) + pausa
+                        try { 
+                            await frame.locator('body').evaluate(() => window.scrollBy(0, 300)); 
+                        } catch { }
+                        
+                        await page.waitForTimeout(1500); // Aumentado o delay entre tentativas
                     }
                 }
             }

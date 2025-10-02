@@ -1,14 +1,17 @@
 import { Page } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { Logger } from '@nestjs/common';
 
 const STATE_FILE = 'wf_state.json';
 
 /** Helper central de utilidades DOM para Workfront */
 export class WorkfrontDomHelper {
+    private static readonly logger = new Logger(WorkfrontDomHelper.name);
+    
     // Parâmetros padrão de tentativas (agora podem ser configurados via ENV)
-    static folderAttempts = parseInt(process.env.WF_FOLDER_ATTEMPTS || '4', 10);
-    static folderDelayMs = parseInt(process.env.WF_FOLDER_DELAY_MS || '900', 10);
+    static folderAttempts = parseInt(process.env.WF_FOLDER_ATTEMPTS || '6', 10); // Aumentado de 4 para 6
+    static folderDelayMs = parseInt(process.env.WF_FOLDER_DELAY_MS || '1200', 10); // Aumentado de 900 para 1200
     static docAttempts = parseInt(process.env.WF_DOC_ATTEMPTS || '8', 10);
     static docDelayMs = parseInt(process.env.WF_DOC_DELAY_MS || '700', 10);
     // ENV suportadas:
@@ -59,33 +62,70 @@ export class WorkfrontDomHelper {
     /** Navega para pasta pelo nome (tentando várias estratégias) */
     static async navigateToFolder(frame: any, page: Page, folderName: string): Promise<void> {
         if (!folderName || folderName === 'root') return;
+        
+        // Estratégias expandidas: inclui busca exata e parcial
         const strategiesBase = [
+            // Busca com prefixos numéricos comuns
             `button:has-text("13. ${folderName}")`,
             `button:has-text("14. ${folderName}")`,
             `button:has-text("15. ${folderName}")`,
+            // Busca exata pelo nome completo
             `button:has-text("${folderName}")`,
             `a:has-text("${folderName}")`,
             `[role="button"]:has-text("${folderName}")`,
-            `*[data-testid*="item"]:has-text("${folderName}")`
+            // Busca por elementos de pasta com data-testid
+            `*[data-testid*="folder"]:has-text("${folderName}")`,
+            `*[data-testid*="item"]:has-text("${folderName}")`,
+            // Busca case-insensitive e parcial
+            `button:text-is("${folderName}")`,
+            `a:text-is("${folderName}")`,
+            // Busca por span/div dentro de botões (estruturas aninhadas)
+            `button:has(span:has-text("${folderName}"))`,
+            `button:has(div:has-text("${folderName}"))`,
+            // Busca por classe de documento/pasta
+            `.doc-folder:has-text("${folderName}")`,
+            `.folder-item:has-text("${folderName}")`,
         ];
+        
         for (let attempt = 1; attempt <= this.folderAttempts; attempt++) {
+            // Tenta cada estratégia
             for (const sel of strategiesBase) {
                 try {
                     const el = frame.locator(sel).first();
                     if ((await el.count()) > 0 && await el.isVisible()) {
                         await el.click();
-                        await page.waitForTimeout(1200);
+                        await page.waitForTimeout(1500); // Aumentado para dar tempo de carregar
                         return;
                     }
                 } catch { }
             }
-            // Scroll leve para tentar carregar itens
+            
+            // Estratégia adicional: busca por todos os elementos clicáveis e filtra por texto
+            try {
+                const allButtons = await frame.locator('button, a, [role="button"]').all();
+                for (const btn of allButtons) {
+                    try {
+                        const text = await btn.textContent();
+                        if (text && text.includes(folderName)) {
+                            const isVisible = await btn.isVisible();
+                            if (isVisible) {
+                                await btn.click();
+                                await page.waitForTimeout(1500);
+                                return;
+                            }
+                        }
+                    } catch { }
+                }
+            } catch { }
+            
+            // Scroll leve para tentar carregar itens lazy-loaded
             try {
                 await frame.locator('body').evaluate(() => {
                     const sc = document.scrollingElement || document.documentElement || document.body;
                     sc.scrollBy(0, 400);
                 });
             } catch { }
+            
             if (attempt < this.folderAttempts) {
                 await page.waitForTimeout(this.folderDelayMs);
             }
