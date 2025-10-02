@@ -375,15 +375,24 @@ export class ShareAutomationService {
 
     public async verifyShareModal(frameLocator: any): Promise<boolean> {
         // IMPORTANTE: O modal do Spectrum tem uma animação e aparece após o underlay
-        // Precisamos aguardar o underlay aparecer primeiro, depois o modal
+        // O underlay BLOQUEIA o acesso aos elementos - precisamos removê-lo!
         
-        // 1. Verifica se o underlay (fundo escuro) apareceu
+        // 1. Verifica se o underlay (fundo escuro) apareceu e REMOVE ele do DOM
         try {
-            const underlay = frameLocator.locator('[data-testid="underlay"].bCxaJG_is-open').first();
+            const underlay = frameLocator.locator('[data-testid="underlay"]').first();
             if ((await underlay.count()) > 0 && await underlay.isVisible()) {
-                this.logger.log('✅ Underlay do modal detectado (fundo escuro)');
+                this.logger.log('✅ Underlay detectado - removendo para acessar modal...');
+                
+                // Remove o underlay do DOM para permitir interação com o modal
+                await underlay.evaluate((el: HTMLElement) => {
+                    el.remove();
+                });
+                
+                this.logger.log('✅ Underlay removido - modal agora está acessível!');
             }
-        } catch { }
+        } catch (e: any) {
+            this.logger.warn(`⚠️ Erro ao remover underlay: ${e?.message}`);
+        }
         
         // 2. Aguarda o modal do Spectrum aparecer (tem animação)
         const modalSelectors = [
