@@ -282,3 +282,125 @@ model TempUpload {
   @@index([createdAt])
   @@map("temp_uploads")
 }
+
+// =============================
+// Kanban Board
+// =============================
+
+/// Status do card no Kanban
+enum KanbanStatus {
+  BACKLOG
+  FILES_TO_STUDIO
+  REVISAO_TEXTO
+  REVIEW_DELL
+  FINAL_MATERIAL
+  ASSET_RELEASE
+  COMPLETED
+}
+
+/// Tipo de Visual Framework
+enum VFType {
+  NO_VF
+  MICROSOFT_JMA_CS
+  OTHER
+}
+
+/// Tipo de Asset
+enum AssetType {
+  ESTATICO
+  VIDEO
+  WIREFRAME
+  GIF
+  STORY
+  MOLDURA
+  AW_STORY
+  HTML
+  OTHER
+}
+
+/// Frente de trabalho
+enum WorkfrontFrente {
+  OOH
+  SOCIAL
+  EMAIL
+  BANNER
+}
+
+/// Ano fiscal
+enum FiscalYear {
+  FY25
+  FY26
+  FY27
+  FY28
+}
+
+/// Cards do quadro Kanban baseado no CSV de jobs
+model KanbanCard {
+  id        String   @id @default(cuid())
+  
+  // Campos principais do CSV
+  bi                Boolean        @default(true)          // B.I - Se está incluído no BI
+  round             Int?                                   // Round atual (1-12)
+  anotacoes         String?        @db.Text                // ANOTAÇÕES
+  start             DateTime?                              // START - Data de início
+  realDeliv         DateTime?                              // REAL DELIV. - Entrega real
+  prevDeliv         DateTime?                              // PREV DELIV. - Previsão de entrega
+  dsid              String?                                // DSID - ID do projeto
+  atividade         String                                 // ATIVIDADE - Nome/descrição da task
+  status            KanbanStatus   @default(BACKLOG)       // STATUS
+  studio            String?                                // STUDIO - Nome do estúdio/designer
+  vf                VFType?        @default(NO_VF)         // VF - Visual Framework
+  tipoAsset         AssetType      @default(OTHER)         // T. DE ASSET
+  numeroAssets      Int            @default(1)             // N. DE ASSETS
+  cliente           String?                                // CLIENTE
+  brand             String?                                // BRAND
+  week              String?                                // WEEK (ex: W1, W3, W7)
+  quarter           String?                                // QUARTER (ex: Q3)
+  frente            WorkfrontFrente @default(OOH)           // FRENTE
+  fy                FiscalYear?                            // FY
+  
+  // Datas de entregas e feedbacks (R1 a R4)
+  entregaR1VML      DateTime?                              // ENTREGA R1 VML
+  feedbackR1Dell    DateTime?                              // FEEDBACK R1 DELL
+  entregaR2VML      DateTime?                              // ENTREGA R2 VML
+  feedbackR2Dell    DateTime?                              // FEEDBACK R2 DELL
+  entregaR3VML      DateTime?                              // ENTREGA R3 VML
+  feedbackR3Dell    DateTime?                              // FEEDBACK R3 DELL
+  entregaR4VML      DateTime?                              // ENTREGA R4 VML
+  feedbackR4Dell    DateTime?                              // FEEDBACK R4 DELL
+  
+  // Dias calculados entre etapas
+  diasStartR1VML    Int?                                   // START ATÉ R1 VML
+  diasR1VMLR1Dell   Int?                                   // R1 VML ATÉ R1 DELL
+  diasR1DellR2VML   Int?                                   // R1 DELL ATÉ R2 VML
+  diasR2VMLR2Dell   Int?                                   // R2 VML ATÉ R2 DELL
+  diasR2DellR3VML   Int?                                   // R2 DELL ATÉ R3 VML
+  diasR3VMLR3Dell   Int?                                   // R3 VML ATÉ R3 DELL
+  diasR3DellR4VML   Int?                                   // R3 DELL ATÉ R4 VML
+  diasR4VMLR4Dell   Int?                                   // R4 VML ATÉ R4 DELL
+  
+  // Percentuais de tempo
+  diasNaVMLPercent  Float?                                 // DIAS NA VML(%)
+  diasNaDellPercent Float?                                 // DIAS NA DELL(%)
+  
+  // Posição no board (para drag-and-drop)
+  position          Int            @default(0)
+  columnId          String?                                // ID da coluna onde está o card
+  
+  // Auditoria
+  createdBy         String?                                // ID do usuário que criou
+  updatedBy         String?                                // ID do último usuário que editou
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  @@index([status])
+  @@index([week])
+  @@index([quarter])
+  @@index([fy])
+  @@index([cliente])
+  @@index([brand])
+  @@index([frente])
+  @@index([columnId])
+  @@index([createdAt])
+  @@map("kanban_cards")
+}

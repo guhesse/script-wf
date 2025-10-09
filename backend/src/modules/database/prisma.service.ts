@@ -6,18 +6,22 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
-    // Fallback mínimo e isolado para desenvolvimento
+    // Configuração em desenvolvimento: não sobrescrever com credenciais hardcoded.
+    // Se DATABASE_URL não estiver definida ou inválida, tentar usar LOCAL_DATABASE_URL ou DEV_DATABASE_URL.
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
       const current = process.env.DATABASE_URL;
-      const looksPostgres = current && /^postgres(?:ql)?:\/\//i.test(current);
-      if (!looksPostgres) {
-        // Usa LOCAL_DATABASE_URL se definida, senão uma padrão local
-        const local = process.env.LOCAL_DATABASE_URL || 'postgresql://scriptwf:L4r01EC4DAXA7UwG@localhost:5432/scriptwf?schema=public';
-        process.env.DATABASE_URL = local;
-        // Não usamos this.logger antes de super, então console direto.
-        // eslint-disable-next-line no-console
-        console.log('[PrismaService] (dev fallback) DATABASE_URL substituída por configuração local.');
+      const isPg = current && /^postgres(?:ql)?:\/\//i.test(current);
+      if (!isPg) {
+        const candidate = process.env.LOCAL_DATABASE_URL || process.env.DEV_DATABASE_URL;
+        if (candidate && /^postgres(?:ql)?:\/\//i.test(candidate)) {
+          process.env.DATABASE_URL = candidate;
+          // eslint-disable-next-line no-console
+          console.log('[PrismaService] (dev) DATABASE_URL não definida/válida; usando LOCAL/DEV_DATABASE_URL.');
+        } else {
+          // eslint-disable-next-line no-console
+          console.warn('[PrismaService] (dev) DATABASE_URL ausente e sem LOCAL/DEV disponível; configure o .env.');
+        }
       }
     }
 
