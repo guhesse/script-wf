@@ -5,12 +5,16 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import { useAppAuth } from '@/hooks/useAppAuth';
 import { AuthScreen } from '@/components/AuthScreen';
-import { Button } from '@/components/ui/button';
 import { WorkfrontLoginWizard } from '@/components/WorkfrontLoginWizard';
+import { useAuthInterceptor } from '@/hooks/useAuthInterceptor';
 
 function App() {
   // Auth da aplicação (JWT)
   const { user, loading: userLoading } = useAppAuth();
+  
+  // Interceptor de autenticação (401 = logout automático)
+  useAuthInterceptor();
+  
   // Sessão Workfront
   const [wfReady, setWfReady] = useState(false);
   const [showLoginWizard, setShowLoginWizard] = useState(false);
@@ -54,21 +58,11 @@ function App() {
   return (
     <>
       <LoadingOverlay isVisible={isLoading} message={loadingMessage} />
-      {!wfReady && (
-        <div className="fixed top-2 right-2 z-50 bg-amber-900/60 border border-amber-600/40 backdrop-blur px-4 py-2 rounded text-xs text-amber-200 shadow">
-          <div className="flex items-center gap-3">
-            <span>Workfront não conectado</span>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setShowLoginWizard(true)}
-            >
-              Login Workfront
-            </Button>
-          </div>
-        </div>
-      )}
-      <MainApplication onLogout={() => { /* handled inside main */ }} />
+      <MainApplication 
+        onLogout={() => { /* handled inside main */ }} 
+        wfReady={wfReady}
+        onWfReconnect={() => setShowLoginWizard(true)}
+      />
       <WorkfrontLoginWizard
         open={showLoginWizard}
         onClose={() => {

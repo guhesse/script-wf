@@ -84,7 +84,7 @@ export class AddCommentDto {
 
     @ApiProperty({ description: 'Modo de comentário: plain (default) ou raw', required: false, enum: ['plain', 'raw'], default: 'plain' })
     @IsOptional()
-    @IsEnum(() => ['plain', 'raw'])
+    @IsEnum(['plain', 'raw'])
     commentMode?: 'plain' | 'raw' = 'plain';
 
     @ApiProperty({ description: 'HTML bruto do comentário (usado quando commentMode=raw)', required: false })
@@ -170,7 +170,7 @@ export class BulkDownloadDto {
 
     @ApiProperty({ description: 'Modo de organização de pastas', required: false, enum: ['pm', 'studio'], default: 'pm' })
     @IsOptional()
-    @IsEnum(() => ['pm', 'studio'])
+    @IsEnum(['pm', 'studio'])
     mode?: 'pm' | 'studio' = 'pm';
 
     @ApiProperty({ description: 'Gerar PPT de briefing por projeto', required: false, default: false })
