@@ -1,0 +1,1202 @@
+{
+  "cookies": [
+    {
+      "name": "ab_test_chosen_params",
+      "value": "clear-state,group-transitions",
+      "domain": "auth.services.adobe.com",
+      "path": "/pt_BR",
+      "expires": 1760193384,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ab_test_given_params",
+      "value": "clear-state,group-transitions",
+      "domain": "auth.services.adobe.com",
+      "path": "/pt_BR",
+      "expires": 1760193384,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ftrset",
+      "value": "207",
+      "domain": "adobeid-na1.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "shellImsEnv",
+      "value": "prod",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "userGuid",
+      "value": "anonymous",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1791642983,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "relay",
+      "value": "e3a72c06-681c-4ebe-8097-17971fb192a5",
+      "domain": "ims-na1.adobelogin.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ftrset",
+      "value": "207",
+      "domain": "ims-na1.adobelogin.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "locale",
+      "value": "pt_BR",
+      "domain": "ims-na1.adobelogin.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "relay",
+      "value": "e3a72c06-681c-4ebe-8097-17971fb192a5",
+      "domain": "auth.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "kndctr_9E1005A551ED61CA0A490D45_AdobeOrg_cluster",
+      "value": "va6",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1760108824,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "kndctr_9E1005A551ED61CA0A490D45_AdobeOrg_identity",
+      "value": "CiYzNDczOTU1MzU3MTY3MTQzOTUwMzM1MzQ2OTIwNDE3NTY5NTc2NFISCNfPtPScMxABGAEqA1ZBNjAA8AHXz7T0nDM%3D",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1794234985.668324,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "AMCV_9E1005A551ED61CA0A490D45%40AdobeOrg",
+      "value": "MCMID|34739553571671439503353469204175695764",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1793802985,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "idg_token",
+      "value": "AXxlP0c81a86U1PwnAUrggw76iDt/L8UCs/o6fdCES0akOMrVv0JWZ3Clv6F9xfm",
+      "domain": "idg.adobe.com",
+      "path": "/",
+      "expires": 1762698986.290677,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "relay",
+      "value": "e3a72c06-681c-4ebe-8097-17971fb192a5",
+      "domain": "federatedid-na1.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ftrset",
+      "value": "207",
+      "domain": "federatedid-na1.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "DT",
+      "value": "DI1fYVjezAPTXKgzq0EzINVRg",
+      "domain": "wpp.okta.com",
+      "path": "/",
+      "expires": 1794666990.58566,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ln",
+      "value": "gustavo.hesse@vml.com",
+      "domain": "wpp.okta.com",
+      "path": "/",
+      "expires": 1791642996,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "JSESSIONID",
+      "value": "19130EB7C866905CCAEE4059845750D0",
+      "domain": "wpp.okta.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "idx",
+      "value": "eyJ6aXAiOiJERUYiLCJ2ZXIiOiIxIiwiYWxpYXMiOiJlbmNyeXB0aW9ua2V5Iiwib2lkIjoiMDBvazZocHJNOGV1eUl3Mms0MTUiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIiwieHNpZCI6ImlkeGQ1TWdtQW9SU19hdl9sUVVIc0xJNWcifQ..GEqSy_dlCg8V82Uu.tXczL0ctVgyZG1_PN5H5CvHE-pq37nxm8obYFNDmjSbQaP7nFwo-FHVHwwJLg41PMwPSFcGitGmGrieKyEZbg0zpc54wkOtJDToVYFm6fnneMWoS5qq_KJQUDzO4tpGpHA8e-R_5T-eiYknjm_z2YjhK6GozfbIkO7LPkWpKAriwJuRByhIHcxCIvod5OkrryFDY_QQnNtKRxVZliuYMLpECmvScPf7jw7Q4j_-ObUIYhcGfCdQv_IMePfDGUjb0J2UboYaebb4tcUqOUOtSUPKuWPuTzNO_B5Hrd3YU1xuA3MEbTuxhW5_mhjcvjsFg-PLvtrHb69HWXbDjevgay5kBSOmY6fLqL1YzJoMDWur6RPDkERKkI2I5PhlZ7MLKtAyX-zDGt-Eu1erGYRF_WEKylU4cR0tJxghFch-6dydUlmT8FWIVJKK7THsVY6s8Maz93cu7ZD290YteRk_lFgIF1LttLkJ6rTetOoGG0a5ArlPrOCO8qK5wxcUyWVxHTofU5JQRIa42Y7BerOcVIwnMYBvMOO7eiEclRfCCWW4MzocCdJva1s9YnmtJHP95p_A3rMIOF33H0B9gIqyxIJv_k1IiksEOfwnlUYMx3RdcI3FIPklsoIUQfpd2AcdO69y0G6mzB12URGAZx3Xhm-CZ4qZhHdurBcq2Ee-os5PrHF9lYEhi589aaZz8dZo3bxx2iVR8Dd1DpIFxPJWinmp5pGzCG_S9Vkk884Qx1I8k2Tt1LoPpGcmy3C5E4pIKfvzC_eX4CxIAzS1HXK07GWwyd74pIKuEVhBTGr5-kFVZK_RuReiLeaexklBW4m-ZU3dOauB2WIoYD3f0estkYj10TqBoAUc7etQHFnKwoYW_3iajcnkFOIE2LhXFoGQktSjhC2vz8XISzHPpjkcDZMIXOh3ziTsmmOyUUm9q8BGz6-IJTqXY31mRAAJOQYxZ25k5DnGPEhMM1-23irh0iChYbW5dlkrLUktD2bj6moPe55jj19ZUWA7_-x5WsI9JFxxUwYz3WzO-dq-3MtlTuFWMSdzsQAamis0yft849RX2vz9fNArqzVmNqXVoKqYe6Ob-pKrC7hL4RC2DxXM_BymEEAX_N-BXvwMW9JVtfDxLhltq2qqgvw9GT6QbGTP7kR8.QgaBixwOii1RbrJKfr7Tfg",
+      "domain": "wpp.okta.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "luf_-618377426",
+      "value": "eyJ6aXAiOiJERUYiLCJ2ZXIiOiIxIiwiYWxpYXMiOiJlbmNyeXB0aW9ua2V5Iiwib2lkIjoiMDBvazZocHJNOGV1eUl3Mms0MTUiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIiwidGltZXN0YW1wIjoxNzYwMTA3MDEyMDg5fQ..ALskTXoh5huq-xbF.eUir34614jQwp6KMDzT8uJu87iAWWzqJANXjtrLT3toya6y5ym00ZldcsRLEq_fsoQjsHx_-aNXRv5-BypqOc24bWyo_a8g86u5qfriOOBm2HcIRtVJONM-wslPXFtSCZhK1GuprFYjAI4H3RyB67QBl_U3uh0rvlGru9QTpFdXm5mSlMWYjdwHAnXEnxSdNuhb1l2XExwsdDsIKaSWWP1QKidExvY8J3_UR4NcOHNOiqhEnXKSsfA1KYU9yaim6RS4VtrR25Zk00Scw6vX2G4YJGb--wWpz8gTVAYRBEUvVO_M.VypF0zBvZCmlHKNAqHxTgg",
+      "domain": "wpp.okta.com",
+      "path": "/",
+      "expires": 1762699016.490089,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "filter-profile-map",
+      "value": "AU4VCztXZbrydUlRFb1Pdtoczxm8__Fn2P6NVVZ7oLcvWRGN8ANVYo6HX6jyB5FXVXypdxgkCDonFWLnHxuXbXOAGfRPznDe6qUQMbZs7_ArVZEE4qJju064oNhv84_1lTVs9tD6SjRSj9pIptSk05b03k1zVj7kgKcl30E_-clc0Cz6Dal6ErkuwDQVPfH0RJEybMevxsqo36M86xoT0PdZnHWNIruyGSXIwIBS70Dl-t8Lxx3iPtOBvu5a6En0yQ",
+      "domain": ".services.adobe.com",
+      "path": "/",
+      "expires": 1791643018.341889,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "filter-profile-map-permanent",
+      "value": "AcY2_HCnPRnTKsiVhiJOu8CvFJ1VeVm7Mj9S-PfZdqjSjVDNMVGBSvfUYh3LsVH1IaFsvzzQlG-oGmvA8P2BXhLct9WRB2Xr3PC_JdQAZa_VIQthZXssZM0giP5h5IU7AZthST-Ezbns4-L4Y8AQKEQviipLAWjh4tVhQQT4qiC48QNjZQ2YFezoh7mlv2EMQJeW_VNsK3TWeJCFVTHjHbEqu7gBCWYm0RqzT-M6QN1u0GB2eRSiM5nvjFNMMp5_ng",
+      "domain": ".services.adobe.com",
+      "path": "/",
+      "expires": 1791643018.341914,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "gpv",
+      "value": "Account:IMS:Process:Complete",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1760108818,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "relay",
+      "value": "e3a72c06-681c-4ebe-8097-17971fb192a5",
+      "domain": "adobeid-na1.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "s_ims",
+      "value": "https://ims-na1.adobelogin.com/ims/session/v1/ZjFjZTRlOTktYjk3NS00YjdlLTkzMGItZDcwYjBhNzhmNjcwLS1CNkVCMUUzQzY2NTkyNjNBMEE0OTVFOUZAand0LmNvbQ",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "locale",
+      "value": "pt_BR",
+      "domain": "adobeid-na1.services.adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "fg",
+      "value": "Z3OSZI2OFLM5QDUKFAQVIHAAGM======",
+      "domain": "adobeid-na1.services.adobe.com",
+      "path": "/",
+      "expires": 1760193421.301583,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "ims_sid",
+      "value": "ASJlt5WOxa5SUztL_MTkI5Q-erTgTFj3x2lcZFNd07-rjxGLh5MvsTkXF-rXzyLK6lZhmvm7TsQMevZ1Er9S2Xy9JHPJg9cSW3cJL7ICzL50YHCFRw3T6Ecz_0-6B8X3aZo4xAxiFIYIyirocwaoaL_5okXyLLwAxPk6PHkbNePx88UD-tJa6u_WDI4a7d-zmf99CVBX-o7hjkeaSH-eofB3B-xlFAP-05xmVRT7Z_U3W9YkmUp1QKTkil5QSg9iaJbmXzXQ4EncwBxF7Vh_rQoSsmP_Fnn60lJGWSRlfmvXGinGvubAOwKTWhjKtcynWb_flTtqypNZsW4UgGzYCSTX8pAxkODESvayLkixFJ0Cmd70HuAZ324fdC8kue06dGRa6yE1Hm23-UT5Lu4HmOr6KwZbHtXeX93mpNfIGoTdH2AKh8ErXLb3SwzDfsUzW-rf7VitHNy_wi2oj9Zo4kGG5qE3p_G9AAlky02UMqxrYr60xrAgcuF-OuET1AwmqaNZO5SnUf-Wp2g_y15ZUVXHTT1ijci_ePYQ5jBshA1mVUwtKxfB8TTLLtyIIOsa9adQ08nJzeWP3WcyB5okm0gP8K0wBWna1RvHuxW2Q3e41ljFsAxXX89r_oUnhIvRlZet9CLRtOmtDh703Yq0T7-56-vwkXFvoTNG84p9HTVFdPaJoVtKCofyluyIF9LhjypvtrH_MvZAcqpwK67c7iRku9aK72f_485HFRanuC61fgiGtDgzMLDgoB7Bd1U",
+      "domain": ".services.adobe.com",
+      "path": "/",
+      "expires": 1791663973.301634,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "aux_sid",
+      "value": "AUuOUA6ZaQJGNv07i247spv_N__nc6ZNnAiNROQAPbRetlaRJ5y7zvwWJkID9ou5KPcRAlfQz79jfb35tDNQOmWG7mEtOQGPlILadPGsFEb8qeGU1KBgICmdjs-bAfj4lJft6ZX4u-upD1_VidSkoGzibPlXbezLYsC-Uqe3CT9BpXmmnU13vxQWBpKitbtCwc164gsq1dySf0uTErYFrGKQDtMPCph_QDZjswXqB7TT2otl117dI18vLVDgF5TjA6BVzWNgjGTBt9qLnmjyFsu8AcMlHmis9850Nr4kixJHmRUIlsw9D0KKWHcOnTJBhFcXxFTygWX6w1s1rbRi0GjyqF2sv1sq64JMkmu5eZVwrOzErT6ZbwJxQGwv8LYCSYd_66nVxc8J3_6RJjBNizT61wjzi-zaT5jX_UsVojukaV0OPvbcEeSw0Tfcax1KNIoMXC87vCtXQDd9iE95h5cEZX8DyV4hXhCQbz7Ckq0VcUivl7qQm_yReccIo_uZp8dnH6Rcj7QJRG8yKXEDRe6mda7dmRj3qv4i7ag7IEDGTKVc99Hj3GTGVLawEv9F_N4kl719CsuiNQaDAQj8wbCrZfw7XxTmWaXrxN8qay1KWYt_7NP6NZ__Zry5GAURnkD0LGJiUb_HoT76husUOKECQbvLNu7JuWvJJ8sqZXdKhK3E7v91aI_OR4Yp7G2RNfVFUY7c4jPPNIUE3KPZ05njeAjs8E0iEORPW7kXpeE_0Ne2hi7Q7UDHrQgqt1Q",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1791663973.301676,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "apt.sid",
+      "value": "AP-DFHK5XLSAWVI-2-1760107023457-56716228",
+      "domain": ".experience.adobe.com",
+      "path": "/",
+      "expires": 1760108824,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "apt.uid",
+      "value": "AP-DFHK5XLSAWVI-2-1760107023457-19599755.0.2.87657805-0b9b-4658-9ba6-0d3150e92aee",
+      "domain": ".experience.adobe.com",
+      "path": "/",
+      "expires": 1791643023,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kndctr_8F99160E571FC0427F000101_AdobeOrg_cluster",
+      "value": "va6",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1760108824,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "kndctr_8F99160E571FC0427F000101_AdobeOrg_identity",
+      "value": "CiY0OTU5MTMzNTI5NTc4ODg0OTY0MjcxMjg0ODE0MTA1MDQzNTE5M1ISCKn3tvScMxABGAEqA1ZBNjAA8AGp97b0nDM=",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1794235023,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "s_fid",
+      "value": "7F0144FB996033E6-1D6D831A5D68155F",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": 1794667024.05433,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "s_cc",
+      "value": "true",
+      "domain": ".adobe.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "s_vi_wx7Bu8cxxx7Fpx7Fsr8ex7Eszz8fdyr",
+      "value": "[CS]v4|34748D05F4530CF5-40000ECD41B09155|68E91A0C[CE]",
+      "domain": ".omtrdc.net",
+      "path": "/",
+      "expires": 1794667024.373716,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://experience.adobe.com",
+      "localStorage": [
+        {
+          "name": "shellUserConsent",
+          "value": "N|{\"globalDataCollectionAndUsage\":true}"
+        },
+        {
+          "name": "unifiedShellSession",
+          "value": "N|{\"243483227\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"orgName\":\"Dell\",\"tenantId\":\"dell\"}],\"userType\":\"eoa\"},\"1358856445\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"3ECBBA1458927EBB0A495C5C@AdobeOrg\",\"orgName\":\"WPP - WT\",\"tenantId\":\"wppwt\"}],\"userType\":\"fed\"},\"1876735776\":{\"restricted\":false,\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"A59523F2637E33070A495E59@AdobeOrg\",\"orgName\":\"WPP - All Users\",\"tenantId\":\"wunderman1\"}],\"userType\":\"eoa\"},\"shellOrgAccountMap\":{\"3ECBBA1458927EBB0A495C5C@AdobeOrg\":\"1358856445\",\"A59523F2637E33070A495E59@AdobeOrg\":\"1876735776\",\"4DD80861515CAB990A490D45@AdobeOrg\":\"243483227\"},\"userOrgs\":[{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"3ECBBA1458927EBB0A495C5C@AdobeOrg\",\"orgName\":\"WPP - WT\",\"tenantId\":\"wppwt\"},{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"A59523F2637E33070A495E59@AdobeOrg\",\"orgName\":\"WPP - All Users\",\"tenantId\":\"wunderman1\"},{\"aemInstances\":null,\"aepRegion\":\"VA7\",\"hasAEP\":true,\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"orgName\":\"Dell\",\"tenantId\":\"dell\"}],\"session\":\"1760107014954_8e8a52b4-9d58-4dca-a33c-a02c91b96f9f_uw2\",\"activeOrg\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"featureFlags\":{\"launchdarkly/4DD80861515CAB990A490D45@AdobeOrg\":{\"unified-shell\":{\"BusinessRules_Daily\":\"true\",\"GenStudio\":\"false\",\"a-new-flag\":\"false\",\"acc-enabled\":\"false\",\"adobemixmodeler-enabled\":\"false\",\"advertising-ssc-enabled\":\"false\",\"aec-home-nav-enabled\":\"false\",\"aem-ai-assistant-enabled\":\"false\",\"aem-content-ai-admin-enabled\":\"false\",\"aem-exp-success-studio-enabled\":\"false\",\"aem-headless-cf\":\"true\",\"aem-mfe-sandbox-enabled\":\"false\",\"aem-mystique-hub-enabled\":\"false\",\"aem-on-prem-enabled\":\"false\",\"aem-pages-enabled\":\"true\",\"aem-service-worker\":\"false\",\"aep-datamanagement-federated-data\":\"false\",\"aep-datasets-v-2-enabled\":\"false\",\"aep-exl-resources-widget-enabled\":\"false\",\"aep-federated-data\":\"false\",\"aep-home-customization-enabled\":\"false\",\"aep-midnight-home-enabled\":\"false\",\"aep-offers-components-v-2-enabled\":\"true\",\"aep-offers-v-2-enabled\":\"true\",\"aep-pueblo-enabled\":\"false\",\"aep-queries-v-2-enabled\":\"true\",\"aep-role-poc\":\"false\",\"aep-schemas-v-2-enabled\":\"false\",\"aep-spa-enabled\":\"true\",\"aep-ui-identity-v2-enabled\":\"false\",\"aep-usecase-pueblo-ftux-enabled\":\"false\",\"aep-work-hub-enabled\":\"true\",\"aep.test.ld.flag\":\"false\",\"ai-chat-history-enabled\":\"false\",\"ai-composer-agent-scheduler-enabled\":\"false\",\"ajo-ai-home-enabled\":\"false\",\"ajo-enabled\":\"true\",\"ajo-exl-resources-widget-enabled\":\"true\",\"ajo-frequency-rules-enabled\":\"false\",\"ajo-halo-enabled\":\"false\",\"amplify-enabled\":\"false\",\"analytics-acceleration\":\"true\",\"analytics-enabled-urls\":\"true\",\"analytics-roles-dialog-enabled\":\"false\",\"analytics-tab-session\":\"true\",\"annotations-enabled\":\"false\",\"annotations-non-technical\":\"false\",\"approvals-workflow\":\"true\",\"approvals-workflow-block-self-approval\":\"false\",\"approvals-workflow-tags-objects\":\"true\",\"arion-ai-assistant-enabled\":\"false\",\"arion-enabled\":\"false\",\"asset-usages-explorer-enabled\":\"false\",\"assets-essentials-enabled\":\"false\",\"assets-essentials-in-shell\":\"true\",\"assurance-capability-enabled\":\"false\",\"assurance-root-enabled\":\"false\",\"beta-use-cases-enabled\":\"false\",\"bizible-enabled\":\"false\",\"bizible-internal-enabled\":\"false\",\"brand-intelligence-enabled\":\"false\",\"business-rule-journey-enabled\":\"true\",\"business-rules-beta-enabled\":\"false\",\"business-rules-channel-count\":\"true\",\"business-rules-channel-hourly\":\"false\",\"business-rules-channels-enabled\":\"true\",\"business-rules-frequency-well\":\"true\",\"business-rules-ga-enabled\":\"true\",\"business-rules-journey-count\":\"false\",\"business-rules-journey-hourly\":\"false\",\"cja-roles-dialog-enabled\":\"true\",\"cjm-enabled\":\"false\",\"cjm-enabled-alpha\":\"ALL\",\"cjm-global-search-enabled\":\"true\",\"cjm-performance-metrics-enabled\":\"false\",\"cjm-settings-enabled\":\"false\",\"cjm.ui.destination\":\"false\",\"cloud-manager-spa-enabled\":\"true\",\"cmk-aws-enabled\":\"false\",\"cmk-enabled\":\"true\",\"co-pilot-review-enabled\":\"false\",\"commerce-enabled\":\"false\",\"composed-app-page-titles\":\"false\",\"content-hub-enabled\":\"false\",\"core-assets-enabled\":\"true\",\"core-assets-v2\":\"false\",\"core-services-enabled\":\"true\",\"custom-home-ga\":\"true\",\"custom-home-library-disabled\":\"cjm-ai-home,cjm-home,data-collection-home,experiencePlatformUI-home,sapphireHome\",\"custom-home-resizing-disabled\":\"cjm-ai-home,cjm-home,data-collection-home,experiencePlatformUI-home,sapphireHome\",\"custom-left-nav-bottom-section-enabled\":\"false\",\"custom-left-nav-enabled\":\"false\",\"customer-attributes-enabled\":\"true\",\"data-collection-enabled\":\"false\",\"data-onboarding-enabled\":\"false\",\"demo-quiet-mode\":\"false\",\"disable-x-twitter-for-help-center\":\"false\",\"dx-agent-ui-chat-history-widget\":\"false\",\"dx-agent-ui-debug-widget\":\"false\",\"dx-agent-ui-discovery-widget\":\"false\",\"dx-agent-ui-widget-panel\":\"false\",\"dxue-aia-share\":\"false\",\"dxue-forms-enabled\":\"false\",\"dynamic-chat-enabled\":\"false\",\"ea-ajo-mab\":\"false\",\"ea-hypothesis\":\"true\",\"ea-insights\":\"true\",\"ea-m-3-enabled\":\"true\",\"ea-opportunities\":\"true\",\"ea-opportunities-target\":\"false\",\"ea-opportunity-details\":\"true\",\"ea-overview\":\"false\",\"ea-treatment-validation\":\"true\",\"ea-upload-image\":\"false\",\"enable-agora-collaborations\":\"true\",\"enable-ajo-alerts\":\"false\",\"enable-ajob2b-recents\":\"true\",\"enable-business-rules-whatsapp\":\"true\",\"enable-coveo-for-unified-help-search\":\"false\",\"enable-custom-links-widget\":\"false\",\"enable-data-collection-in-nav\":\"true\",\"enable-experiment-validator\":\"false\",\"enable-fi-repackaging\":\"true\",\"enable-forms-listing-ajo\":\"false\",\"enable-gen-studio-app-selector\":\"false\",\"enable-journeys-next\":\"false\",\"enable-roles-modal\":\"true\",\"enable-smb-ui\":\"false\",\"enable-triggers-subservice\":\"true\",\"exc-home-page_controlrollout\":\"LIVEVERSION\",\"exc-offers-enabled\":\"false\",\"exl-resources-target-enabled\":\"true\",\"exl-resources-widget-enabled\":\"true\",\"experience-manager-home-enabled\":\"true\",\"experimentation-hub-enabled\":\"false\",\"fast-token\":\"true\",\"firefly-enabled-list\":\"false\",\"floodgate-on-shell-enabled\":\"false\",\"foundry-enabled\":\"false\",\"fusion-ai-assistant-enabled\":\"false\",\"genstudio-ai-assistant-enabled\":\"false\",\"genstudio-foundation-enabled\":\"false\",\"genstudio-home-customization-enabled\":\"true\",\"genstudio-ojas-enabled\":\"false\",\"griffon-spa-enabled\":\"true\",\"growth-catalyst-enabled\":\"false\",\"health-care-enabled\":\"false\",\"help-center-feedback-disabled\":\"NONE\",\"home-dashboard-enabled\":\"true\",\"home-search-enabled\":\"true\",\"immersive-ai-enabled\":\"false\",\"intelligent-services-poc-enabled\":\"false\",\"ivo-ui-assistant-enabled\":\"false\",\"landing-unified-search\":\"true\",\"launch-amazon-secret-enabled\":\"true\",\"launch-app-configurations-enabled\":\"false\",\"launch-app-surfaces-enabled\":\"false\",\"launch-data-streams-beta-enabled\":\"true\",\"launch-data-streams-enabled\":\"false\",\"launch-monitoring-enabled\":\"false\",\"launch-server-properties-enabled\":\"false\",\"launch-spa-enabled\":\"true\",\"loyalty-challenge-enabled\":\"false\",\"loyalty-challenges\":\"false\",\"mark-test-org-rollout\":\"false\",\"marketo-enabled\":\"true\",\"marketo-engage-ai-assistant-enabled\":\"false\",\"marketo-measure-v2-enabled\":\"false\",\"marketo-rollout\":\"EXTERNAL\",\"marketo-template-converter\":\"false\",\"new-devconsole-enabled\":\"true\",\"new-profile-enabled\":\"true\",\"new-profile-org-switcher-enabled\":\"false\",\"next-gen-aia-disabled-apps\":\"aem-home-ui,aemshell,platformAnalytics,experienceManagerUI,cloudManagerUi,platformAnalytics,workfront,GenStudio,target-activities,target-audiences,target-setup,target-offers,target-products\\n\",\"next-gen-aia-enabled\":\"false\",\"office-hours-demo\":\"false\",\"on-demand-learning-enabled\":\"false\",\"pass-authentication-enabled\":\"true\",\"pba-enabled-apps\":\"all\",\"percentage-rollout-test\":\"false\",\"personalised-search\":\"true\",\"pipeline-accelerator-permission-enabled\":\"false\",\"plays-sidenav\":\"false\",\"preferences-slack-enabled\":\"false\",\"privacy-ui-enabled\":\"true\",\"project-m-enabled\":\"true\",\"project-m-sidenav\":\"false\",\"project-m-workhub\":\"false\",\"project-orion-enabled\":\"false\",\"project-pangea-enabled\":\"false\",\"pueblo-shell-search-enabled\":\"false\",\"pueblo-thunderbird\":\"true\",\"pulse-ans-migration\":\"false\",\"pulse-ans-migration-write\":\"false\",\"pulse-slack-enabled\":\"true\",\"pulse-ss-enabled\":\"false\",\"quarry-admin-enabled\":\"false\",\"quick-access-customization\":\"true\",\"release-toggles-enabled\":\"false\",\"route-cjm\":\"true\",\"route-data-collection-home\":\"true\",\"route-landing\":\"true\",\"sandbox-switcher-v2-enabled\":\"true\",\"sapphire-account-lists-enabled\":\"true\",\"sapphire-admin-config-ui\":\"false\",\"sapphire-admin-permissions\":\"false\",\"sapphire-brand-kit\":\"false\",\"sapphire-buying-group-enabled\":\"false\",\"sapphire-channels-config\":\"true\",\"sapphire-config-ui\":\"false\",\"sapphire-content-localisation\":\"false\",\"sapphire-content-template-listing\":\"false\",\"sapphire-email-listing\":\"true\",\"sapphire-email-template-listing\":\"true\",\"sapphire-enabled\":\"false\",\"sapphire-fragments-listing\":\"true\",\"sapphire-home\":\"true\",\"sapphire-image-listing\":\"true\",\"sapphire-image-listing-ga\":\"false\",\"sapphire-insights-dashboard-enabled\":\"false\",\"sapphire-landing-page-templates\":\"false\",\"sapphire-landing-pages-listing\":\"false\",\"sapphire-left-nav-beta-updates\":\"false\",\"sapphire-permissions-enabled\":\"true\",\"sapphire-person-journeys-enabled\":\"false\",\"sapphire-sales-permissions\":\"false\",\"scramjet-spa-enabled\":\"true\",\"service-workers-enabled\":\"ON\",\"shell-ai-auto-hide-welcome-back\":\"false\",\"shell-ai-chat-aem-collection-picker\":\"false\",\"shell-ai-chat-aem-docs\":\"false\",\"shell-ai-chat-aem-lh\":\"false\",\"shell-ai-chat-beta-feature-indicator\":\"false\",\"shell-ai-chat-bookmarks-enabled\":\"false\",\"shell-ai-chat-contextual-nudge\":\"false\",\"shell-ai-chat-dialog-enabled\":\"false\",\"shell-ai-chat-enabled\":\"false\",\"shell-ai-chat-enabled-by-sandbox\":\"off-value\",\"shell-ai-chat-prompt-autocomplete\":\"true\",\"shell-ai-chat-prompt-cohort-mapping\":\"true\",\"shell-ai-chat-support-ticket-beta\":\"true\",\"shell-ai-chat-ui-tabs\":\"false\",\"shell-ai-collapse-operational-insight-explanation\":\"false\",\"shell-ai-enable-localized-responses\":\"false\",\"shell-ai-multimodal\":\"true\",\"shell-ai-new-welcome-back-experience\":\"false\",\"shell-ai-threads\":\"false\",\"show-approvals-tab\":\"false\",\"show-er-modeler\":\"false\",\"show-ftux-get-started-widget\":\"sapphireHome,experiencePlatformUI-home\",\"support-assistant-enabled\":\"false\",\"swo-admin-integrations-enabled\":\"false\",\"swo-calendar-config\":\"true\",\"swo-chat-inbox\":\"false\",\"swo-consultants\":\"true\",\"swo-crm-configurations\":\"false\",\"swo-emails\":\"false\",\"swo-engagement-plan\":\"false\",\"swo-home\":\"false\",\"swo-leads\":\"false\",\"swo-meetings-list\":\"true\",\"t-mobile-banner-enabled\":\"false\",\"tags-at-sandbox-enabled\":\"false\",\"tags-beta-enabled\":\"false\",\"tags-collection-enabled\":\"false\",\"tags-enabled\":\"true\",\"tags-rule-enabled\":\"false\",\"tags-suggestion-enabled\":\"false\",\"target-activities-enabled\":\"^(?!.*activitydetails).*\",\"target-activities-enabled-test\":\"false\",\"target-ai-assistant-enabled\":\"false\",\"target-audiences-spa-enabled\":\"OfF_fAlSe\",\"target-offers-enabled\":\"\\\\/target\\\\/offers(?:\\\\/(?!image-library).*)*$\",\"target-products-enabled\":\"\\\\/target\\\\/products\\\\/?(feeds|algorithms|productSearch|catalogs|exclusions|designs|$)\",\"target-setup-enabled\":\"OfF_fAlSe\",\"test-flag-cache\":\"false\",\"test-new-contexts\":\"false\",\"theme-support\":\"true\",\"triggers-bypass-enabled\":\"false\",\"triggersUI-enabled\":\"false\",\"tux-disabled-apps\":\"commerceInstanceDiscovery,landing,pulse,userPreferences\",\"tux-pilot-enabled\":\"SURVEYB\",\"ucp-enabled\":\"false\",\"ucp-for-all\":\"true\",\"unified-customer-portal-enabled\":\"false\",\"unified-home-enabled\":\"false\",\"unified-search\":\"true\",\"unified-search-disable-nouns\":\"offer,placement,activity\",\"unified-search-enable-recents\":\"false\",\"upf-approval-workflow\":\"false\",\"upf-enabled\":\"true\",\"upf-policy-edit-disabled\":\"true\",\"upf-policy-sandbox-configuration\":\"true\",\"upf-watchtower\":\"true\",\"use-cases-enabled\":\"true\",\"user-consent-enabled\":\"true\",\"user-consent-v2-enabled\":\"false\",\"vista-ai-assistant-enabled\":\"false\",\"windrose-enabled\":\"false\",\"work-hub-enabled\":\"false\",\"workfront-ai-assistant-enabled\":\"true\",\"workfront-fusion-enabled\":\"true\",\"workfront-suborg-filter\":\"[]\",\"workfront-tasks-widget-enabled\":\"false\",\"workfront-enabled\":\"true\"},\"aep-co-pilot\":{\"aem_product_router_enabled\":\"false\",\"aem_product_router_version\":\"v0.1\",\"aep-copilot-agent-selector\":\"copilot_v25\",\"aep-copilot-doc-index-path\":\"data/index/finetuned/section_level_index/v16\",\"aep-copilot-doc-score-type\":\"max_inner_product\",\"agent-orchestrator-version\":\"ao_v0\",\"always-on-icon\":\"false\",\"annotation-platform\":\"false\",\"annotations-enabled\":\"false\",\"ao_manifest_id\":\"aiassistant_p1_manifest\",\"application-user-permissions-enabled\":\"true\",\"application_enablement\":\"AEP_AJO_AUDIENCE_MIGRATION\",\"assistant-permissions-enabled\":\"false\",\"collection_name_mapping\":\"{\\\"cja\\\":{\\\"document_retrieval\\\":{\\\"collection_name_without_ao\\\":{\\\"collection_name\\\":\\\"cja_docs_v3\\\"},\\\"collection_name_with_ao\\\":{\\\"collection_name\\\":\\\"cja_docs_v4_PLAT-247262\\\"}}},\\\"sapphire\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"ajo_b2b_docs\\\"}},\\\"cloudmanagerui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"genstudio\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"genstudio_docs_v2\\\"},\\\"question_retrieval\\\":{\\\"index_version\\\":\\\"question_index_v0\\\",\\\"collection_name\\\":\\\"aep_question_index_collection\\\"}},\\\"experiencemanagerui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"aep\\\":{\\\"multimodal_retrieval\\\":{\\\"collection_name\\\":\\\"multimodal_content_v7\\\"},\\\"question_retrieval\\\":{\\\"collection_name\\\":\\\"aep_question_index_collection\\\",\\\"index_version\\\":\\\"question_index_v0\\\"},\\\"document_retrieval\\\":{\\\"collection_name_with_ao\\\":{\\\"collection_name\\\":\\\"aep_docs_collection_v14_PLAT-246021\\\"},\\\"collection_name_without_ao\\\":{\\\"collection_name\\\":\\\"aep_docs_collection_v14_wo_agent_PLAT-246021\\\"}}},\\\"aem\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs_v2\\\"}},\\\"aem-home-ui\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}},\\\"cce\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aep_docs_collection_v10\\\"}},\\\"workfront\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"workfront_docs_v2\\\"}},\\\"aemshell\\\":{\\\"document_retrieval\\\":{\\\"collection_name\\\":\\\"aem_docs\\\"}}}\",\"completion-request-content-moderation\":\"false\",\"contextual-usage-insight\":\"true\",\"demo_flag_enabled\":\"false\",\"elapsed_time_to_allow_llm_based_suggestions\":\"20\",\"enable_custom_oos_message\":\"true\",\"enable_reasoning_engine\":\"true\",\"enable_rule_based_oos\":\"true\",\"final_response_content_moderation\":\"false\",\"ingestion_service_async_processing\":\"{\\\"2D56118865A10BCA0A495E50@AdobeOrg\\\":[],\\\"6FC947105BB267B70A495EE9@AdobeOrg\\\":[],\\\"2C9E184E65A10AD60A495E29@AdobeOrg\\\":[]}\",\"large_file_enabled\":\"{}\",\"operational_insights_collaboration_feature_flag\":\"{\\\"core\\\":\\\"aep_ajo_audience_migration\\\",\\\"deltas\\\":[\\\"entity_info\\\"]}\",\"operator_readiness\":\"[{\\\"skill_id\\\":\\\"ProductKnowledge\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"OperationalInsights\\\"},{\\\"skill_id\\\":\\\"Visualization\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"Data Q&A\\\"},{\\\"skill_id\\\":\\\"Anomaly Detection\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"Forecasting\\\"},{\\\"skill_id\\\":\\\"CreateTicket\\\",\\\"ready\\\":\\\"True\\\"},{\\\"ready\\\":\\\"True\\\",\\\"skill_id\\\":\\\"SurfaceTicketStatus\\\"},{\\\"skill_id\\\":\\\"AbortTicketCreation\\\",\\\"ready\\\":\\\"True\\\"}]\",\"qac-pool-vesion-summit\":\"v5\",\"query-autocomplete-pool-selector\":\"aep/v11\",\"show_charts\":\"false\",\"use_bge_embeddings\":\"false\",\"use_inline_markdown_in_final_response\":\"false\",\"use_markdown_doc_index\":\"false\",\"is_ao_enabled_for_user\":\"false\"}},\"floodgate/4DD80861515CAB990A490D45@AdobeOrg\":{\"unified-shell\":{\"agora-measurement-report\":\"true\",\"enable-agora-collaborations\":\"true\"}}}}"
+        },
+        {
+          "name": "spectrumTheme",
+          "value": "N|{\"1358856445\":\"darkest\"}"
+        },
+        {
+          "name": "nonceexc_app",
+          "value": "{}"
+        },
+        {
+          "name": "shellStorageExpiration",
+          "value": "{\"shellUserConsent\":2075467020221,\"spectrumTheme\":2075467020221,\"unifiedShellSession\":0,\"tenantMap\":1762699021593,\"lastLogins\":1760193421747}"
+        },
+        {
+          "name": "tenantMap",
+          "value": "N|{\"wppwt\":\"3ECBBA1458927EBB0A495C5C@AdobeOrg\",\"wunderman1\":\"A59523F2637E33070A495E59@AdobeOrg\",\"dell\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"LAST_ORG\":\"4DD80861515CAB990A490D45@AdobeOrg\"}"
+        },
+        {
+          "name": "adobeMetrics.deviceId",
+          "value": "7df64cc3-a5e6-11f0-bfab-8707dfed8a24"
+        },
+        {
+          "name": "settingsSession",
+          "value": "{\"950007254\":\"MDoxOSM4ODkxNTQzMiMyNj0xNTE1MTE5NCMxMz0xNTY1OTQ2MiAxNzYwMTA3MDE4NzI2\"}"
+        },
+        {
+          "name": "lastLogins",
+          "value": "N|{\"1358856445\":[{\"appId\":\"workfront\",\"authId\":\"B6EB1E3C6659263A0A495E9F@jwt.com\",\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"lastLogin\":\"2025-10-10T00:19:33.000Z\",\"userId\":\"F6ED1E7C67BE1D020A495FE6@e03e2888630f8e20495fa3.e\"},{\"appId\":\"landing\",\"authId\":\"B6EB1E3C6659263A0A495E9F@jwt.com\",\"imsOrgId\":\"4DD80861515CAB990A490D45@AdobeOrg\",\"lastLogin\":\"2025-10-10T00:16:39.000Z\",\"userId\":\"F6ED1E7C67BE1D020A495FE6@e03e2888630f8e20495fa3.e\"}]}"
+        },
+        {
+          "name": "banners",
+          "value": "{\"ShowSummit2025Banner\":true}"
+        },
+        {
+          "name": "com.adobe.reactor.core.visitorTracking.sessionCount",
+          "value": "1"
+        },
+        {
+          "name": "pueblo.pin.count",
+          "value": "6"
+        },
+        {
+          "name": "com.adobe.reactor.core.visitorTracking.pagesViewed",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "origin": "https://auth.services.adobe.com",
+      "localStorage": [
+        {
+          "name": "idgTokenLs",
+          "value": "711ae0f3-3e3c-4389-a953-764503dd589f"
+        },
+        {
+          "name": "LOCAL_STORAGE_DEVICE_ID",
+          "value": "611b2ce8-3775-4a00-a542-c0a2c8c7aaf4"
+        }
+      ]
+    }
+  ],
+  "uploadJobs": [
+    {
+      "id": "be64e3c4-c805-4930-b5d3-a93e3ba6ad26",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\787565a0\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\e32a2b46\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+          "temp\\staging\\2025-10-10\\41ceefcc\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\cb513eff\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\68637738\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107154241,
+      "updatedAt": 1760107154241,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+      ]
+    },
+    {
+      "id": "8b8545be-6782-44d3-b330-7f8a7709b394",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\8613cbe5\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\7b44d68f\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+          "temp\\staging\\2025-10-10\\3ba044b8\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\b6ec13b8\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\aa117cb5\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107197648,
+      "updatedAt": 1760107197648,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+      ]
+    },
+    {
+      "id": "2a14dd55-935a-4bca-8638-c28b508566ec",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\8613cbe5\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760107199937,
+      "updatedAt": 1760107289360,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "24520f96-18a1-419a-8a56-738a08e530ce",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\af3b1f82\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\f9795fc8\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+          "temp\\staging\\2025-10-10\\dad65a45\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\4ee3d4e1\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\f805de9e\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107206378,
+      "updatedAt": 1760107206378,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+      ]
+    },
+    {
+      "id": "3f9624e2-1dcc-4a00-9c2a-41c6c30eb417",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\2610fdd7\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\f5debaa3\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+          "temp\\staging\\2025-10-10\\7e667bd3\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\6cdff11b\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\e876f98f\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107222519,
+      "updatedAt": 1760107222519,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+      ]
+    },
+    {
+      "id": "ddc74262-fb80-4992-962c-dce9118766bb",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\7a8578cd\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\9093e018\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+          "temp\\staging\\2025-10-10\\7b6884ca\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\f8422b76\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\6041388a\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107241936,
+      "updatedAt": 1760107241936,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+      ]
+    },
+    {
+      "id": "67eb0d46-0ca1-483d-887d-73f7c2dbb72a",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\a92c7bc7\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\6d4d4ad9\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+          "temp\\staging\\2025-10-10\\7e41c077\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\5b828291\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\20dd0c41\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107246896,
+      "updatedAt": 1760107246896,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_R2.pdf",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4"
+      ]
+    },
+    {
+      "id": "7752ceed-c536-493c-bed8-e6d8634c0390",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\a92c7bc7\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760107247685,
+      "updatedAt": 1760107335847,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "b8fa808c-e9c8-489e-9a93-21be4595adaf",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb29303474553cba1e9294d9a0c15/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\09fba416\\2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\c6a53268\\2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\728d72b8\\2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\397b7df2\\2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\27a89b36\\2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107398850,
+      "updatedAt": 1760107398850,
+      "fileNames": [
+        "2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "a1d1637a-3680-472f-a9dc-0d3f1372fc57",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb29303474553cba1e9294d9a0c15/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\09fba416\\2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760107399541,
+      "updatedAt": 1760107488658,
+      "fileNames": [
+        "2601G0179_0061_5720646_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "47ac64cc-19bd-419f-b57a-d6ff386443a1",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddaf9400436c3556e2eabeeccb994d/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\265296eb\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\18ec900a\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\3146439c\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\e12576f0\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\f984cd1b\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107629160,
+      "updatedAt": 1760107629160,
+      "fileNames": [
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "69e055d5-09b2-4336-9a49-0806aab8d5b8",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddaf9400436c3556e2eabeeccb994d/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\97d641bb\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\ad35e6ac\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\c4f84ac4\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\afd7948b\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\4e92c22e\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107631183,
+      "updatedAt": 1760107631183,
+      "fileNames": [
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "337e1acc-0c32-4c5c-baed-1dede5e3b479",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddaf9400436c3556e2eabeeccb994d/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\5ee26a3e\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\6eabb03c\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\c5092cc8\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\e966fcef\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\692c37ad\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107631517,
+      "updatedAt": 1760107631517,
+      "fileNames": [
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "29244a60-07c7-4452-99d1-ef87cd1402e7",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddaf9400436c3556e2eabeeccb994d/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\2a0ce347\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\9085e0a5\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\795aca75\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\d22b8084\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\c81ed63a\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107631864,
+      "updatedAt": 1760107631864,
+      "fileNames": [
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "c430a068-364d-4133-a2c3-60c29e563476",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddaf9400436c3556e2eabeeccb994d/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\95ebe6cc\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\e74e0a25\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\5390b5c3\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\57f7bd8d\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\2f33f0ad\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760107632210,
+      "updatedAt": 1760107632210,
+      "fileNames": [
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "1e39c48d-1445-4ede-8dd5-e64f7e612aea",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddaf9400436c3556e2eabeeccb994d/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\95ebe6cc\\2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760107633193,
+      "updatedAt": 1760107721206,
+      "fileNames": [
+        "2601G0179_0047_5708559_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "88c39627-6d15-4f5a-930d-6d69d3980839",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddafb50043e188c3887d44fe301e8a/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\0c965586\\2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\11fbc0b1\\2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf",
+          "temp\\staging\\2025-10-10\\d7b55559\\2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.png",
+          "temp\\staging\\2025-10-10\\ac02079d\\2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.png",
+          "temp\\staging\\2025-10-10\\66cd7c15\\2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.png"
+        ]
+      },
+      "status": "canceled",
+      "createdAt": 1760107883217,
+      "updatedAt": 1760108112678,
+      "fileNames": [
+        "2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf",
+        "2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.png",
+        "2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.png",
+        "2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.png"
+      ]
+    },
+    {
+      "id": "0a58bb66-b229-49a8-aa57-0219622f5571",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddafb50043e188c3887d44fe301e8a/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\0c965586\\2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760107885066,
+      "updatedAt": 1760107973550,
+      "fileNames": [
+        "2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "c1778d25-1080-423c-a352-965afddc9935",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddad34007fb3400563a71560826ecb/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\0c965586\\2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760108101302,
+      "updatedAt": 1760108117768,
+      "fileNames": [
+        "2601G0179_0044_5709112_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 1
+      }
+    },
+    {
+      "id": "afa26826-7481-4b3e-a066-c67fb2e3bc3d",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddad34007fb3400563a71560826ecb/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\f7d3fb32\\2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\db6a1934\\2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\a1b657e1\\2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\54ac1eb3\\2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\8b9ee544\\2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760108149595,
+      "updatedAt": 1760108149595,
+      "fileNames": [
+        "2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "cb2ef4b9-c705-420d-85e9-9f3bc2047b1c",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddad34007fb3400563a71560826ecb/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\f7d3fb32\\2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760108150438,
+      "updatedAt": 1760108239418,
+      "fileNames": [
+        "2601G0179_0053_5706998_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "86c69703-3564-456b-98bf-c884de0ca48f",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddae610083c239e8625955bc45803a/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\5286909a\\2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\8db14994\\2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+          "temp\\staging\\2025-10-10\\d81a3cf7\\2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+          "temp\\staging\\2025-10-10\\4162202b\\2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+          "temp\\staging\\2025-10-10\\babb6432\\2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Placeholder_Video1_XXXxXXX_R2.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760108747012,
+      "updatedAt": 1760108747012,
+      "fileNames": [
+        "2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip",
+        "2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_1x1.mp4",
+        "2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_4x5.mp4",
+        "2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX_9x16.mp4",
+        "2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Placeholder_Video1_XXXxXXX_R2.pdf"
+      ]
+    },
+    {
+      "id": "fc6648ee-cb49-4936-8b30-a8a6bf82af9e",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68ddae610083c239e8625955bc45803a/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\5286909a\\2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760108748245,
+      "updatedAt": 1760108837475,
+      "fileNames": [
+        "2601G0179_0051_5709001_br_csg_con_fy26q3w9_smv_dell_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "bbdb7f99-9385-4994-8b32-d3f774c7c686",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf06bd01238863e79434feed496ca2/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\5aee4ce4\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\dfd8e776\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+          "temp\\staging\\2025-10-10\\fe7c2990\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\9d0aeed7\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\b421ea39\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760133584996,
+      "updatedAt": 1760133584996,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+      ]
+    },
+    {
+      "id": "e47848d3-b880-4aa6-8f44-b187117cbe8d",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf06bd01238863e79434feed496ca2/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\787565a0\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "failed",
+      "createdAt": 1760133588006,
+      "updatedAt": 1760133611272,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "error": "Interface Workfront não carregou completamente - botão Add new não visível"
+    },
+    {
+      "id": "7cc3da83-7d33-402b-bc82-101c894e7286",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf06bd01238863e79434feed496ca2/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\b7f0cc4a\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\43a536b6\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+          "temp\\staging\\2025-10-10\\dd878b0c\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\a0bcb3b6\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\0fdd30d0\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760133617825,
+      "updatedAt": 1760133617825,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+      ]
+    },
+    {
+      "id": "1f84fbe5-2af7-4652-822f-18ccd044fbd6",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\ec3522a6\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\3e6fe8f8\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\286f6370\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\b49ef0ec\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf",
+          "temp\\staging\\2025-10-10\\f4e9b33a\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760133850067,
+      "updatedAt": 1760133850067,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4"
+      ]
+    },
+    {
+      "id": "71ff1135-d07e-4754-b4b7-afc081fef266",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\07eaa80d\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\08f89229\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\592317fb\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\aafa76fb\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf",
+          "temp\\staging\\2025-10-10\\ebeb76da\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760133855336,
+      "updatedAt": 1760133855336,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4"
+      ]
+    },
+    {
+      "id": "d1499cd9-cee2-4fde-a765-9542cc12cd91",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\12eedf1b\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\a36424f5\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+          "temp\\staging\\2025-10-10\\72a1d504\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\db1a549c\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\4189cae6\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760133885344,
+      "updatedAt": 1760133885344,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+      ]
+    },
+    {
+      "id": "0e00a03e-42e7-404a-9293-d602c42f9372",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\12eedf1b\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip"
+      },
+      "status": "failed",
+      "createdAt": 1760133892517,
+      "updatedAt": 1760133929872,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 1
+      },
+      "error": "Interface Workfront não carregou completamente - botão Add new não visível"
+    },
+    {
+      "id": "69f0258f-046a-487c-b227-ad3454348f35",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\5829a9f1\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\a881fbb5\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+          "temp\\staging\\2025-10-10\\8d4a1323\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\d0dbf74e\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\99f33731\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760133964674,
+      "updatedAt": 1760133964674,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+      ]
+    },
+    {
+      "id": "443abc03-85dd-4297-a347-19ba15c7a580",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\a618b863\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\f215ae43\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+          "temp\\staging\\2025-10-10\\1e1c4cac\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\b034d61a\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\68f263ad\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760134340214,
+      "updatedAt": 1760134340214,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+      ]
+    },
+    {
+      "id": "db29e56b-24e5-4029-bee7-9d0d82463021",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68deb16701735fd7cd84a275d4cb56d9/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\787565a0\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      },
+      "status": "failed",
+      "createdAt": 1760134341866,
+      "updatedAt": 1760134354235,
+      "fileNames": [
+        "2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip"
+      ],
+      "error": "ENOENT: no such file or directory, stat 'F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\787565a0\\2601G0179_0057_5721537_br_csg_con_fy26q3w10_smv_jscon_wtn-txl_Award-Winning-Innovation_XXXxXXX.zip'"
+    },
+    {
+      "id": "58071f27-eb17-4410-b98d-95efac2316c1",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf06bd01238863e79434feed496ca2/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-10\\36a6ff46\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-10\\281c7795\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+          "temp\\staging\\2025-10-10\\082734aa\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+          "temp\\staging\\2025-10-10\\bdf508d6\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+          "temp\\staging\\2025-10-10\\52edbc56\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+        ]
+      },
+      "status": "canceled",
+      "createdAt": 1760134690672,
+      "updatedAt": 1760134750114,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_4x5.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_9x16.mp4",
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_R3.pdf"
+      ]
+    },
+    {
+      "id": "94961a51-fb06-450c-822d-c1427e00dcd0",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf06bd01238863e79434feed496ca2/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-10\\36a6ff46\\2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip"
+      },
+      "status": "failed",
+      "createdAt": 1760134693305,
+      "updatedAt": 1760134761303,
+      "fileNames": [
+        "2601G0179_0051_5372936_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video5_1x1.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 1
+      },
+      "error": "page.waitForTimeout: Target page, context or browser has been closed"
+    }
+  ]
+}

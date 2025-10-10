@@ -129,32 +129,32 @@ export const MastersUploadDialog = ({ onUploaded }: Props) => {
                     <div className="col-span-5 flex flex-col gap-5">
                         {/* Área principal: agora é a dropzone da miniatura */}
                         <div
-                          onDragEnter={onThumbDrag}
-                          onDragLeave={onThumbDrag}
-                          onDragOver={onThumbDrag}
-                          onDrop={onThumbDrop}
-                          className={`relative border rounded-lg aspect-video flex items-center justify-center overflow-hidden transition bg-muted/10 ${dragThumb ? 'border-primary ring-2 ring-primary/40 bg-primary/5' : ''}`}
+                            onDragEnter={onThumbDrag}
+                            onDragLeave={onThumbDrag}
+                            onDragOver={onThumbDrag}
+                            onDrop={onThumbDrop}
+                            className={`relative border rounded-lg aspect-video flex items-center justify-center overflow-hidden transition bg-muted/10 ${dragThumb ? 'border-primary ring-2 ring-primary/40 bg-primary/5' : ''}`}
                         >
-                          <input ref={thumbInputRef} type="file" accept="image/png,image/jpeg" className="hidden" id="thumb-hidden-input" onChange={async e=>{const f=e.target.files?.[0]; setThumbFile(f||null); if(f){const b64=await fileToBase64(f); setPreviewBase64(b64);} else { setPreviewBase64(null);} }} />
-                          {thumbUrl ? (
-                            <img src={thumbUrl} alt="miniatura" className="object-contain w-full h-full" />
-                          ) : (
-                            <label htmlFor="thumb-hidden-input" className="cursor-pointer flex flex-col items-center gap-2 text-xs text-muted-foreground px-4 text-center select-none">
-                              <ImagePlus className="h-8 w-8 opacity-60" />
-                              <span>Arraste ou clique para enviar a miniatura (PNG/JPG até ~1MB)</span>
-                              <span className="text-[10px] opacity-60">Ela representará o Master na galeria</span>
-                            </label>
-                          )}
-                          {thumbUrl && (
-                            <div className="absolute top-2 right-2 flex gap-1">
-                              <Button size="icon" variant="secondary" className="h-8 w-8" title="Trocar" onClick={()=>thumbInputRef.current?.click()}>
-                                <RefreshCcw className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="secondary" className="h-8 w-8 text-destructive" title="Limpar" onClick={()=>{ setThumbFile(null); setThumbUrl(null); setPreviewBase64(null); }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
+                            <input ref={thumbInputRef} type="file" accept="image/png,image/jpeg" className="hidden" id="thumb-hidden-input" onChange={async e => { const f = e.target.files?.[0]; setThumbFile(f || null); if (f) { const b64 = await fileToBase64(f); setPreviewBase64(b64); } else { setPreviewBase64(null); } }} />
+                            {thumbUrl ? (
+                                <img src={thumbUrl} alt="miniatura" className="object-contain w-full h-full" />
+                            ) : (
+                                <label htmlFor="thumb-hidden-input" className="cursor-pointer flex flex-col items-center gap-2 text-xs text-muted-foreground px-4 text-center select-none">
+                                    <ImagePlus className="h-8 w-8 opacity-60" />
+                                    <span>Arraste ou clique para enviar a miniatura (PNG/JPG até ~1MB)</span>
+                                    <span className="text-[10px] opacity-60">Ela representará o Master na galeria</span>
+                                </label>
+                            )}
+                            {thumbUrl && (
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                    <Button size="icon" variant="secondary" className="h-8 w-8" title="Trocar" onClick={() => thumbInputRef.current?.click()}>
+                                        <RefreshCcw className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="secondary" className="h-8 w-8 text-destructive" title="Limpar" onClick={() => { setThumbFile(null); setThumbUrl(null); setPreviewBase64(null); }}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                         {/* Lista agora só com o arquivo principal */}
                         <ul className="flex flex-col gap-4">
@@ -162,7 +162,7 @@ export const MastersUploadDialog = ({ onUploaded }: Props) => {
                                 onDragEnter={onMainDrag} onDragLeave={onMainDrag} onDragOver={onMainDrag} onDrop={onMainDrop}>
                                 <div className="flex items-start justify-between mb-2">
                                     <span className="font-medium">Arquivo principal</span>
-                                    {file && <div className="flex gap-1"> <Button size="icon" variant="ghost" className="h-7 w-7" title="Trocar" onClick={()=>fileInputRef.current?.click()}><RefreshCcw className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Limpar" onClick={()=>setFile(null)}><Trash2 className="h-3.5 w-3.5"/></Button></div>}
+                                    {file && <div className="flex gap-1"> <Button size="icon" variant="ghost" className="h-7 w-7" title="Trocar" onClick={() => fileInputRef.current?.click()}><RefreshCcw className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Limpar" onClick={() => setFile(null)}><Trash2 className="h-3.5 w-3.5" /></Button></div>}
                                 </div>
                                 <input ref={fileInputRef} type="file" className="hidden" id="input-master-file" onChange={e => setFile(e.target.files?.[0] || null)} />
                                 {!file && (
@@ -208,17 +208,17 @@ export const MastersUploadDialog = ({ onUploaded }: Props) => {
                                 </Select>
                             </div>
                         </div>
-                                                <div>
-                                                        <label className="text-xs uppercase tracking-wide text-muted-foreground">Descrição</label>
-                                                        <textarea
-                                                            value={description}
-                                                            onChange={e=>setDescription(e.target.value)}
-                                                            placeholder="Resumo, contexto, variações, notas de uso..."
-                                                            className="mt-1 w-full min-h-[90px] resize-y rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                                            maxLength={2000}
-                                                        />
-                                                        <div className="text-[10px] text-muted-foreground mt-1 flex justify-end">{description.length}/2000</div>
-                                                </div>
+                        <div>
+                            <label className="text-xs uppercase tracking-wide text-muted-foreground">Descrição</label>
+                            <textarea
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                placeholder="Resumo, contexto, variações, notas de uso..."
+                                className="mt-1 w-full min-h-[90px] resize-y rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                maxLength={2000}
+                            />
+                            <div className="text-[10px] text-muted-foreground mt-1 flex justify-end">{description.length}/2000</div>
+                        </div>
                         <div>
                             <label className="text-xs uppercase tracking-wide text-muted-foreground">Tags</label>
                             <div className="flex flex-wrap gap-2 mt-2">
