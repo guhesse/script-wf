@@ -752,6 +752,19 @@ export class WorkfrontController {
         throw new HttpException('Lista de arquivos é obrigatória', HttpStatus.BAD_REQUEST);
       }
 
+      // Validação de regra: >=1 zip (Asset Release), >=1 pdf e >=1 outro formato
+      const lower = (s?: string) => (s || '').toLowerCase();
+      const zips = body.files.filter(f => lower(f.name).endsWith('.zip'));
+      const pdfs = body.files.filter(f => lower(f.name).endsWith('.pdf'));
+      const others = body.files.filter(f => !lower(f.name).endsWith('.zip') && !lower(f.name).endsWith('.pdf'));
+      if (zips.length === 0 || pdfs.length === 0 || others.length === 0) {
+        const missing: string[] = [];
+        if (zips.length === 0) missing.push('1 arquivo ZIP');
+        if (pdfs.length === 0) missing.push('1 arquivo PDF');
+        if (others.length === 0) missing.push('1 arquivo de outro formato (imagem/vídeo/etc.)');
+        throw new HttpException(`Arquivos insuficientes: adicione ${missing.join(', ')}`, HttpStatus.BAD_REQUEST);
+      }
+
       const userId = user?.userId || 'anonymous';
       const uploadUrls: Array<{
         fileName: string;
@@ -842,7 +855,8 @@ export class WorkfrontController {
       filename: (req, file, cb) => {
         // Salvar com nome original (SEM prefixo uploadId)
         const filename = file.originalname;
-        console.log(`📄 Arquivo será salvo como: ${filename}`);
+        console.log(`📄 Arquivo original recebido: "${file.originalname}"`);
+        console.log(`📄 Arquivo será salvo como: "${filename}"`);
         cb(null, filename);
       }
     })

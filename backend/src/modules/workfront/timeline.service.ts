@@ -817,9 +817,34 @@ export class TimelineService {
             throw new Error('File chooser não abriu após clicar Document');
         }
         
-        // Enviar arquivos diretamente (já salvos com nome correto)
-        await chooser.setFiles(filePaths);
-        this.logger.log(`📤 [UPLOAD-R] ${filePaths.length} arquivo(s) enviado(s)`);
+        // Converter paths para absolutos e validar existência
+        const fs = require('fs').promises;
+        const path = require('path');
+        const absolutePaths: string[] = [];
+        
+        for (const filePath of filePaths) {
+            // Converter para path absoluto se for relativo
+            const absolutePath = path.isAbsolute(filePath) 
+                ? filePath 
+                : path.resolve(process.cwd(), filePath);
+            
+            this.logger.log(`📁 [UPLOAD-R] Validando arquivo: ${absolutePath}`);
+            
+            // Verificar se arquivo existe
+            try {
+                const stats = await fs.stat(absolutePath);
+                this.logger.log(`✅ [UPLOAD-R] Arquivo encontrado: ${path.basename(absolutePath)} (${stats.size} bytes)`);
+                absolutePaths.push(absolutePath);
+            } catch (err) {
+                this.logger.error(`❌ [UPLOAD-R] Arquivo não encontrado: ${absolutePath}`);
+                throw new Error(`Arquivo não encontrado: ${absolutePath}`);
+            }
+        }
+        
+        // Enviar arquivos com paths absolutos validados
+        this.logger.log(`📤 [UPLOAD-R] Enviando ${absolutePaths.length} arquivo(s) para file chooser...`);
+        await chooser.setFiles(absolutePaths);
+        this.logger.log(`✅ [UPLOAD-R] ${absolutePaths.length} arquivo(s) enviado(s) com sucesso`);
         
         // Aguardar processamento otimizado - Workfront processa em background
         const waitTime = Math.max(6000, filePaths.length * 3000); // Mínimo 6s, 3s por arquivo (otimizado)

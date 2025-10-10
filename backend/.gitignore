@@ -48,6 +48,10 @@ lerna-debug.log*
 # Downloads directory
 downloads/
 
+# Temp/staging files
+temp/
+/temp/
+
 # Playwright
 /test-results/
 /playwright-report/
