@@ -1,32 +1,26 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-scriptwf}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-L4r01EC4DAXA7UwG}
-      POSTGRES_DB: ${POSTGRES_DB:-scriptwf}
-    volumes:
-      - pgdata_prod:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-
   backend:
     build:
-      context: .
-      dockerfile: docker/backend.Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: script-wf-backend-prod:latest
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-scriptwf}:${POSTGRES_PASSWORD:-L4r01EC4DAXA7UwG}@db:5432/${POSTGRES_DB:-scriptwf}
+      # Produção usa database separado no mesmo container DB
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
-    depends_on:
-      db:
-        condition: service_healthy
+      BUNNY_API_KEY: ${BUNNY_API_KEY}
+      BUNNY_STORAGE_ZONE: ${BUNNY_STORAGE_ZONE}
+      BUNNY_CDN_BASE_URL: ${BUNNY_CDN_BASE_URL}
+      BUNNY_STORAGE_HOST: ${BUNNY_STORAGE_HOST}
+    # Depende do container DB do docker-compose.multi-db.yml
+    external_links:
+      - script-wf-db-1:db
     expose:
       - "3000"
 
@@ -35,12 +29,13 @@ services:
       context: .
       dockerfile: docker/frontend.Dockerfile
       args:
-        VITE_API_BASE_URL: https://hesse.app.br/api
+        VITE_API_BASE_URL: /api
     restart: unless-stopped
     depends_on:
       - backend
     ports:
       - "80:80"
 
-volumes:
-  pgdata_prod:
+# Produção compartilha o mesmo container DB mas usa database separado
+# Development: scriptwf_dev (scriptwfdev user)  
+# Production: scriptwf_prod (scriptwf_prod user)

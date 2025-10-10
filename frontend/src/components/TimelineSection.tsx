@@ -1,14 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlayCircle, Settings, Upload, UploadCloud, Share2, MessageSquare, Activity, Clock, ChevronDown, ChevronUp, FolderOpen, Loader2, CheckCircle2, XCircle, SkipForward } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { useWorkflowProgress } from '@/hooks/useWorkflowProgress';
+import { Settings, Upload, UploadCloud, Share2, MessageSquare, Activity, Clock, FolderOpen, Workflow } from 'lucide-react';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 
 type TeamKey = 'carol' | 'giovana' | 'test';
@@ -46,6 +43,8 @@ interface TimelineSectionProps {
     projectUrl: string;
     selectedUser: TeamKey;
     stagedPaths?: { assetZip?: string; finalMaterials?: string[] } | null;
+    onPlanChange?: (plan: Array<{ action: string; subtype?: 'zip' | 'finals'; params?: Record<string, unknown>; label: string }>) => void;
+    onExecuteReady?: (fn: () => Promise<void>, stats: { readyCount: number; totalCount: number; hasInvalid: boolean }) => void;
 }
 
 const WORKFLOW_ICONS: Record<WorkflowAction, React.ComponentType<{ className?: string }>> = {
@@ -61,7 +60,7 @@ const WORKFLOW_ICONS: Record<WorkflowAction, React.ComponentType<{ className?: s
 const ALLOWED_STATUS = ['Round 1 Review', 'Round 2 Review', 'Extra Round Review', 'Delivered'] as const;
 type AllowedStatus = typeof ALLOWED_STATUS[number];
 
-export default function TimelineSection({ projectUrl, selectedUser, stagedPaths }: TimelineSectionProps) {
+export default function TimelineSection({ projectUrl, selectedUser, stagedPaths, onPlanChange, onExecuteReady }: TimelineSectionProps) {
     // Passos base sempre presentes (params podem ser preenchidos depois)
     const baseSteps: WorkflowStep[] = [
         { action: 'upload_asset', enabled: false, params: { kind: 'upload_asset', assetZipPath: '', selectedUser }, description: 'Upload do ZIP para Asset Release', folder: 'Asset Release', group: 'asset' },
@@ -74,16 +73,17 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
     ];
 
     const [steps, setSteps] = useState<WorkflowStep[]>(baseSteps);
-    const [executing, setExecuting] = useState(false);
-    const [results, setResults] = useState<{ success?: boolean; summary?: { successful: number; failed: number; skipped: number }; message?: string } | null>(null);
-    const [showAdvanced, setShowAdvanced] = useState(false);
-    const [showInternal] = useState(false); // modo debug desativado por padrão (toggle removido)
-    const { executeWorkflow, getCommentPreview } = useWorkfrontApi();
-    const progress = useWorkflowProgress({ projectUrl });
-    // Guardar o "plano" (sequência real de tasks enviadas) para enriquecer UI
-    const [executedPlan, setExecutedPlan] = useState<Array<{ action: string; subtype?: 'zip' | 'finals'; params?: Record<string, unknown>; label: string }>>([]);
-    const [commentPreviews, setCommentPreviews] = useState<Record<string,string>>({});
-    const [commentMentions, setCommentMentions] = useState<Record<string,string[]>>({});
+    const [showAdvanced] = useState(false);
+    const { executeWorkflow } = useWorkfrontApi();
+
+    // Usa ref para armazenar executeWorkflow sem causar re-renders
+    const executeWorkflowRef = useRef(executeWorkflow);
+    useEffect(() => {
+        executeWorkflowRef.current = executeWorkflow;
+    }, [executeWorkflow]);
+
+    // Refs para rastrear últimos valores enviados (evitar chamadas desnecessárias)
+    const lastStatsRef = useRef<{ readyCount: number; totalCount: number; hasInvalid: boolean } | null>(null);
 
     // Preenche params quando staging disponível
     useEffect(() => {
@@ -160,266 +160,102 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
     const readyEnabledSteps = enabledSteps.filter(isParamReady);
     const hasInvalidEnabled = enabledSteps.length > 0 && readyEnabledSteps.length !== enabledSteps.length;
 
-    const executeTimeline = async () => {
-        if (!projectUrl || readyEnabledSteps.length === 0) return;
-        setExecuting(true); setResults(null);
-        // Monta plano linear na mesma ordem que será enviado ao backend
-        const plan = readyEnabledSteps.map(s => {
-            // Normaliza actions para coincidir com progress do backend
-            let mappedAction: string = s.action;
-            let subtype: 'zip' | 'finals' | undefined = undefined;
-            if (s.action === 'upload_asset') { mappedAction = 'upload'; subtype = 'zip'; }
-            if (s.action === 'upload_finals') { mappedAction = 'upload'; subtype = 'finals'; }
-            if (s.action === 'share_asset') mappedAction = 'share';
-            if (s.action === 'comment_asset' || s.action === 'comment_finals') mappedAction = 'comment';
-            const params = (s.params || {}) as Record<string, unknown>;
-            const label = (() => {
-                if (mappedAction === 'upload' && subtype === 'zip') return 'Upload Zip';
-                if (mappedAction === 'upload' && subtype === 'finals') return 'Upload Finais';
-                if (mappedAction === 'share') return 'Share';
-                if (mappedAction === 'comment') return 'Comment';
-                if (mappedAction === 'status') return 'Status';
-                if (mappedAction === 'hours') return 'Hours';
-                return mappedAction;
-            })();
-            return { action: mappedAction, subtype, params, label };
-        });
-        setExecutedPlan(plan);
-        // Buscar previews de comentários antes de iniciar (rich text)
-        try {
-            const commentTypes = Array.from(new Set(plan.filter(p => p.action === 'comment').map(p => p.params?.commentType).filter(Boolean))) as string[];
-            if (commentTypes.length) {
-                const previews: Record<string,string> = {};
-                const mentionsMap: Record<string,string[]> = {};
-                for (const ct of commentTypes) {
-                    try {
-                        const prev = await getCommentPreview({ commentType: ct as 'assetRelease' | 'finalMaterials' | 'approval', selectedUser });
-                        if (prev?.success) {
-                            if (prev.commentText) previews[ct] = prev.commentText;
-                            if (Array.isArray(prev.users)) {
-                                mentionsMap[ct] = prev.users.map(u => u.name).filter(Boolean);
-                            }
-                        }
-                    } catch {/* ignora erro individual */}
-                }
-                setCommentPreviews(previews);
-                setCommentMentions(mentionsMap);
-            }
-        } catch {/* ignore */}
-        try {
-            // Converte explicitamente para shape esperado pelo hook (params generic Record)
-            const frontendSteps = readyEnabledSteps.map(s => ({
-                action: s.action,
-                enabled: s.enabled,
-                params: s.params ? { ...(s.params as Record<string, unknown>) } : undefined
-            }));
-            const result = await executeWorkflow({
-                projectUrl,
-                steps: frontendSteps,
-                headless: false,
-                stopOnError: false
+    // Notifica o pai sobre mudanças no plano (apenas quando steps mudam)
+    useEffect(() => {
+        const enabled = steps.filter(s => s.enabled);
+        const ready = enabled.filter(isParamReady);
+        const hasInvalid = enabled.length > 0 && ready.length !== enabled.length;
+
+        if (onPlanChange) {
+            const plan = ready.map(s => {
+                let mappedAction: string = s.action;
+                let subtype: 'zip' | 'finals' | undefined = undefined;
+                if (s.action === 'upload_asset') { mappedAction = 'upload'; subtype = 'zip'; }
+                if (s.action === 'upload_finals') { mappedAction = 'upload'; subtype = 'finals'; }
+                if (s.action === 'share_asset') mappedAction = 'share';
+                if (s.action === 'comment_asset' || s.action === 'comment_finals') mappedAction = 'comment';
+                const params = (s.params || {}) as Record<string, unknown>;
+                const label = (() => {
+                    if (mappedAction === 'upload' && subtype === 'zip') return 'Upload Zip';
+                    if (mappedAction === 'upload' && subtype === 'finals') return 'Upload Finais';
+                    if (mappedAction === 'share') return 'Share';
+                    if (mappedAction === 'comment') return 'Comment';
+                    if (mappedAction === 'status') return 'Status';
+                    if (mappedAction === 'hours') return 'Hours';
+                    return mappedAction;
+                })();
+                return { action: mappedAction, subtype, params, label };
             });
-            setResults(result);
-        } catch (e) {
-            setResults({ success: false, message: (e as Error).message });
-        } finally {
-            setExecuting(false);
+            onPlanChange(plan);
         }
-    };
+
+        // Notifica função de execução se disponível
+        if (onExecuteReady) {
+            const newStats = {
+                readyCount: ready.length,
+                totalCount: enabled.length,
+                hasInvalid: hasInvalid
+            };
+
+            // Só chama se os stats mudaram
+            const lastStats = lastStatsRef.current;
+            const statsChanged = !lastStats ||
+                lastStats.readyCount !== newStats.readyCount ||
+                lastStats.totalCount !== newStats.totalCount ||
+                lastStats.hasInvalid !== newStats.hasInvalid;
+
+            if (statsChanged) {
+                lastStatsRef.current = newStats;
+                const execute = async () => {
+                    const frontendSteps = ready.map(s => ({
+                        action: s.action,
+                        enabled: s.enabled,
+                        params: s.params ? { ...(s.params as Record<string, unknown>) } : undefined
+                    }));
+                    return executeWorkflowRef.current({
+                        projectUrl,
+                        steps: frontendSteps,
+                        headless: false,
+                        stopOnError: false
+                    });
+                };
+                onExecuteReady(execute, newStats);
+            }
+        }
+    }, [steps, onPlanChange, onExecuteReady, projectUrl]);
 
     // Presets
-    const presetAssetOnly = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'asset' })));
-    const presetFinalsOnly = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'finals' })));
-    const presetFullFlow = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'asset' || s.group === 'finals' })));
-    const presetStatusOnly = () => setSteps(p => p.map(s => ({ ...s, enabled: s.action === 'status' })));
+    const presetReleaseFinal = () =>
+        setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'asset' || s.group === 'finals' })));
+    const presetFullFlow = () => setSteps(p => p.map(s => ({ ...s, enabled: true })));
     const presetStatusHours = () => setSteps(p => p.map(s => ({ ...s, enabled: s.group === 'extra' })));
 
 
     return (
         <div className="space-y-6">
-            {/* Barra de Progresso Global */}
+
             <Card className="border-l-primary bg-card border-border">
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between text-card-foreground">
                         <div className="flex items-center gap-3">
-                            <Activity className="w-4 h-4 text-primary" /> Execução (tempo real)
+                            <Workflow className="w-4 h-4 text-primary" />
+                            Fluxo de Trabalho
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{progress.currentAction ? `${progress.currentAction} · ${progress.currentPhase}` : 'Aguardando'}</span>
-                            <Badge variant="outline">{progress.percent}%</Badge>
+                        <div className="flex gap-2 mb-4 flex-wrap cursor-pointer">
+                            <Badge variant="outline" onClick={presetFullFlow}>Completo</Badge>
+                            <Badge variant="outline" onClick={presetReleaseFinal}>Release + Final</Badge>
+                            <Badge variant="outline" onClick={presetStatusHours}>Status + Hours</Badge>
+                            <Badge variant="outline" onClick={() => setSteps(prev => prev.map(s => ({ ...s, enabled: false })))}>Nenhum</Badge>
                         </div>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    <Progress value={progress.percent} className="h-2" />
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
-                        <span className="truncate max-w-[60%]" title={progress.lastMessage}>{progress.lastMessage || ''}</span>
-                        <span>{progress.percent}%</span>
-                    </div>
-                    {/* Removed log details area */}
-                    {/* Lista de tasks lineares (usando id/display) */}
-                    {progress.tasks && progress.tasks.length > 0 && (
-                        <div className="flex flex-col gap-1 pt-1">
-                            {/* Toggle visão interna */}
-                            <div className="flex justify-end pr-1 pb-1" />
-                            {/* Agrupamento por etapa de alto nível */}
-                            {(!showInternal && executedPlan.length > 0) ? (() => {
-                                // Ordena tarefas internas
-                                const sorted = progress.tasks.slice().sort((a,b)=>a.stepIndex - b.stepIndex);
-                                interface Group { action: string; tasks: typeof sorted; }
-                                // Cria grupos contíguos por action
-                                const rawGroups: Group[] = [];
-                                let current: Group | null = null;
-                                for (const t of sorted) {
-                                    if (!current || current.action !== t.action) {
-                                        current = { action: t.action, tasks: [] as typeof sorted };
-                                        rawGroups.push(current);
-                                    }
-                                    current.tasks.push(t);
-                                }
-                                // Associa grupos à ordem do executedPlan (matching por action sequencial)
-                                const usedGroupIdx = new Set<number>();
-                                const highLevel = executedPlan.map((p, idx) => {
-                                    const groupIdx = rawGroups.findIndex((g,i) => !usedGroupIdx.has(i) && g.action === (p.action) );
-                                    if (groupIdx >= 0) usedGroupIdx.add(groupIdx);
-                                    const g = groupIdx >= 0 ? rawGroups[groupIdx] : null;
-                                    const tasks = g ? g.tasks : [];
-                                    // Deriva status agregado
-                                    let status: string = 'pending';
-                                    if (tasks.length) {
-                                        if (tasks.some(t => t.status === 'error')) status = 'error';
-                                        else if (tasks.some(t => t.status === 'running')) status = 'running';
-                                        else if (tasks.every(t => t.status === 'skip')) status = 'skip';
-                                        else if (tasks.every(t => t.status === 'success')) status = 'success';
-                                        else status = 'pending';
-                                    }
-                                    const durationMs = tasks.reduce((acc,t)=> acc + (t.durationMs || 0),0) || undefined;
-                                    // Reaproveita lógica de detalhes existente
-                                    const pseudoTask: { id: string; action: string; display: string; status: string; message?: string; durationMs?: number } = { id: `${p.action}-hl-${idx}`, action: p.action, display: p.label || p.action, status, message: tasks[tasks.length-1]?.message, durationMs };
-                                    return { plan: p, pseudo: pseudoTask, tasks };
-                                });
-                                return highLevel.map(({ plan, pseudo, tasks }) => {
-                                    const t = pseudo;
-                                    const Icon = plan.subtype === 'finals' && plan.action === 'upload' ? UploadCloud : plan.action === 'upload' ? Upload : plan.action === 'share' ? Share2 : plan.action === 'comment' ? MessageSquare : plan.action === 'status' ? Activity : Clock;
-                                    const baseColor = t.status === 'success' ? 'text-emerald-500' : t.status === 'error' ? 'text-destructive' : t.status === 'skip' ? 'text-amber-500' : t.status === 'running' ? 'text-primary' : 'text-muted-foreground';
-                                    const bg = t.status === 'running' ? 'bg-primary/5' : t.status === 'success' ? 'bg-emerald-500/5' : t.status === 'error' ? 'bg-destructive/10' : t.status === 'skip' ? 'bg-amber-500/10' : 'bg-muted/10';
-                                    const statusIcon = t.status === 'running' ? <Loader2 className="w-3 h-3 animate-spin" /> : t.status === 'success' ? <CheckCircle2 className="w-3 h-3" /> : t.status === 'error' ? <XCircle className="w-3 h-3" /> : t.status === 'skip' ? <SkipForward className="w-3 h-3" /> : null;
-                                    const title = `${t.display} • ${t.status}` + (t.durationMs ? ` • ${progress.formatDuration(t.durationMs)}` : '') + (t.message ? `\n${t.message}` : '');
-                                    const planItem = plan;
-                                    const details = (() => {
-                                        if (!planItem) return null;
-                                        const p = planItem.params || {} as Record<string, unknown>;
-                                        const userLabel = typeof p.selectedUser === 'string' ? (p.selectedUser === 'carol' ? 'Equipe Carolina' : p.selectedUser === 'giovana' ? 'Equipe Giovana' : 'Usuário Teste') : undefined;
-                                        if (planItem.action === 'upload' && planItem.subtype === 'zip') {
-                                            if (p.assetZipPath) {
-                                                const name = String(p.assetZipPath).split(/[/\\]/).pop();
-                                                return `Subindo arquivo: ${name}${userLabel ? ' · ' + userLabel : ''}`;
-                                            }
-                                        }
-                                        if (planItem.action === 'upload' && planItem.subtype === 'finals') {
-                                            if (Array.isArray(p.finalMaterialPaths)) {
-                                                const all = (p.finalMaterialPaths as unknown as string[]).map(f => f.split(/[/\\]/).pop());
-                                                const multi = all.join('\n');
-                                                return `Upload finais:\n${multi}${userLabel ? '\n' + userLabel : ''}`;
-                                            }
-                                        }
-                                        if (planItem.action === 'share') {
-                                            const selections = (p.selections as Array<{ fileName?: string }> | undefined) || [];
-                                            const files = selections.map(s => s.fileName).filter(Boolean).join('\n');
-                                            return `Compartilhando ${selections.length} arquivo(s)${files ? ':\n' + files : ''}${userLabel ? '\n' + userLabel : ''}`;
-                                        }
-                                        if (planItem.action === 'comment') {
-                                            const ct = p.commentType as string | undefined;
-                                            const preview = (p.rawHtml as string | undefined) || (ct ? commentPreviews[ct] : '') || '';
-                                            const mentions = ct ? (commentMentions[ct] || []) : [];
-                                            const mentionLine = mentions.length ? mentions.map(n => `@${n}`).join(' ') + '\n' : '';
-                                            return (mentionLine + preview).trim() || '(Comentário não disponível)';
-                                        }
-                                        if (planItem.action === 'status') {
-                                            return `Novo status: ${p.deliverableStatus}`;
-                                        }
-                                        if (planItem.action === 'hours') {
-                                            // mostrar com vírgula
-                                            const hrs = typeof p.hours === 'number' ? p.hours.toString().replace('.', ',') : p.hours;
-                                            const task = p.taskName ? ` (${p.taskName})` : '';
-                                            return `Horas: ${hrs}${task}${p.note ? ' · ' + p.note : ''}`;
-                                        }
-                                        return null;
-                                    })();
-                                    const countInfo = tasks.length > 1 ? ` (${tasks.filter(x=>x.status==='success').length}/${tasks.length})` : '';
-                                    return (
-                                        <div key={t.id} className={`flex items-center gap-3 border rounded px-3 py-2 ${bg}`} title={title}>
-                                            <Icon className={`w-4 h-4 ${baseColor}`} />
-                                            <div className="flex-1 text-xs flex flex-col gap-0.5">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-medium tracking-wide capitalize">{t.display}{countInfo}</span>
-                                                    <span className={`flex items-center gap-1 text-[10px] ${baseColor}`}>
-                                                        {statusIcon}{t.status}
-                                                        {t.durationMs && t.status === 'success' && <span className="text-muted-foreground">{progress.formatDuration(t.durationMs)}</span>}
-                                                    </span>
-                                                </div>
-                                                {details && <div className="text-[10px] text-muted-foreground whitespace-pre-wrap" title={details}>{details}</div>}
-                                                {t.message && <div className="text-[10px] text-muted-foreground truncate" >{t.message}</div>}
-                                            </div>
-                                        </div>
-                                    );
-                                });
-                            })() : (
-                                // Visão interna (original): todas subtarefas
-                                progress.tasks.slice().sort((a,b)=>a.stepIndex - b.stepIndex).map(t => {
-                                    const Icon = t.action === 'upload' ? Upload : t.action === 'share' ? Share2 : t.action === 'comment' ? MessageSquare : t.action === 'status' ? Activity : Clock;
-                                    const baseColor = t.status === 'success' ? 'text-emerald-500' : t.status === 'error' ? 'text-destructive' : t.status === 'skip' ? 'text-amber-500' : t.status === 'running' ? 'text-primary' : 'text-muted-foreground';
-                                    const bg = t.status === 'running' ? 'bg-primary/5' : t.status === 'success' ? 'bg-emerald-500/5' : t.status === 'error' ? 'bg-destructive/10' : t.status === 'skip' ? 'bg-amber-500/10' : 'bg-muted/10';
-                                    const statusIcon = t.status === 'running' ? <Loader2 className="w-3 h-3 animate-spin" /> : t.status === 'success' ? <CheckCircle2 className="w-3 h-3" /> : t.status === 'error' ? <XCircle className="w-3 h-3" /> : t.status === 'skip' ? <SkipForward className="w-3 h-3" /> : null;
-                                    const title = `${t.display} • ${t.status}` + (t.durationMs ? ` • ${progress.formatDuration(t.durationMs)}` : '') + (t.message ? `\n${t.message}` : '');
-                                    return (
-                                        <div key={t.id} className={`flex items-center gap-3 border rounded px-3 py-2 ${bg}`} title={title}>
-                                            <Icon className={`w-4 h-4 ${baseColor}`} />
-                                            <div className="flex-1 text-xs flex flex-col gap-0.5">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-medium tracking-wide capitalize">{t.display}</span>
-                                                    <span className={`flex items-center gap-1 text-[10px] ${baseColor}`}>
-                                                        {statusIcon}{t.status}
-                                                        {t.durationMs && t.status === 'success' && <span className="text-muted-foreground">{progress.formatDuration(t.durationMs)}</span>}
-                                                    </span>
-                                                </div>
-                                                {t.message && <div className="text-[10px] text-muted-foreground truncate" >{t.message}</div>}
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-            <Card className="border-l-primary bg-card border-border">
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between text-card-foreground">
-                        <div className="flex items-center gap-3">
-                            <Settings className="w-4 h-4 text-primary" />
-                            Timeline de Automação
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
-                            {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            {showAdvanced ? 'Ocultar' : 'Configurar'}
-                        </Button>
+
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {!stagedPaths && (
                         <div className="text-xs text-muted-foreground mb-3">
-                            Para executar Upload / Share / Comments faca o preparo (Preparar Arquivos). Você ainda pode configurar tudo agora.
+                            Para executar Upload / Share / Comments faca o preparo (Preparar Arquivos).
                         </div>
                     )}
-                    <div className="flex gap-2 mb-4 flex-wrap">
-                        <Button variant="outline" size="sm" onClick={presetFullFlow}>Fluxo Completo</Button>
-                        <Button variant="outline" size="sm" onClick={presetAssetOnly}>Apenas Asset Release</Button>
-                        <Button variant="outline" size="sm" onClick={presetFinalsOnly}>Apenas Final Materials</Button>
-                        <Button variant="outline" size="sm" onClick={presetStatusOnly}>Só Status</Button>
-                        <Button variant="outline" size="sm" onClick={presetStatusHours}>Status + Hours</Button>
-                        <Button variant="outline" size="sm" onClick={() => setSteps(prev => prev.map(s => ({ ...s, enabled: false })))}>Desabilitar Tudo</Button>
-                    </div>
 
                     {hasInvalidEnabled && (
                         <div className="text-xs text-amber-600 mb-3">
@@ -430,28 +266,28 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                     <div className="space-y-4">
                         {/* Asset */}
                         <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                <FolderOpen className="w-4 h-4" />Asset Release
-                                {!stagedPaths && <span className="text-[10px] text-muted-foreground">(aguardando preparo)</span>}
-                            </div>
                             {steps.filter(s => s.group === 'asset').map(step => {
                                 const Icon = WORKFLOW_ICONS[step.action];
                                 const idx = steps.indexOf(step);
                                 const ready = isParamReady(step);
                                 return (
-                                    <div key={idx} className={`ml-6 p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <Checkbox checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
+                                    <div key={idx} className={`p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'}`}>
+                                        <div className="flex items-center gap-3 ">
+                                            <Checkbox className="cursor-pointer" checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
                                             <Icon className="w-4 h-4 text-primary" />
-                                            <div className="flex-1 text-sm">
-                                                <div className="font-medium">
-                                                    {step.action === 'upload_asset' && 'Upload ZIP'}
-                                                    {step.action === 'share_asset' && 'Compartilhar'}
-                                                    {step.action === 'comment_asset' && 'Comentar'}
+                                            <div className="flex-1 text-sm ">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-medium ">
+                                                        {step.action === 'upload_asset' && 'Upload Zip'}
+                                                        {step.action === 'share_asset' && 'Compartilhar'}
+                                                        {step.action === 'comment_asset' && 'Comentar PDF'}
+                                                    </span>
+                                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
+                                                        <FolderOpen className="w-3 h-3" />Asset Release
+                                                    </Badge>
+                                                    {!ready && <Badge variant="secondary" className="text-[10px] h-5 px-1.5">pendente preparo</Badge>}
                                                 </div>
-                                                <div className="text-[11px] text-muted-foreground">
-                                                    {step.description}{!ready && ' (pendente preparo)'}
-                                                </div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -461,27 +297,27 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
 
                         {/* Finals */}
                         <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                <FolderOpen className="w-4 h-4" />Final Materials
-                                {!stagedPaths && <span className="text-[10px] text-muted-foreground">(aguardando preparo)</span>}
-                            </div>
                             {steps.filter(s => s.group === 'finals').map(step => {
                                 const Icon = WORKFLOW_ICONS[step.action];
                                 const idx = steps.indexOf(step);
                                 const ready = isParamReady(step);
                                 return (
-                                    <div key={idx} className={`ml-6 p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'}`}>
+                                    <div key={idx} className={`p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'}`}>
                                         <div className="flex items-center gap-3">
-                                            <Checkbox checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
+                                            <Checkbox className="cursor-pointer" checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
                                             <Icon className="w-4 h-4 text-primary" />
                                             <div className="flex-1 text-sm">
-                                                <div className="font-medium">
-                                                    {step.action === 'upload_finals' && 'Upload Arquivos'}
-                                                    {step.action === 'comment_finals' && 'Comentar PDF'}
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-medium">
+                                                        {step.action === 'upload_finals' && 'Upload Arquivos'}
+                                                        {step.action === 'comment_finals' && 'Comentar PDF'}
+                                                    </span>
+                                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
+                                                        <FolderOpen className="w-3 h-3" />Final Materials
+                                                    </Badge>
+                                                    {!ready && <Badge variant="secondary" className="text-[10px] h-5 px-1.5">pendente preparo</Badge>}
                                                 </div>
-                                                <div className="text-[11px] text-muted-foreground">
-                                                    {step.description}{!ready && ' (pendente preparo)'}
-                                                </div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -491,23 +327,24 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
 
                         {/* Extras */}
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                <Settings className="w-4 h-4" />Ações Adicionais
-                            </div>
                             {steps.filter(s => s.group === 'extra').map(step => {
                                 const Icon = WORKFLOW_ICONS[step.action];
                                 const idx = steps.indexOf(step);
                                 return (
-                                    <div key={idx} className={`ml-6 p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'}`}>
+                                    <div key={idx} className={`p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'}`}>
                                         <div className="flex items-center gap-3">
-                                            <Checkbox checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
+                                            <Checkbox className="cursor-pointer" checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
                                             <Icon className="w-4 h-4 text-primary" />
                                             <div className="flex-1 text-sm">
-                                                <div className="font-medium">
-                                                    {step.action === 'status' && 'Atualizar Status'}
-                                                    {step.action === 'hours' && 'Lançar Horas'}
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-medium">
+                                                        {step.action === 'status' && 'Atualizar Status'}
+                                                        {step.action === 'hours' && 'Lançar Horas'}
+                                                    </span>
+                                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
+                                                        <Settings className="w-3 h-3" />Ações Adicionais
+                                                    </Badge>
                                                 </div>
-                                                <div className="text-[11px] text-muted-foreground">{step.description}</div>
                                             </div>
                                         </div>
                                         {showAdvanced && step.enabled && (
@@ -541,8 +378,8 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                                                             <Input type="text" className="h-8 w-32"
                                                                 value={(step.params as HoursParams).hours?.toString().replace('.', ',') ?? ''}
                                                                 onChange={e => {
-                                                                    const raw = e.target.value.replace(/[^0-9.,]/g,'');
-                                                                    const normalized = raw.replace(',','.');
+                                                                    const raw = e.target.value.replace(/[^0-9.,]/g, '');
+                                                                    const normalized = raw.replace(',', '.');
                                                                     const num = parseFloat(normalized) || 0;
                                                                     updateStepParam(idx, 'hours', num);
                                                                 }} />
@@ -571,23 +408,6 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths 
                     </div>
                 </CardContent>
             </Card>
-
-            <div className="flex items-center gap-4 pt-2">
-                <Button onClick={executeTimeline} disabled={executing || readyEnabledSteps.length === 0}>
-                    <PlayCircle className="w-4 h-4 mr-2" />
-                    {executing ? 'Executando...' : `Executar (${readyEnabledSteps.length}${hasInvalidEnabled ? ` de ${enabledSteps.length}` : ''})`}
-                </Button>
-                {results && (
-                    <Badge variant={results.success ? 'default' : 'destructive'}>
-                        {results.success ? 'Sucesso' : 'Falhou'}
-                    </Badge>
-                )}
-                {results?.summary && (
-                    <div className="text-xs text-muted-foreground">
-                        {`OK: ${results.summary.successful} | Falhas: ${results.summary.failed} | Pulados: ${results.summary.skipped}`}
-                    </div>
-                )}
-            </div>
         </div>
     );
 }

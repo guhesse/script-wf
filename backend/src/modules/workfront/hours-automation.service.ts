@@ -7,7 +7,7 @@ import { resolveHeadless } from './utils/headless.util';
 export class HoursAutomationService {
   private readonly logger = new Logger(HoursAutomationService.name);
   // Valor fixo de horas lançadas por tarefa. Se quiser tornar configurável, mover para variáveis de ambiente.
-  static readonly FORCED_HOURS_PER_TASK = 0.3;
+  static readonly FORCED_HOURS_PER_TASK = 0.4;
   // Métodos utilitários agora centralizados em WorkfrontDomHelper
 
   // NOVO: formata horas (usa vírgula como solicitado)

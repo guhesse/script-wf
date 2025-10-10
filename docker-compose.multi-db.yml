@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_DEV_USER:-scriptwfdev}
-      POSTGRES_PASSWORD: ${POSTGRES_DEV_PASSWORD:-AJDO2r7bOcCCKb0Z1Rjw0nq!}
-      POSTGRES_DB: ${POSTGRES_DEV_DB:-scriptwf_dev}
+      POSTGRES_USER: ${POSTGRES_DEV_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_DEV_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DEV_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -20,8 +20,8 @@ services:
     image: dpage/pgadmin4:8.8
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-7zUL9y8LTTTQ2m23Zt!}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
       # IMPORTANTE: Variáveis PGADMIN_CONFIG_* são inseridas diretamente no config Python.
       # Por isso precisamos incluir aspas dentro da string para gerar código Python válido.

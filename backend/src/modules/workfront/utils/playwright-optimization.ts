@@ -55,33 +55,40 @@ export async function createOptimizedContext(opts: OptimizedContextOptions = {})
         storageState: storageStatePath,
         viewport,
         deviceScaleFactor: 1,
-        reducedMotion: 'reduce',
-        serviceWorkers: 'block',
+        // Configurações condicionais baseadas em blockHeavy
+        reducedMotion: blockHeavy ? 'reduce' : 'no-preference',
+        serviceWorkers: blockHeavy ? 'block' : 'allow',
         extraHTTPHeaders: extraHeaders
     });
 
-    await context.route('**/*', async (route: Route) => {
-        try {
-            const req = route.request();
-            const url = req.url();
-            const type = req.resourceType();
+    // Aplicar roteamento apenas se há configurações de bloqueio
+    if (blockHeavy || extraBlockDomains.length > 0 || shortCircuitGlobs.length > 0) {
+        await context.route('**/*', async (route: Route) => {
+            try {
+                const req = route.request();
+                const url = req.url();
+                const type = req.resourceType();
 
-            // Short circuit endpoints pesados configurados
-            if (shortCircuitGlobs.some(g => matchGlob(url, g))) {
-                return route.fulfill({ status: 204, body: '' });
-            }
+                // Short circuit endpoints pesados configurados
+                if (shortCircuitGlobs.length > 0 && shortCircuitGlobs.some(g => matchGlob(url, g))) {
+                    return route.fulfill({ status: 204, body: '' });
+                }
 
-            if (blockHeavy && HEAVY_TYPES.has(type)) {
-                return route.abort();
+                if (blockHeavy && HEAVY_TYPES.has(type)) {
+                    return route.abort();
+                }
+                
+                const blockDomains = [...DEFAULT_BLOCK_DOMAINS, ...extraBlockDomains];
+                if (blockDomains.length > 0 && blockDomains.some(d => url.includes(d))) {
+                    return route.abort();
+                }
+                
+                return route.continue();
+            } catch {
+                return route.continue();
             }
-            if ([...DEFAULT_BLOCK_DOMAINS, ...extraBlockDomains].some(d => url.includes(d))) {
-                return route.abort();
-            }
-            return route.continue();
-        } catch {
-            return route.continue();
-        }
-    });
+        });
+    }
 
     return { browser, context };
 }

@@ -1,5 +1,5 @@
-import { Controller, Post, Get, HttpException, HttpStatus, ConflictException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Get, Query, Body, HttpException, HttpStatus, ConflictException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginProgressService } from './login-progress.service';
 import { LoginPhase } from './login-progress.enum';
@@ -10,6 +10,7 @@ import {
   ClearSessionResponseDto,
   SessionValidationDto,
   SessionStatsDto,
+  LoginCredentialsDto,
 } from './dto/auth.dto';
 
 @ApiTags('Autenticação')
@@ -22,13 +23,53 @@ export class AuthController {
 
   @Post('login/start')
   @ApiOperation({ summary: 'Iniciar processo assíncrono de login' })
-  async startLogin(): Promise<{ started: boolean; phase: LoginPhase }> {
+  @ApiQuery({ 
+    name: 'headless', 
+    required: false, 
+    type: String,
+    description: 'Executar em modo headless (true/false). Apenas em desenvolvimento.' 
+  })
+  @ApiBody({ 
+    type: LoginCredentialsDto, 
+    required: false,
+    description: 'Credenciais para login automático (opcional)' 
+  })
+  async startLogin(
+    @Query('headless') headless?: string,
+    @Body() body?: any
+  ): Promise<{ started: boolean; phase: LoginPhase }> {
     if (this.progress.isRunning()) {
       throw new ConflictException('Login já em andamento');
     }
     this.progress.start();
+    
+    console.log(`🐛 DEBUG AUTH CONTROLLER - headless query param: "${headless}"`);
+    console.log(`🐛 DEBUG AUTH CONTROLLER - body recebido:`, JSON.stringify(body, null, 2));
+    console.log(`🐛 DEBUG AUTH CONTROLLER - NODE_ENV: "${process.env.NODE_ENV}"`);
+    console.log(`🐛 DEBUG AUTH CONTROLLER - WF_FORCE_VISIBLE: "${process.env.WF_FORCE_VISIBLE}"`);
+    console.log(`🐛 DEBUG AUTH CONTROLLER - WF_HEADLESS_DEFAULT: "${process.env.WF_HEADLESS_DEFAULT}"`);
+    
+    const options: any = {};
+    if (headless !== undefined) {
+      options.headless = headless.toLowerCase() === 'true';
+      console.log(`🐛 DEBUG AUTH CONTROLLER - parsed headless: ${options.headless}`);
+    }
+    
+    // Extrair credenciais do body
+    const credentials = body && body.email ? body : null;
+    if (credentials) {
+      console.log(`🐛 DEBUG AUTH CONTROLLER - CREDENCIAIS ENCONTRADAS! Email: ${credentials.email}`);
+      options.credentials = credentials;
+    } else {
+      console.log(`🐛 DEBUG AUTH CONTROLLER - CREDENCIAIS NÃO ENCONTRADAS!`);
+      console.log(`🐛   - body existe: ${!!body}`);
+      console.log(`🐛   - body.email existe: ${!!body?.email}`);
+    }
+    
+    console.log(`🐛 DEBUG AUTH CONTROLLER - final options:`, JSON.stringify(options, null, 2));
+    
     // dispara async sem aguardar
-    setImmediate(() => this.authService.login().catch(e => this.progress.fail(e.message)));
+    setImmediate(() => this.authService.login(options).catch(e => this.progress.fail(e.message)));
     return { started: true, phase: LoginPhase.STARTING };
   }
 
@@ -40,6 +81,17 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Fazer login no Workfront' })
+  @ApiQuery({ 
+    name: 'headless', 
+    required: false, 
+    type: String,
+    description: 'Executar em modo headless (true/false). Apenas em desenvolvimento.' 
+  })
+  @ApiBody({ 
+    type: LoginCredentialsDto, 
+    required: false,
+    description: 'Credenciais para login automático (opcional)' 
+  })
   @ApiResponse({
     status: 200,
     description: 'Login realizado com sucesso',
@@ -49,9 +101,20 @@ export class AuthController {
     status: 500,
     description: 'Erro no login',
   })
-  async login(): Promise<LoginResponseDto> {
+  async login(
+    @Query('headless') headless?: string,
+    @Body() credentials?: LoginCredentialsDto
+  ): Promise<LoginResponseDto> {
     try {
-      return await this.authService.login();
+      const options: any = {};
+      if (headless !== undefined) {
+        options.headless = headless.toLowerCase() === 'true';
+      }
+      if (credentials && credentials.email) {
+        options.credentials = credentials;
+      }
+        
+      return await this.authService.login(options);
     } catch (error) {
       throw new HttpException(
         {
@@ -149,5 +212,47 @@ export class AuthController {
       requiresLogin,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @Post('login/cancel')
+  @ApiOperation({ summary: 'Cancelar processo de login em andamento' })
+  async cancelLogin(): Promise<{ success: boolean; message: string }> {
+    if (!this.progress.isRunning()) {
+      return { success: false, message: 'Nenhum login em andamento' };
+    }
+    
+    this.progress.reset();
+    return { success: true, message: 'Login cancelado com sucesso' };
+  }
+
+  @Get('debug/headless')
+  @ApiOperation({ summary: 'Debug das configurações headless' })
+  @ApiQuery({ 
+    name: 'override', 
+    required: false, 
+    type: String,
+    description: 'Valor para override (true/false)' 
+  })
+  async debugHeadless(@Query('override') override?: string) {
+    const { resolveHeadless } = await import('../workfront/utils/headless.util');
+    
+    const result = {
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        WF_FORCE_VISIBLE: process.env.WF_FORCE_VISIBLE,
+        WF_HEADLESS_DEFAULT: process.env.WF_HEADLESS_DEFAULT,
+      },
+      tests: {
+        defaultResolve: resolveHeadless(),
+        withOverrideTrue: resolveHeadless({ override: true, allowOverride: true }),
+        withOverrideFalse: resolveHeadless({ override: false, allowOverride: true }),
+        withOverrideString: resolveHeadless({ override: 'false', allowOverride: true }),
+        queryParamTest: override ? resolveHeadless({ override: override.toLowerCase() === 'true', allowOverride: true }) : null,
+      },
+      timestamp: new Date().toISOString(),
+    };
+    
+    console.log('🐛 DEBUG HEADLESS ENDPOINT:', JSON.stringify(result, null, 2));
+    return result;
   }
 }

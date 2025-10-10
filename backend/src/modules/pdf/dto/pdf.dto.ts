@@ -69,12 +69,12 @@ export class AddCommentDto {
 
     @ApiProperty({ enum: CommentType, description: 'Tipo de comentário', required: false })
     @IsOptional()
-    @IsEnum(CommentType)
+    @IsEnum(() => CommentType)
     commentType?: CommentType = CommentType.ASSET_RELEASE;
 
     @ApiProperty({ enum: UserTeam, description: 'Equipe para mencionar', required: false })
     @IsOptional()
-    @IsEnum(UserTeam)
+    @IsEnum(() => UserTeam)
     selectedUser?: UserTeam = UserTeam.TEST;
 
     @ApiProperty({ description: 'Executar em modo headless', required: false, default: true })
@@ -84,7 +84,7 @@ export class AddCommentDto {
 
     @ApiProperty({ description: 'Modo de comentário: plain (default) ou raw', required: false, enum: ['plain', 'raw'], default: 'plain' })
     @IsOptional()
-    @IsEnum(['plain', 'raw'] as any)
+    @IsEnum(['plain', 'raw'])
     commentMode?: 'plain' | 'raw' = 'plain';
 
     @ApiProperty({ description: 'HTML bruto do comentário (usado quando commentMode=raw)', required: false })
@@ -170,7 +170,7 @@ export class BulkDownloadDto {
 
     @ApiProperty({ description: 'Modo de organização de pastas', required: false, enum: ['pm', 'studio'], default: 'pm' })
     @IsOptional()
-    @IsEnum(['pm', 'studio'] as any)
+    @IsEnum(['pm', 'studio'])
     mode?: 'pm' | 'studio' = 'pm';
 
     @ApiProperty({ description: 'Gerar PPT de briefing por projeto', required: false, default: false })

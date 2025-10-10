@@ -39,7 +39,7 @@ export class StatusAutomationService {
         maxAttempts?: number;
         retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-    const { projectUrl, headless = resolveHeadless(), maxAttempts = 4, retryDelay = 3500 } = params;
+        const { projectUrl, headless = resolveHeadless(), maxAttempts = 4, retryDelay = 3500 } = params;
         const deliverableStatus = FORCE_STATUS; // ignora param externo
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
@@ -51,7 +51,7 @@ export class StatusAutomationService {
 
         this.logger.log(`📦 Alterando status do Deliverable para '${deliverableStatus}' (forçado)`);
         const url = this.ensureOverviewUrl(projectUrl);
-    const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
+        const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await WorkfrontDomHelper.ensureStateFile(), viewport: { width: 1366, height: 900 } });
 
         try {
             const page = await context.newPage();
@@ -68,13 +68,13 @@ export class StatusAutomationService {
                     this.logger.log(`✅ Status atualizado para '${deliverableStatus}' (tentativa ${attempt})`);
                     success = true;
                     return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}'` };
-                } catch (e:any) {
+                } catch (e: any) {
                     lastErr = e;
                     this.logger.error(`❌ Tentativa ${attempt} falhou: ${e?.message}`);
                     if (attempt < maxAttempts) {
                         this.logger.log(`🔁 Recarregando página e aguardando ${retryDelay}ms antes de nova tentativa...`);
                         await page.waitForTimeout(300);
-                        try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch {}
+                        try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch { }
                         await page.waitForTimeout(retryDelay);
                     }
                 }
@@ -120,12 +120,12 @@ export class StatusAutomationService {
                 await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
                 await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
                 return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}' (sessão reutilizada)` };
-            } catch (e:any) {
+            } catch (e: any) {
                 lastErr = e;
                 this.logger.error(`❌ Erro in-session tentativa ${attempt}: ${e?.message}`);
                 if (attempt < maxAttempts) {
                     this.logger.log(`🔁 (sessão) reload + espera ${retryDelay}ms antes de retry`);
-                    try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch {}
+                    try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch { }
                     await page.waitForTimeout(retryDelay);
                 }
             }
@@ -144,177 +144,163 @@ export class StatusAutomationService {
 
         await this.openStatusAccordion(frame, page);
         const input = await this.enterStatusEditMode(frame, page);
-        await this.ensureEditFocus(frame, page, input);
 
-        // ===== NOVO MODO RÁPIDO =====
-        let fastOk = false;
+        // Digita o novo status
+        this.logger.log(`⌨️ Digitando status: "${deliverableStatus}"`);
+        await input.click({ force: true });
+        await page.waitForTimeout(100);
+        
+        // Seleciona tudo e digita o novo valor
+        await page.keyboard.press('Control+A');
+        await page.keyboard.type(deliverableStatus, { delay: 50 });
+        await page.waitForTimeout(300);
+        
+        // Verifica onde está o foco antes do Tab
+        const focusBeforeTab = await page.evaluate(() => {
+            const el = document.activeElement;
+            return {
+                tag: el?.tagName,
+                id: el?.id,
+                testId: el?.getAttribute('data-testid'),
+                value: (el as HTMLInputElement)?.value
+            };
+        });
+        this.logger.log(`🎯 Foco antes do Tab: ${JSON.stringify(focusBeforeTab)}`);
+        
+        // Tab 2x para ir ao botão Save Changes + Enter para salvar
+        this.logger.log('⏭️ Tab → Tab → Enter (navega para Save e salva)');
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(150);
+        
+        const focusAfterTab1 = await page.evaluate(() => {
+            const el = document.activeElement;
+            return {
+                tag: el?.tagName,
+                testId: el?.getAttribute('data-testid'),
+                text: el?.textContent?.trim()
+            };
+        });
+        this.logger.log(`🎯 Foco após 1º Tab: ${JSON.stringify(focusAfterTab1)}`);
+        
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(150);
+        
+        const focusAfterTab2 = await page.evaluate(() => {
+            const el = document.activeElement;
+            return {
+                tag: el?.tagName,
+                testId: el?.getAttribute('data-testid'),
+                text: el?.textContent?.trim()
+            };
+        });
+        this.logger.log(`🎯 Foco após 2º Tab: ${JSON.stringify(focusAfterTab2)}`);
+        
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(2000);
+        
+        // Aguarda o indicador "Editing" desaparecer
+        this.logger.log('⏳ Aguardando salvamento...');
+        const editingIndicator = frame.locator('.css-gbkrod:has(h2:has-text("loc | Statuses")) .css-nn4pdh:has-text("Editing")').first();
         try {
-            this.logger.log('⚡ Aplicando modo rápido: setValue + eventos + salvar direto');
-            await input.click({ force: true }).catch(() => {});
-            // Limpa e preenche usando API de alto nível
-            await input.fill('');
-            await input.fill(deliverableStatus);
-            // Ref ref: garantir eventos (alguns frameworks exigem)
-            await input.evaluate((el, value) => {
-                (el as HTMLInputElement).value = value as string;
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-            }, deliverableStatus);
-            await page.waitForTimeout(80);
-            // Fecha dropdowns / sugestões que possam bloquear Save
-            await page.keyboard.press('Escape').catch(() => {});
-            await page.waitForTimeout(60);
-            fastOk = true;
-        } catch (e:any) {
-            this.logger.warn('⚠️ Modo rápido falhou, tentando fallback de digitação: ' + e?.message);
+            await editingIndicator.waitFor({ state: 'hidden', timeout: 5000 });
+            this.logger.log('✅ Status salvo com sucesso!');
+        } catch {
+            this.logger.warn('⚠️ Indicador "Editing" ainda presente - salvamento pode ter falhado');
         }
-
-        if (!fastOk) {
-            // Fallback antigo (resumido)
-            try {
-                await input.click({ force: true }).catch(() => {});
-                await page.keyboard.press('Control+A').catch(() => {});
-                await page.keyboard.press('Delete').catch(() => {});
-                await page.waitForTimeout(60);
-                await page.keyboard.insertText(deliverableStatus);
-                await page.waitForTimeout(200);
-                await page.keyboard.press('Escape').catch(() => {});
-            } catch (e:any) {
-                this.logger.warn('⚠️ Fallback de digitação também falhou: ' + e?.message);
-            }
-        }
-
-        // Salvar imediatamente (sem esperar Enter)
-        await this.saveIfRequired(frame, page);
-
-        // Verificação pós-salvamento
-        try {
-            const currentVal = (await input.inputValue().catch(() => ''))?.trim();
-            if (currentVal && currentVal !== deliverableStatus) {
-                this.logger.warn(`⚠️ Valor no input pós-save difere: '${currentVal}' (esperado '${deliverableStatus}')`);
-            }
-        } catch {}
     }
 
     // === Auxiliares novos ===
 
     private async openStatusAccordion(frame: any, page: Page) {
         this.logger.log('🔎 Abrindo accordion "loc | Statuses"...');
-        // Primeiro tenta localizar pelo botão do accordion
-        const headerButton = frame.locator('button[aria-controls*="accordion-"]:has-text("loc | Statuses")').first();
-        if ((await headerButton.count()) > 0) {
-            const expanded = await headerButton.getAttribute('aria-expanded');
-            if (expanded === 'false') {
-                await headerButton.click({ force: true }).catch(() => { });
-                await page.waitForTimeout(1200);
-            }
-            return;
+
+        // Busca o header do accordion pela estrutura específica
+        const accordionHeader = frame.locator('h2.accordion-label-header:has-text("loc | Statuses")').first();
+
+        if ((await accordionHeader.count()) === 0) {
+            this.logger.warn('⚠️ Header do accordion "loc | Statuses" não encontrado');
+            throw new Error('Accordion "loc | Statuses" não encontrado');
         }
-        // Fallback pelo h2
-        const h2 = frame.locator('h2:has-text("loc | Statuses")').first();
-        if ((await h2.count()) > 0) {
-            await h2.click({ force: true }).catch(() => { });
-            await page.waitForTimeout(1000);
+
+        // Pega o ID do accordion do aria-labelledby do content
+        const accordionWrapper = frame.locator('.css-gbkrod:has(h2:has-text("loc | Statuses"))').first();
+
+        // Verifica se o content está com display: none (fechado)
+        const contentRegion = accordionWrapper.locator('.. >> [role="region"]').first();
+
+        if ((await contentRegion.count()) > 0) {
+            const displayStyle = await contentRegion.evaluate((el: HTMLElement) =>
+                window.getComputedStyle(el).display
+            ).catch(() => 'none');
+
+            if (displayStyle === 'none') {
+                this.logger.log('📂 Accordion está fechado, abrindo...');
+                await accordionHeader.click({ force: true });
+                await page.waitForTimeout(1500);
+
+                // Verifica se abriu
+                const newDisplay = await contentRegion.evaluate((el: HTMLElement) =>
+                    window.getComputedStyle(el).display
+                ).catch(() => 'none');
+
+                if (newDisplay === 'none') {
+                    this.logger.warn('⚠️ Accordion não abriu após clique, tentando novamente...');
+                    await accordionHeader.click({ force: true });
+                    await page.waitForTimeout(1200);
+                }
+            } else {
+                this.logger.log('✅ Accordion já está aberto');
+            }
         } else {
-            this.logger.warn('⚠️ Accordion "loc | Statuses" não localizado (pode já estar expandido)');
+            // Se não encontrou o content, tenta clicar no header mesmo assim
+            await accordionHeader.click({ force: true });
+            await page.waitForTimeout(1000);
         }
     }
 
     private async enterStatusEditMode(frame: any, page: Page): Promise<Locator> {
         this.logger.log('📝 Entrando em modo de edição do campo "loc | Status"...');
 
-        // Wrapper principal (view mode)
+        // Verifica se já está em modo de edição pelo indicador "Editing" no header
+        const editingIndicator = frame.locator('.css-gbkrod:has(h2:has-text("loc | Statuses")) .css-nn4pdh:has-text("Editing")').first();
+        const isEditing = (await editingIndicator.count()) > 0;
+
+        if (isEditing) {
+            this.logger.log('✅ Accordion já está em modo de edição');
+        }
+
+        // Busca o input - pode estar em edit-mode-container ou view-mode-container
+        const input = frame.locator('input[data-testid="DE:Loc | Status-input"]').first();
+
+        // Se input já existe e está visível, retorna
+        if ((await input.count()) > 0) {
+            const isVisible = await input.isVisible().catch(() => false);
+            if (isVisible) {
+                this.logger.log('✳️ Input já está visível e acessível');
+                await input.click({ force: true }).catch(() => { });
+                await page.waitForTimeout(150);
+                return input;
+            }
+        }
+
+        // Precisa ativar o modo de edição - clica no view component
+        this.logger.log('🔄 Ativando modo de edição...');
         const viewWrapper = frame.locator('[data-testid="field-DE:Loc | Status"] [data-testid="view-component-wrapper"]').first();
-        const contentWrapper = frame.locator('[data-testid="field-DE:Loc | Status-content"]').first();
 
-        // Espera base por qualquer container
-        await Promise.race([
-            viewWrapper.waitFor({ timeout: 5000 }).catch(() => null),
-            contentWrapper.waitFor({ timeout: 5000 }).catch(() => null),
-            page.waitForTimeout(1200)
-        ]);
-
-        // Se já existe input (edit mode), retorna
-        const existingInput = frame.locator('[data-testid="DE:Loc | Status-input"]').first();
-        if ((await existingInput.count()) > 0) {
-            this.logger.log('✳️ Já em modo de edição (input disponível)');
-            // Força um clique extra para casos onde não entra no estado ativo
-            await existingInput.click({ force: true }).catch(() => { });
-            await page.waitForTimeout(150);
-            return existingInput;
-        }
-
-        // Tentar clicar no view wrapper
         if ((await viewWrapper.count()) > 0) {
-            await viewWrapper.click({ force: true }).catch(() => { });
-            await page.waitForTimeout(800);
-        } else if ((await contentWrapper.count()) > 0) {
-            await contentWrapper.click({ force: true }).catch(() => { });
-            await page.waitForTimeout(800);
+            await viewWrapper.click({ force: true });
+            await page.waitForTimeout(1000);
         } else {
-            throw new Error('Campo de status não localizado (view wrapper ausente)');
+            throw new Error('View wrapper do campo Status não encontrado');
         }
 
-        // Aguardar input aparecer
-        await existingInput.waitFor({ timeout: 4000 }).catch(() => {
-            throw new Error('Input de edição do status não apareceu');
+        // Aguarda o input aparecer após ativar edição
+        await input.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {
+            throw new Error('Input de edição não apareceu após clicar no campo');
         });
 
-        return existingInput;
-    }
-
-    // NOVO: força efetivamente o modo edição e foco real no input
-    private async ensureEditFocus(frame: any, page: Page, input: Locator) {
-        try {
-            const isActive = await input.evaluate(el => document.activeElement === el);
-            if (!isActive) {
-                await input.click({ force: true }).catch(() => { });
-                await page.waitForTimeout(120);
-            }
-
-            // Se ainda não ativo, clicar no wrapper de view e depois no input
-            const stillInactive = !(await input.evaluate(el => document.activeElement === el));
-            if (stillInactive) {
-                const wrapper = frame.locator('[data-testid="field-DE:Loc | Status"] [data-testid="view-component-wrapper"]').first();
-                if ((await wrapper.count()) > 0) {
-                    await wrapper.click({ force: true }).catch(() => { });
-                    await page.waitForTimeout(350);
-                    await input.click({ force: true }).catch(() => { });
-                    await page.waitForTimeout(350);
-                }
-            }
-
-            // Confirmar novamente
-            const finalActive = await input.evaluate(el => document.activeElement === el);
-            if (!finalActive) {
-                this.logger.warn('⚠️ Input não ficou ativo após tentativas – prosseguindo assim mesmo.');
-            } else {
-                this.logger.log('🎯 Input focado e pronto para digitação.');
-            }
-        } catch {
-            this.logger.warn('⚠️ Falha ao assegurar foco no input – prosseguindo.');
-        }
-    }
-
-    private async saveIfRequired(frame: any, page: Page) {
-        // Força sempre clicar Save se existir (mesmo se achar que é auto-save)
-        const saveBtn = frame.locator('button[data-testid="save-changes-button"]').first();
-        if ((await saveBtn.count()) > 0 && await saveBtn.isVisible()) {
-            this.logger.log('💾 Salvando alterações (force)...');
-            await saveBtn.click().catch(() => { });
-            await page.waitForTimeout(1800);
-        } else {
-            this.logger.log('ℹ️ Botão "Save Changes" não presente – assumindo auto-save.');
-        }
-        // Confirma em view
-        try {
-            const finalView = frame.locator('[data-testid="field-DE:Loc | Status"] [data-testid="view-component-wrapper"] span:has-text("Delivered")').first();
-            if ((await finalView.count()) > 0) {
-                this.logger.log('🔍 View final confirma "Delivered".');
-            } else {
-                this.logger.warn('⚠️ View final não confirmou "Delivered".');
-            }
-        } catch { }
+        this.logger.log('✅ Modo de edição ativado com sucesso');
+        return input;
     }
 
     // Mantém compatibilidade antiga

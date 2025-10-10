@@ -120,20 +120,29 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /var/www/script-wf || exit 1
-            echo "Atualizando imagens..."
+            
+            echo "🔄 Sincronizando arquivos do repositório..."
+            git fetch origin
+            git reset --hard origin/prod
+            echo "✅ Arquivos sincronizados"
+            
+            echo "🐳 Atualizando imagens Docker..."
             # Puxa a tag correta (latest só existe em prod; fallback para tag da branch)
             if docker pull ghcr.io/${{ github.repository_owner }}/script-wf-backend:latest 2>/dev/null; then
-              echo "Backend latest puxada"
+              echo "✅ Backend latest puxada"
             else
               docker pull ghcr.io/${{ github.repository_owner }}/script-wf-backend:prod || true
             fi
             if docker pull ghcr.io/${{ github.repository_owner }}/script-wf-frontend:latest 2>/dev/null; then
-              echo "Frontend latest puxada"
+              echo "✅ Frontend latest puxada" 
             else
               docker pull ghcr.io/${{ github.repository_owner }}/script-wf-frontend:prod || true
             fi
-            echo "Recriando stack..."
+            
+            echo "🚀 Recriando stack..."
             docker compose -f docker-compose.prod.yml --env-file .env up -d
-            echo "Aplicando migrações Prisma..."
+            
+            echo "🔄 Aplicando migrações Prisma..."
             docker compose -f docker-compose.prod.yml exec -T backend npx prisma migrate deploy
-            echo "OK"
+            
+            echo "✅ Deploy completo!"
