@@ -34,7 +34,12 @@ const DEFAULT_BLOCK_DOMAINS = [
 const HEAVY_TYPES = new Set(['image', 'media', 'font']);
 
 export async function ensureBrowser(headless: boolean = true, launchOpts: LaunchOptions = {}): Promise<Browser> {
-    return chromium.launch({ headless, args: headless ? [] : ['--start-maximized'], ...launchOpts });
+    const args = headless ? [] : ['--start-maximized', '--disable-blink-features=AutomationControlled'];
+    return chromium.launch({ 
+        headless, 
+        args,
+        ...launchOpts 
+    });
 }
 
 export async function createOptimizedContext(opts: OptimizedContextOptions = {}): Promise<{ browser: Browser; context: BrowserContext }> {
@@ -51,15 +56,24 @@ export async function createOptimizedContext(opts: OptimizedContextOptions = {})
 
     const browser = passedBrowser || await ensureBrowser(headless);
 
-    const context = await browser.newContext({
+    // Se não é headless, usa null para maximizar (ignora viewport configurado)
+    const contextViewport = headless ? viewport : null;
+
+    // Configurações do contexto (deviceScaleFactor só pode ser usado com viewport definido)
+    const contextOptions: any = {
         storageState: storageStatePath,
-        viewport,
-        deviceScaleFactor: 1,
-        // Configurações condicionais baseadas em blockHeavy
+        viewport: contextViewport,
         reducedMotion: blockHeavy ? 'reduce' : 'no-preference',
         serviceWorkers: blockHeavy ? 'block' : 'allow',
         extraHTTPHeaders: extraHeaders
-    });
+    };
+
+    // Só adiciona deviceScaleFactor se viewport não for null
+    if (contextViewport !== null) {
+        contextOptions.deviceScaleFactor = 1;
+    }
+
+    const context = await browser.newContext(contextOptions);
 
     // Aplicar roteamento apenas se há configurações de bloqueio
     if (blockHeavy || extraBlockDomains.length > 0 || shortCircuitGlobs.length > 0) {
