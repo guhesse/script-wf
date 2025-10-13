@@ -99,7 +99,22 @@ export class UploadJobsService {
     }
 
     getActiveJobForUser(userId: string): UploadJob | undefined {
-        return this.jobs.find(j => j.userId === userId && ['staged', 'executing'].includes(j.status));
+        // Limpar jobs staged expirados (>24h) automaticamente
+        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const expiredJobs = this.jobs.filter(j => j.status === 'staged' && j.createdAt < cutoff);
+        
+        if (expiredJobs.length > 0) {
+            this.logger.log(`🗑️ Limpando ${expiredJobs.length} job(s) staged expirado(s) (>24h)`);
+            this.jobs = this.jobs.filter(j => !(j.status === 'staged' && j.createdAt < cutoff));
+            this.persist();
+        }
+        
+        // Retornar o job MAIS RECENTE (maior createdAt) ao invés do primeiro encontrado
+        const activeJobs = this.jobs.filter(j => j.userId === userId && ['staged', 'executing'].includes(j.status));
+        if (activeJobs.length === 0) return undefined;
+        
+        // Ordenar por createdAt decrescente e retornar o mais recente
+        return activeJobs.sort((a, b) => b.createdAt - a.createdAt)[0];
     }
 
     markExecuting(id: string) { this.updateStatus(id, 'executing'); }
