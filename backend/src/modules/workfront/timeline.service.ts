@@ -129,8 +129,8 @@ export class TimelineService {
                 const { browser: b, context } = await createOptimizedContext({ 
                     headless, 
                     storageStatePath: await WorkfrontDomHelper.ensureStateFile(), 
-                    viewport: { width: 1366, height: 900 },
-                    blockHeavy: false,  // ❌ NÃO bloquear recursos pesados no Workfront
+                    viewport: { width: 1280, height: 720 },
+                    blockHeavy: true,  // ❌ NÃO bloquear recursos pesados no Workfront
                     extraHeaders: {},   // ❌ NÃO usar Save-Data que pode quebrar interface
                     extraBlockDomains: [], // ❌ NÃO bloquear domínios extras
                     shortCircuitGlobs: []  // ❌ NÃO short-circuit nenhum endpoint
@@ -408,6 +408,24 @@ export class TimelineService {
     private async uploadInSession(projectUrl: string, params: any, ctx: { page: Page; frame: any; headless: boolean }) {
         const { assetZipPath, finalMaterialPaths = [], selectedUser = 'carol' } = params || {};
         if (!assetZipPath && finalMaterialPaths.length === 0) return { success: false, message: 'Nenhum arquivo para upload' };
+        
+        // Validar se os paths são recentes (mesmo dia)
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const allPaths = [assetZipPath, ...finalMaterialPaths].filter(Boolean);
+        
+        for (const filePath of allPaths) {
+            // Verificar se o path contém a data de hoje
+            if (!filePath.includes(today)) {
+                const dateMatch = filePath.match(/(\d{4}-\d{2}-\d{2})/);
+                const fileDate = dateMatch ? dateMatch[1] : 'desconhecida';
+                this.logger.error(`❌ [UPLOAD] Arquivo com data antiga detectado: ${fileDate} (esperado: ${today})`);
+                return { 
+                    success: false, 
+                    message: `Arquivos preparados estão expirados (data: ${fileDate}). Por favor, clique em "Preparar Arquivos" novamente.` 
+                };
+            }
+        }
+        
         try {
             // Asset Release
             if (assetZipPath) {
