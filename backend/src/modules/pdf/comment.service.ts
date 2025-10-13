@@ -11,6 +11,7 @@ import {
 import { chromium, Page, Frame } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { WorkfrontDomHelper } from '../workfront/utils/workfront-dom.helper';
 
 // Configuração de usuários (alinhada com o legado)
 const USERS_CONFIG: Record<string, Array<{ name: string; email: string; id?: string }>> = {
@@ -231,48 +232,8 @@ export class CommentService {
     }
 
     private async selectDocument(frameLocator: any, page: Page, fileName: string): Promise<void> {
-        await this.closeSidebarIfOpen(frameLocator, page);
-        await page.waitForTimeout(800);
-
-        // Tentar encontrar documento por diferentes métodos
-        const docCandidates = await frameLocator.locator('body').evaluate((body, target: string) => {
-            const found: Array<{ index: number; ariaLabel?: string; isVisible: boolean }> = [];
-            const elements = (body as any).querySelectorAll('.doc-detail-view');
-            elements.forEach((el: any, idx: number) => {
-                const aria = el.getAttribute('aria-label') || '';
-                const text = (el.textContent || '').toLowerCase();
-                if (aria.includes(target) || text.includes(target.toLowerCase())) {
-                    found.push({
-                        index: idx,
-                        ariaLabel: aria,
-                        isVisible: el.offsetWidth > 0 && el.offsetHeight > 0
-                    });
-                }
-            });
-            return found;
-        }, fileName);
-
-        if (docCandidates && docCandidates.length > 0) {
-            const target = docCandidates.find(d => d.isVisible) || docCandidates[0];
-            if (target?.ariaLabel) {
-                await frameLocator.locator(`[aria-label="${target.ariaLabel}"]`).first().click();
-            } else {
-                await frameLocator.locator(`.doc-detail-view:nth-of-type(${target.index + 1})`).click();
-            }
-        } else {
-            // Fallback: tentar outros seletores
-            const row = frameLocator.locator(`[role="row"]:has-text("${fileName}")`).first();
-            if (await row.count() > 0) {
-                await row.click();
-            } else {
-                const clickable = frameLocator.locator(`a:has-text("${fileName}"), button:has-text("${fileName}")`).first();
-                if (await clickable.count() > 0) {
-                    await clickable.click();
-                }
-            }
-        }
-
-        await page.waitForTimeout(800);
+        // Usar WorkfrontDomHelper otimizado ao invés de implementação própria
+        return WorkfrontDomHelper.selectDocument(frameLocator, page, fileName);
     }
 
     private async openCommentPanel(frameLocator: any, page: Page): Promise<void> {
