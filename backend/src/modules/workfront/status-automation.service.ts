@@ -10,9 +10,10 @@ const ALLOWED_DELIVERABLE_STATUSES = [
     'Round 1 Review',
     'Round 2 Review',
     'Extra Round Review',
+    'Approved - Final',
     'Delivered'
 ] as const;
-const FORCE_STATUS: AllowedStatus = 'Delivered'; // <-- manter forçado
+const FORCE_STATUS: AllowedStatus = 'Delivered';
 type AllowedStatus = typeof ALLOWED_DELIVERABLE_STATUSES[number];
 
 @Injectable()
@@ -39,7 +40,7 @@ export class StatusAutomationService {
         maxAttempts?: number;
         retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-        const { projectUrl, headless = resolveHeadless(), maxAttempts = 4, retryDelay = 3500 } = params;
+        const { projectUrl, headless = resolveHeadless(), maxAttempts = 4, retryDelay = 4500 } = params;
         const deliverableStatus = FORCE_STATUS; // ignora param externo
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
@@ -97,7 +98,8 @@ export class StatusAutomationService {
         maxAttempts?: number;
         retryDelay?: number;
     }): Promise<{ success: boolean; message: string }> {
-        const { page, frame, projectUrl, maxAttempts = 4, retryDelay = 3000 } = params;
+        const { page, projectUrl, maxAttempts = 4, retryDelay = 3000 } = params;
+        let { frame } = params; // Permitir recaptura do frame
         const deliverableStatus = FORCE_STATUS;
 
         if (!ALLOWED_DELIVERABLE_STATUSES.includes(deliverableStatus as AllowedStatus)) {
@@ -113,10 +115,19 @@ export class StatusAutomationService {
             attempt++;
             this.logger.log(`⏳ (Status sessão) Tentativa ${attempt}/${maxAttempts}...`);
             try {
+                // Sempre recaptura frame no início de cada tentativa
+                frame = WorkfrontDomHelper.frameLocator(page);
+                
                 if (!page.url().startsWith(url)) {
                     await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => { });
-                    await page.waitForTimeout(2500);
+                    await page.waitForTimeout(3000);
+                    // Recaptura frame após navigate
+                    frame = WorkfrontDomHelper.frameLocator(page);
                 }
+                
+                // Aguarda um pouco para garantir que o conteúdo carregou
+                await page.waitForTimeout(1500);
+                
                 await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
                 await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
                 return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}' (sessão reutilizada)` };
@@ -125,8 +136,12 @@ export class StatusAutomationService {
                 this.logger.error(`❌ Erro in-session tentativa ${attempt}: ${e?.message}`);
                 if (attempt < maxAttempts) {
                     this.logger.log(`🔁 (sessão) reload + espera ${retryDelay}ms antes de retry`);
-                    try { await page.reload({ waitUntil: 'domcontentloaded' }); } catch { }
-                    await page.waitForTimeout(retryDelay);
+                    try { 
+                        await page.reload({ waitUntil: 'domcontentloaded' }); 
+                        await page.waitForTimeout(retryDelay);
+                        // CRÍTICO: Recapturar frame após reload e espera!
+                        frame = WorkfrontDomHelper.frameLocator(page);
+                    } catch { }
                 }
             }
         }
@@ -148,12 +163,17 @@ export class StatusAutomationService {
         // Digita o novo status
         this.logger.log(`⌨️ Digitando status: "${deliverableStatus}"`);
         await input.click({ force: true });
-        await page.waitForTimeout(100);
-        
-        // Seleciona tudo e digita o novo valor
-        await page.keyboard.press('Control+A');
-        await page.keyboard.type(deliverableStatus, { delay: 50 });
         await page.waitForTimeout(300);
+        
+        // Limpa o input e digita o novo valor
+        await input.fill(''); // Limpa completamente o campo
+        await page.waitForTimeout(200);
+        await input.fill(deliverableStatus); // Preenche com o novo valor
+        await page.waitForTimeout(400);
+        
+        // Verifica o que foi digitado no input
+        const inputValue = await input.inputValue();
+        this.logger.log(`📝 Valor no input após digitação: "${inputValue}" (esperado: "${deliverableStatus}")`);
         
         // Verifica onde está o foco antes do Tab
         const focusBeforeTab = await page.evaluate(() => {
@@ -170,7 +190,7 @@ export class StatusAutomationService {
         // Tab 2x para ir ao botão Save Changes + Enter para salvar
         this.logger.log('⏭️ Tab → Tab → Enter (navega para Save e salva)');
         await page.keyboard.press('Tab');
-        await page.waitForTimeout(150);
+        await page.waitForTimeout(250);
         
         const focusAfterTab1 = await page.evaluate(() => {
             const el = document.activeElement;
@@ -183,7 +203,7 @@ export class StatusAutomationService {
         this.logger.log(`🎯 Foco após 1º Tab: ${JSON.stringify(focusAfterTab1)}`);
         
         await page.keyboard.press('Tab');
-        await page.waitForTimeout(150);
+        await page.waitForTimeout(250);
         
         const focusAfterTab2 = await page.evaluate(() => {
             const el = document.activeElement;
@@ -196,7 +216,7 @@ export class StatusAutomationService {
         this.logger.log(`🎯 Foco após 2º Tab: ${JSON.stringify(focusAfterTab2)}`);
         
         await page.keyboard.press('Enter');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(7000);
         
         // Aguarda o indicador "Editing" desaparecer
         this.logger.log('⏳ Aguardando salvamento...');
