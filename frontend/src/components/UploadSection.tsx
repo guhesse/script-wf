@@ -147,19 +147,42 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     };
 
     const removeFinal = (idx: number) => setFinalMaterials(f => f.filter((_, i) => i !== idx));
-    const clearAll = () => { setAssetZip(null); setFinalMaterials([]); setStagedPaths(null); };
-
-    // Restaurar job ativo ao montar (por usuário atual simplificado)
+    const clearAll = () => {
+        setAssetZip(null);
+        setFinalMaterials([]);
+        setStagedPaths(null);
+        setExecutedPlan([]);
+        setResults(null);
+        setExecuting(false);
+        progress.reset(); // Limpa o progresso do workflow
+    };    // Restaurar job ativo ao montar (por usuário atual simplificado)
     useEffect(() => {
         const saved = (() => { try { return JSON.parse(localStorage.getItem('wf_activeUploadJob') || 'null'); } catch { return null; } })();
+        
+        // Verificar se o job salvo é muito antigo (mais de 1 dia)
+        const isExpired = (timestamp?: number) => {
+            if (!timestamp) return true;
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            return Date.now() - timestamp > oneDayMs;
+        };
+        
         if (saved?.jobId) {
+            // Verificar se o job está expirado
+            if (isExpired(saved.timestamp)) {
+                console.log('⚠️ Job salvo está expirado (>24h), limpando...');
+                localStorage.removeItem('wf_activeUploadJob');
+                return;
+            }
+            
             // Ajustado: getActiveUploadJob não recebe parâmetros
             getActiveUploadJob().then(job => {
                 if (job && job.id === saved.jobId) {
                     setJobId(job.id);
                     setStagedPaths(job.staged);
                     if (!projectUrl) setProjectUrl(job.projectUrl);
+                    console.log('✅ Job restaurado do localStorage:', job.id);
                 } else {
+                    console.log('⚠️ Job salvo não encontrado no servidor, limpando...');
                     localStorage.removeItem('wf_activeUploadJob');
                 }
             });
@@ -170,7 +193,14 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     setJobId(job.id);
                     setStagedPaths(job.staged);
                     if (!projectUrl) setProjectUrl(job.projectUrl);
-                    try { localStorage.setItem('wf_activeUploadJob', JSON.stringify({ jobId: job.id, projectUrl: job.projectUrl })); } catch { /* ignore */ }
+                    try { 
+                        localStorage.setItem('wf_activeUploadJob', JSON.stringify({ 
+                            jobId: job.id, 
+                            projectUrl: job.projectUrl,
+                            timestamp: Date.now()
+                        })); 
+                    } catch { /* ignore */ }
+                    console.log('✅ Job ativo encontrado no servidor:', job.id);
                 }
             });
         }
@@ -184,6 +214,12 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
             alert('Você precisa estar logado para fazer upload de arquivos');
             return;
         }
+
+        // Limpar paths antigos e job anterior ANTES de começar novo upload
+        console.log('🗑️ Limpando paths e jobs anteriores antes de preparar novos arquivos...');
+        setStagedPaths(null);
+        setJobId(null);
+        localStorage.removeItem('wf_activeUploadJob');
 
         setSubmitting(true);
 
@@ -285,6 +321,16 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                 setStagedPaths(staged);
                 if (result.jobId) {
                     setJobId(result.jobId);
+                    // Salvar job no localStorage com timestamp
+                    try {
+                        localStorage.setItem('wf_activeUploadJob', JSON.stringify({
+                            jobId: result.jobId,
+                            projectUrl,
+                            timestamp: Date.now()
+                        }));
+                    } catch (err) {
+                        console.warn('Não foi possível salvar job no localStorage:', err);
+                    }
                 }
 
                 console.log('✅ Arquivos preparados com sucesso! Agora configure e execute o workflow na Timeline.');
@@ -312,8 +358,29 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
 
     const handleExecute = async () => {
         if (!executeWorkflowFn) return;
-        setExecuting(true);
+        
+        // Validar se os arquivos staged não estão expirados
+        if (stagedPaths) {
+            const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+            const allPaths = [
+                stagedPaths.assetZip,
+                ...(stagedPaths.finalMaterials || [])
+            ].filter((path): path is string => typeof path === 'string');
+            
+            const hasExpiredPaths = allPaths.some(path => !path.includes(today));
+            
+            if (hasExpiredPaths) {
+                alert('⚠️ Os arquivos preparados estão expirados.\n\nPor favor, clique em "Preparar Arquivos" novamente para enviar arquivos atualizados.');
+                setStagedPaths(null);
+                return;
+            }
+        }
+        
+        // Limpar apenas results (executedPlan será atualizado pela Timeline)
+        console.log('🗑️ Limpando results da execução anterior...');
         setResults(null);
+        
+        setExecuting(true);
 
         try {
             const result = await executeWorkflowFn();

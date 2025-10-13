@@ -63,6 +63,10 @@ export function useWorkflowProgress(opts: UseWorkflowProgressOptions) {
     }
   }, []);
 
+  const reset = useCallback(() => {
+    setState({ events: [], percent: 0, active: false, tasks: [], totalTasks: 0, planReceived: false });
+  }, []);
+
   const connect = useCallback(() => {
     if (sourceRef.current) return;
     const es = new EventSource('/api/workflow/stream');
@@ -156,5 +160,5 @@ export function useWorkflowProgress(opts: UseWorkflowProgressOptions) {
 
   useEffect(() => { if (autoConnect) connect(); return () => disconnect(); }, [autoConnect, connect, disconnect]);
 
-  return { ...state, connect, disconnect, formatDuration };
+  return { ...state, connect, disconnect, reset, formatDuration };
 }
