@@ -105,7 +105,38 @@ export class UploadAutomationService {
                     this.logger.log('📸 Screenshot do erro salvo: /app/temp/debug_error_asset_release.png');
                     throw error;
                 }
-                const assetRes = await this.uploadSingleFile(frame, page, assetZipPath);
+                
+                // Upload do Asset Release com retry
+                let assetRes = false;
+                let assetAttempts = 0;
+                const maxAssetAttempts = 3;
+                
+                while (!assetRes && assetAttempts < maxAssetAttempts) {
+                    assetAttempts++;
+                    try {
+                        this.logger.log(`📤 [UPLOAD][ASSET] Tentativa ${assetAttempts}/${maxAssetAttempts} para Asset Release`);
+                        assetRes = await this.uploadSingleFile(frame, page, assetZipPath);
+                        
+                        if (!assetRes && assetAttempts < maxAssetAttempts) {
+                            this.logger.warn(`⚠️ [UPLOAD][ASSET] Tentativa ${assetAttempts} falhou, aguardando antes de retry...`);
+                            await page.waitForTimeout(5000);
+                            
+                            // Tentar renavegar para a pasta antes de retry
+                            try {
+                                await WorkfrontDomHelper.navigateToFolder(frame, page, 'Asset Release');
+                                this.logger.log(`✅ [UPLOAD][ASSET] Pasta recarregada para retry`);
+                            } catch (navError) {
+                                this.logger.warn(`⚠️ [UPLOAD][ASSET] Não conseguiu renavegar: ${navError?.message}`);
+                            }
+                        }
+                    } catch (uploadError: any) {
+                        this.logger.error(`❌ [UPLOAD][ASSET] Erro na tentativa ${assetAttempts}: ${uploadError?.message}`);
+                        if (assetAttempts < maxAssetAttempts) {
+                            await page.waitForTimeout(3000);
+                        }
+                    }
+                }
+                
                 const baseName = path.basename(assetZipPath);
                 const est = estimates.perFile[baseName];
                 results.push({
@@ -115,9 +146,17 @@ export class UploadAutomationService {
                     shareSuccess: false,
                     commentSuccess: false,
                     estimatedUploadSeconds: est?.est,
-                    cumulativeEstimatedSeconds: est?.cumulative
+                    cumulativeEstimatedSeconds: est?.cumulative,
+                    uploadAttempts: assetAttempts
                 });
-                if (assetRes) uploadSuccesses++; else errors++;
+                
+                if (assetRes) {
+                    uploadSuccesses++;
+                    this.logger.log(`✅ [UPLOAD][ASSET] Upload bem-sucedido após ${assetAttempts} tentativa(s)`);
+                } else {
+                    errors++;
+                    this.logger.error(`❌ [UPLOAD][ASSET] Upload falhou após ${assetAttempts} tentativas`);
+                }
                 // Share automático do ZIP (opcional, manter para consistência)
                 try {
                     const assetFileName = this.getOriginalFileName(assetZipPath); // <-- adicionado
@@ -150,8 +189,39 @@ export class UploadAutomationService {
                 const isPdf = pdfs.includes(filePath);
                 const baseName = path.basename(filePath);
                 const originalName = this.getOriginalFileName(filePath);
-                const upOk = await this.uploadSingleFile(frame, page, filePath);
                 const est = estimates.perFile[baseName];
+                
+                let upOk = false;
+                let uploadAttempts = 0;
+                const maxUploadAttempts = 3;
+                
+                // Tentativas de upload com retry
+                while (!upOk && uploadAttempts < maxUploadAttempts) {
+                    uploadAttempts++;
+                    try {
+                        this.logger.log(`📤 [UPLOAD][FINALS] Tentativa ${uploadAttempts}/${maxUploadAttempts} para ${baseName}`);
+                        upOk = await this.uploadSingleFile(frame, page, filePath);
+                        
+                        if (!upOk && uploadAttempts < maxUploadAttempts) {
+                            this.logger.warn(`⚠️ [UPLOAD][FINALS] Tentativa ${uploadAttempts} falhou, aguardando antes de retry...`);
+                            await page.waitForTimeout(2000);
+                            
+                            // Tentar renavegar para a pasta antes de retry
+                            try {
+                                await WorkfrontDomHelper.navigateToFolder(frame, page, 'Final Materials');
+                                this.logger.log(`✅ [UPLOAD][FINALS] Pasta recarregada para retry`);
+                            } catch (navError) {
+                                this.logger.warn(`⚠️ [UPLOAD][FINALS] Não conseguiu renavegar: ${navError?.message}`);
+                            }
+                        }
+                    } catch (uploadError: any) {
+                        this.logger.error(`❌ [UPLOAD][FINALS] Erro na tentativa ${uploadAttempts}: ${uploadError?.message}`);
+                        if (uploadAttempts < maxUploadAttempts) {
+                            await page.waitForTimeout(2000);
+                        }
+                    }
+                }
+                
                 const entry = {
                     type: 'final-materials',
                     fileName: baseName,
@@ -159,10 +229,19 @@ export class UploadAutomationService {
                     shareSuccess: false,
                     commentSuccess: false,
                     estimatedUploadSeconds: est?.est,
-                    cumulativeEstimatedSeconds: est?.cumulative
+                    cumulativeEstimatedSeconds: est?.cumulative,
+                    uploadAttempts
                 };
                 results.push(entry);
-                if (upOk) uploadSuccesses++; else { errors++; continue; }
+                
+                if (upOk) {
+                    uploadSuccesses++;
+                    this.logger.log(`✅ [UPLOAD][FINALS] Upload bem-sucedido após ${uploadAttempts} tentativa(s): ${baseName}`);
+                } else {
+                    errors++;
+                    this.logger.error(`❌ [UPLOAD][FINALS] Upload falhou após ${uploadAttempts} tentativas: ${baseName}`);
+                    continue; // Pular share se upload falhou
+                }
 
                 // Share imediato do arquivo final
                 try {
@@ -174,7 +253,7 @@ export class UploadAutomationService {
                     finally { try { await shareCtx.page.context().browser()?.close(); } catch { } }
                 } catch (e: any) { this.logger.warn(`[UPLOAD][FINALS] Não conseguiu preparar share para ${baseName}: ${e?.message}`); }
 
-                if (isPdf) await page.waitForTimeout(1500); // leve espaçamento
+                if (isPdf) await page.waitForTimeout(3000); // leve espaçamento
             }
 
             if (pdfs.length > 0) {
