@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { fileCache } from '@/lib/fileCache';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -167,9 +168,104 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
         setExecuting(false);
         progress.reset(); // Limpa o progresso do workflow
         
-        // Limpar localStorage
-        try { localStorage.removeItem('wf_activeUploadJob'); } catch { /* ignore */ }
-    };    // Restaurar job ativo ao montar (por usuário atual simplificado)
+        // Limpar localStorage completamente
+        try { 
+            localStorage.removeItem('wf_activeUploadJob');
+            localStorage.removeItem('wf_uploadSection_state');
+        } catch { /* ignore */ }
+        
+        // Limpar arquivos do IndexedDB
+        fileCache.clearFiles().catch(console.warn);
+    };
+
+    // Salvar estado no localStorage E File objects no IndexedDB
+    useEffect(() => {
+        try {
+            const state = {
+                fileNames: {
+                    assetZip: assetZip?.name || null,
+                    finalMaterials: finalMaterials.map(f => ({ name: f.name, size: f.size, type: f.type }))
+                },
+                stagedPaths,
+                executedPlan,
+                results,
+                executing,
+                workflowStats,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('wf_uploadSection_state', JSON.stringify(state));
+            
+            // Salvar File objects no IndexedDB (permite salvar arquivos completos!)
+            if (assetZip || finalMaterials.length > 0) {
+                fileCache.saveFiles(assetZip, finalMaterials).catch(err => {
+                    console.warn('Erro ao salvar arquivos no IndexedDB:', err);
+                });
+            }
+        } catch (err) {
+            console.warn('Erro ao salvar estado:', err);
+        }
+    }, [assetZip, finalMaterials, stagedPaths, executedPlan, results, executing, workflowStats]);
+
+    // Restaurar estado ao montar (localStorage + IndexedDB)
+    useEffect(() => {
+        const restoreState = async () => {
+            try {
+                const saved = localStorage.getItem('wf_uploadSection_state');
+                if (saved) {
+                    const state = JSON.parse(saved);
+                    
+                    // Verificar se não está expirado (>24h)
+                    const isExpired = Date.now() - (state.timestamp || 0) > 24 * 60 * 60 * 1000;
+                    if (isExpired) {
+                        console.log('⚠️ Estado salvo expirado, limpando...');
+                        localStorage.removeItem('wf_uploadSection_state');
+                        await fileCache.clearFiles();
+                        return;
+                    }
+                    
+                    // Restaurar metadados e estado de execução
+                    if (state.stagedPaths) setStagedPaths(state.stagedPaths);
+                    if (state.executedPlan) setExecutedPlan(state.executedPlan);
+                    if (state.results) setResults(state.results);
+                    if (state.workflowStats) setWorkflowStats(state.workflowStats);
+                    
+                    // Tentar restaurar File objects do IndexedDB
+                    try {
+                        const cached = await fileCache.loadFiles();
+                        if (cached.assetZip || cached.finalMaterials.length > 0) {
+                            console.log('✅ Arquivos restaurados do IndexedDB!');
+                            if (cached.assetZip) setAssetZip(cached.assetZip);
+                            if (cached.finalMaterials.length > 0) setFinalMaterials(cached.finalMaterials);
+                        } else {
+                            console.warn('⚠️ Nenhum arquivo encontrado no IndexedDB');
+                        }
+                    } catch (dbErr) {
+                        console.error('Erro ao carregar arquivos do IndexedDB:', dbErr);
+                    }
+                    
+                    // Se estava executando, reconectar ao progresso
+                    if (state.executing) {
+                        console.log('🔄 Workflow estava em execução, reconectando ao progresso...');
+                        setExecuting(true);
+                        // O hook useWorkflowProgress já está ativo e vai capturar os eventos do SSE
+                        
+                        // Verificar status após 2 segundos
+                        setTimeout(() => {
+                            // Se não recebeu nenhum evento, provavelmente o workflow já terminou
+                            if (progress.tasks.length === 0 || progress.tasks.every(t => ['success', 'error', 'skip'].includes(t.status))) {
+                                console.log('✅ Workflow já finalizado ou sem eventos ativos');
+                                setExecuting(false);
+                            }
+                        }, 2000);
+                    }
+                }
+            } catch (err) {
+                console.warn('Erro ao restaurar estado:', err);
+            }
+        };
+        
+        restoreState();
+    }, [progress.tasks]);    // Restaurar job ativo ao montar (por usuário atual simplificado)
     useEffect(() => {
         const saved = (() => { try { return JSON.parse(localStorage.getItem('wf_activeUploadJob') || 'null'); } catch { return null; } })();
         
@@ -234,6 +330,16 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
         setStagedPaths(null);
         setJobId(null);
         localStorage.removeItem('wf_activeUploadJob');
+        
+        // CRÍTICO: Limpar arquivos preparados no backend para evitar usar arquivos cached errados
+        try {
+            const clearResult = await clearPreparedFiles();
+            if (clearResult.success) {
+                console.log(`✅ ${clearResult.deletedFiles} arquivo(s) antigo(s) deletado(s) do backend`);
+            }
+        } catch (err) {
+            console.warn('⚠️ Erro ao limpar arquivos preparados (continuando):', err);
+        }
 
         setSubmitting(true);
 
@@ -453,6 +559,16 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
+                        {/* Aviso de arquivos preparados mas perdidos */}
+                        {stagedPaths && !assetZip && finalMaterials.length === 0 && (
+                            <Alert className="mb-4">
+                                <AlertDescription className="text-sm">
+                                    ⚠️ <strong>Arquivos preparados detectados</strong>, mas os File objects foram perdidos (navegação/refresh). 
+                                    Você pode continuar se já fez upload, ou selecione os arquivos novamente para preparar um novo upload.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        
                         {/* Área de drop inicial (apenas quando não há arquivos) */}
                         {!assetZip && finalMaterials.length === 0 && (
                             <div

@@ -419,7 +419,7 @@ export class HoursAutomationService {
 
       return {
         success: allOk,
-        message: allOk ? `Horas (0.3) lançadas em todas as tarefas` : 'Concluído com falhas em algumas tarefas',
+        message: allOk ? `Horas (0.4) lançadas em todas as etapas` : 'Concluído com falhas em algumas tarefas',
         loggedHours: totalLogged,
         map: debugMap ? collectedMap : undefined
       };

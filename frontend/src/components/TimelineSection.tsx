@@ -69,12 +69,41 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
         { action: 'upload_finals', enabled: false, params: { kind: 'upload_finals', finalMaterialPaths: [], selectedUser }, description: 'Upload de finais', folder: 'Final Materials', group: 'finals' },
         { action: 'comment_finals', enabled: false, params: { kind: 'comment_finals', folder: 'Final Materials', fileName: '', commentType: 'finalMaterials', selectedUser }, description: 'Comentário PDF Final', folder: 'Final Materials', group: 'finals' },
         { action: 'status', enabled: false, params: { kind: 'status', deliverableStatus: 'Round 1 Review' }, description: 'Atualizar status', group: 'extra' },
-        { action: 'hours', enabled: false, params: { kind: 'hours', hours: 1, note: '', taskName: '' }, description: 'Lançar horas', group: 'extra' },
+        { action: 'hours', enabled: false, params: { kind: 'hours', hours: 0.8, note: '', taskName: '' }, description: 'Lançar horas', group: 'extra' },
     ];
 
-    const [steps, setSteps] = useState<WorkflowStep[]>(baseSteps);
+    // Restaurar steps salvos ou usar baseSteps
+    const [steps, setSteps] = useState<WorkflowStep[]>(() => {
+        try {
+            const saved = localStorage.getItem('wf_timeline_steps');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Verificar se timestamp não está expirado (>24h)
+                const isExpired = Date.now() - (parsed.timestamp || 0) > 24 * 60 * 60 * 1000;
+                if (!isExpired && Array.isArray(parsed.steps)) {
+                    console.log('✅ Steps restaurados do localStorage');
+                    return parsed.steps;
+                }
+            }
+        } catch (err) {
+            console.warn('Erro ao restaurar steps:', err);
+        }
+        return baseSteps;
+    });
     const [showAdvanced] = useState(false);
     const { executeWorkflow } = useWorkfrontApi();
+
+    // Salvar steps no localStorage quando mudarem
+    useEffect(() => {
+        try {
+            localStorage.setItem('wf_timeline_steps', JSON.stringify({
+                steps,
+                timestamp: Date.now()
+            }));
+        } catch (err) {
+            console.warn('Erro ao salvar steps:', err);
+        }
+    }, [steps]);
 
     // Usa ref para armazenar executeWorkflow sem causar re-renders
     const executeWorkflowRef = useRef(executeWorkflow);
@@ -85,32 +114,59 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
     // Refs para rastrear últimos valores enviados (evitar chamadas desnecessárias)
     const lastStatsRef = useRef<{ readyCount: number; totalCount: number; hasInvalid: boolean } | null>(null);
 
-    // Preenche params quando staging disponível
+    // Preenche params quando staging disponível E habilita steps principais automaticamente
     useEffect(() => {
         if (!stagedPaths) return;
         setSteps(prev => prev.map(s => {
+            // Upload Asset: preencher + habilitar se tiver assetZip
             if (s.action === 'upload_asset' && stagedPaths.assetZip) {
-                return { ...s, params: { ...(s.params as UploadAssetParams), assetZipPath: stagedPaths.assetZip } };
+                return { 
+                    ...s, 
+                    enabled: true, // Auto-habilitar
+                    params: { ...(s.params as UploadAssetParams), assetZipPath: stagedPaths.assetZip } 
+                };
             }
+            // Share Asset: preencher (deixar desabilitado por padrão)
             if (s.action === 'share_asset' && stagedPaths.assetZip) {
                 const zipName = stagedPaths.assetZip.split(/[/\\]/).pop() || '';
                 return { ...s, params: { ...(s.params as ShareAssetParams), selections: [{ folder: 'Asset Release', fileName: zipName }], selectedUser } };
             }
+            // Comment Asset: preencher + habilitar se tiver assetZip
             if (s.action === 'comment_asset' && stagedPaths.assetZip) {
                 const zipName = stagedPaths.assetZip.split(/[/\\]/).pop() || '';
-                return { ...s, params: { ...(s.params as CommentParams), fileName: zipName, folder: 'Asset Release', commentType: 'assetRelease', selectedUser } };
+                return { 
+                    ...s,
+                    enabled: true, // Auto-habilitar
+                    params: { ...(s.params as CommentParams), fileName: zipName, folder: 'Asset Release', commentType: 'assetRelease', selectedUser } 
+                };
             }
+            // Upload Finals: preencher + habilitar se tiver finalMaterials
             if (s.action === 'upload_finals' && stagedPaths.finalMaterials) {
-                return { ...s, params: { ...(s.params as UploadFinalsParams), finalMaterialPaths: stagedPaths.finalMaterials, selectedUser } };
+                return { 
+                    ...s,
+                    enabled: true, // Auto-habilitar
+                    params: { ...(s.params as UploadFinalsParams), finalMaterialPaths: stagedPaths.finalMaterials, selectedUser } 
+                };
             }
+            // Comment Finals: preencher + habilitar se tiver PDF
             if (s.action === 'comment_finals' && stagedPaths.finalMaterials) {
                 const pdf = stagedPaths.finalMaterials.find(f => f.toLowerCase().endsWith('.pdf'));
                 const pdfName = pdf ? pdf.split(/[/\\]/).pop() || 'arquivo.pdf' : '';
-                return { ...s, params: { ...(s.params as CommentParams), fileName: pdfName, folder: 'Final Materials', commentType: 'finalMaterials', selectedUser } };
+                return { 
+                    ...s,
+                    enabled: true, // Auto-habilitar
+                    params: { ...(s.params as CommentParams), fileName: pdfName, folder: 'Final Materials', commentType: 'finalMaterials', selectedUser } 
+                };
             }
+            // Status: preencher + habilitar automaticamente
             if (s.action === 'status') {
-                return { ...s, params: { ...(s.params as StatusParams) } };
+                return { 
+                    ...s,
+                    enabled: true, // Auto-habilitar
+                    params: { ...(s.params as StatusParams) } 
+                };
             }
+            // Hours: apenas preencher (deixar desabilitado por padrão)
             if (s.action === 'hours') {
                 return { ...s, params: { ...(s.params as HoursParams) } };
             }

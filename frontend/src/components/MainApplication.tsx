@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   LogOut,
@@ -28,15 +28,54 @@ interface MainApplicationProps {
 }
 
 export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplicationProps) => {
-  const [projectUrl, setProjectUrl] = useState('');
-  // Estados de pastas/seleção foram removidos (não utilizados neste componente após refatoração)
-  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
-  const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters' | 'comments' | 'kanban'>('upload');
+  // Restaurar estados salvos do localStorage
+  const [projectUrl, setProjectUrl] = useState(() => {
+    try { return localStorage.getItem('wf_projectUrl') || ''; } catch { return ''; }
+  });
+  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>(() => {
+    try { 
+      const saved = localStorage.getItem('wf_selectedUser');
+      return (saved === 'carol' || saved === 'giovana' || saved === 'test') ? saved : 'carol';
+    } catch { return 'carol'; }
+  });
+  const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('wf_currentProject');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters' | 'comments' | 'kanban'>(() => {
+    try {
+      const saved = localStorage.getItem('wf_activeSection');
+      return (saved === 'upload' || saved === 'extract' || saved === 'bulk-download' || saved === 'briefing-content' || saved === 'history' || saved === 'masters' || saved === 'comments' || saved === 'kanban') ? saved : 'upload';
+    } catch { return 'upload'; }
+  });
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
 
+  // Persistir estados no localStorage quando mudarem
+  useEffect(() => {
+    try { localStorage.setItem('wf_projectUrl', projectUrl); } catch { /* ignore */ }
+  }, [projectUrl]);
+
+  useEffect(() => {
+    try { localStorage.setItem('wf_selectedUser', selectedUser); } catch { /* ignore */ }
+  }, [selectedUser]);
+
+  useEffect(() => {
+    try { 
+      if (currentProject) {
+        localStorage.setItem('wf_currentProject', JSON.stringify(currentProject)); 
+      } else {
+        localStorage.removeItem('wf_currentProject');
+      }
+    } catch { /* ignore */ }
+  }, [currentProject]);
+
+  useEffect(() => {
+    try { localStorage.setItem('wf_activeSection', activeSection); } catch { /* ignore */ }
+  }, [activeSection]);
 
   const { extractDocuments, clearCache, getProjectByUrl } = useWorkfrontApi();
   const { logout: logoutApp, user } = useAppAuth();

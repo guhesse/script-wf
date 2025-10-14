@@ -3046,6 +3046,280 @@
         "message": "Upload(s) concluído(s) em sessão",
         "fileCount": 4
       }
+    },
+    {
+      "id": "626cc324-58ff-44d2-9929-9c2b4e23232a",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\a2e7e3c5\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\4d23e40a\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+          "temp\\staging\\2025-10-13\\6ca8fb2e\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+          "temp\\staging\\2025-10-13\\730c49a3\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+          "temp\\staging\\2025-10-13\\1f6b996b\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760406135997,
+      "updatedAt": 1760406135997,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+      ]
+    },
+    {
+      "id": "d75f3893-28c1-4e32-b5d6-4f5ac66e57bf",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0c740000f0f39c6509f4e855f068/documents?locale=en-US&localeOriginal=en-US",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\0bb92fd3\\2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Vídeo4.zip"
+      },
+      "status": "staged",
+      "createdAt": 1760406137379,
+      "updatedAt": 1760406137379,
+      "fileNames": [
+        "2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Vídeo4.zip"
+      ]
+    },
+    {
+      "id": "bbf148c3-5bda-4d19-a93d-9ed26610d950",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\ce51711a\\2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Vídeo4.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\b7701c27\\2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_1x1_R2.mp4",
+          "temp\\staging\\2025-10-13\\ebdf5993\\2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_4x5_R2.mp4",
+          "temp\\staging\\2025-10-13\\1d2b3602\\2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_9x16_R2.mp4",
+          "temp\\staging\\2025-10-13\\aa9a08bc\\2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Vídeo4.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760406174012,
+      "updatedAt": 1760406174012,
+      "fileNames": [
+        "2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Vídeo4.zip",
+        "2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_1x1_R2.mp4",
+        "2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_4x5_R2.mp4",
+        "2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_9x16_R2.mp4",
+        "2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Vídeo4.pdf"
+      ]
+    },
+    {
+      "id": "4209c4f3-2154-40be-adcf-abede67e0327",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-13\\a2e7e3c5\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip"
+      },
+      "status": "staged",
+      "createdAt": 1760406175696,
+      "updatedAt": 1760406175696,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip"
+      ]
+    },
+    {
+      "id": "9457fca6-e6f2-4f3d-aab0-1f4b70ebf8c4",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\a648f0b4\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\7946a0a0\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+          "temp\\staging\\2025-10-13\\4a6aee07\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+          "temp\\staging\\2025-10-13\\5ea69533\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+          "temp\\staging\\2025-10-13\\f8845ffe\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760406446808,
+      "updatedAt": 1760406446808,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+      ]
+    },
+    {
+      "id": "46a70783-36cb-4a19-9578-cd702b6cc6be",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-13\\ce51711a\\2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_VÃ­deo4.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760406448228,
+      "updatedAt": 1760406543235,
+      "fileNames": [
+        "2601G0179_0053_5373550_br_csg_con_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_VÃ­deo4.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "747e0d07-5259-4c4e-8684-d37a17faad8d",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\b81bc2be\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\1de72fdc\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+          "temp\\staging\\2025-10-13\\0eeb9d8c\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+          "temp\\staging\\2025-10-13\\5feb60b0\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+          "temp\\staging\\2025-10-13\\f6496cba\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760406994245,
+      "updatedAt": 1760406994245,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+      ]
+    },
+    {
+      "id": "4ef1ca0c-6231-4fb7-88c4-ae87a8bb433f",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\17b16133\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\1833eefc\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+          "temp\\staging\\2025-10-13\\e3c6467d\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+          "temp\\staging\\2025-10-13\\ea4b97fb\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf",
+          "temp\\staging\\2025-10-13\\850a7bc3\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760407059234,
+      "updatedAt": 1760407059234,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4"
+      ]
+    },
+    {
+      "id": "02691464-badc-47f1-ac84-dfaaa30bde23",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\aa766209\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\a7032236\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+          "temp\\staging\\2025-10-13\\f39d1a1f\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+          "temp\\staging\\2025-10-13\\1d2920bd\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+          "temp\\staging\\2025-10-13\\802a4ca2\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760407083366,
+      "updatedAt": 1760407083366,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+      ]
+    },
+    {
+      "id": "d1fc5cae-fa85-4006-9b0f-cd0c572a548f",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\17ae745d\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\0898926e\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+          "temp\\staging\\2025-10-13\\5d58ecd3\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+          "temp\\staging\\2025-10-13\\81b9e3ab\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+          "temp\\staging\\2025-10-13\\f009d105\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760407449311,
+      "updatedAt": 1760407449311,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_1x1.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_4x5.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1_9x16.mp4",
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Video3.pdf"
+      ]
+    },
+    {
+      "id": "5c7c22c7-e226-4377-baaf-3befd6f39bf1",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0f05000b3d3b38c56dda3f9e1c32/documents",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\aa766209\\2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760407450693,
+      "updatedAt": 1760407548601,
+      "fileNames": [
+        "2601G0179_0063_5373603_br_csg_gam_fy26q3w9_smv_jscon_wtn-txl_Award-Winning-Innovation---Tier-1.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
+    },
+    {
+      "id": "93173c9d-f328-4f68-9eb1-31d96787eab1",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0d9f0001f60d85add2421c433902",
+      "staged": {
+        "assetZip": "temp\\staging\\2025-10-13\\5a59aa16\\2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5.zip",
+        "finalMaterials": [
+          "temp\\staging\\2025-10-13\\c92c267f\\2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5.pdf",
+          "temp\\staging\\2025-10-13\\52aacaeb\\2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5_1x1.png",
+          "temp\\staging\\2025-10-13\\b60eeefb\\2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5_4x5.png",
+          "temp\\staging\\2025-10-13\\6555da53\\2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5_9x16.png"
+        ]
+      },
+      "status": "staged",
+      "createdAt": 1760407862165,
+      "updatedAt": 1760407862165,
+      "fileNames": [
+        "2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5.zip",
+        "2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5.pdf",
+        "2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5_1x1.png",
+        "2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5_4x5.png",
+        "2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5_9x16.png"
+      ]
+    },
+    {
+      "id": "ba8d803f-b561-445c-a62e-e7fa9d897934",
+      "userId": "cmgisfwjx0000uxccrrhqfhob",
+      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/68bf0d9f0001f60d85add2421c433902",
+      "staged": {
+        "assetZip": "F:\\Documentos\\Projetos Programação\\script-wf\\backend\\temp\\staging\\2025-10-13\\5a59aa16\\2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5.zip"
+      },
+      "status": "completed",
+      "createdAt": 1760407867500,
+      "updatedAt": 1760407964328,
+      "fileNames": [
+        "2601G0179_0043_5373850_br_csg_con_fy26q3w9_sm_jscon_wtn-txl_Award-Winning-Innovation-Tier-1_Static5.zip"
+      ],
+      "summary": {
+        "message": "Upload(s) concluído(s) em sessão",
+        "fileCount": 4
+      }
     }
   ]
 }
