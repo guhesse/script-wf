@@ -17,12 +17,12 @@ const EXT_WEIGHTS: Record<string, number> = {
     '.mov': 5,
     '.mkv': 5,
     '.zip': 3,      // tempo médio
-    '.pdf': 1,
-    '.png': 0.7,
-    '.jpg': 0.7,
-    '.jpeg': 0.7,
-    '.webp': 0.7,
-    '.gif': 0.7
+    '.pdf': 3,
+    '.png': 1,
+    '.jpg': 1,
+    '.jpeg': 1,
+    '.webp': 1,
+    '.gif': 2
 };
 
 type TeamKey = 'carol' | 'giovana' | 'test';

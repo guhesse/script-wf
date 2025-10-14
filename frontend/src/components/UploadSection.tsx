@@ -359,23 +359,6 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     const handleExecute = async () => {
         if (!executeWorkflowFn) return;
         
-        // Validar se os arquivos staged não estão expirados
-        if (stagedPaths) {
-            const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-            const allPaths = [
-                stagedPaths.assetZip,
-                ...(stagedPaths.finalMaterials || [])
-            ].filter((path): path is string => typeof path === 'string');
-            
-            const hasExpiredPaths = allPaths.some(path => !path.includes(today));
-            
-            if (hasExpiredPaths) {
-                alert('⚠️ Os arquivos preparados estão expirados.\n\nPor favor, clique em "Preparar Arquivos" novamente para enviar arquivos atualizados.');
-                setStagedPaths(null);
-                return;
-            }
-        }
-        
         // Limpar apenas results (executedPlan será atualizado pela Timeline)
         console.log('🗑️ Limpando results da execução anterior...');
         setResults(null);
