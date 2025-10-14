@@ -744,9 +744,9 @@ export class TimelineService {
     private async uploadThroughDialogRobust(frame: any, page: Page, filePaths: string[]) {
         this.logger.log(`📁 [UPLOAD-R] Upload robusto de ${filePaths.length} arquivo(s)`);
         
-        // Aguardar interface REALMENTE estável
-        this.logger.log(`⏳ [UPLOAD-R] Aguardando 3 segundos para estabilização completa...`);
-        await page.waitForTimeout(3000);
+        // Aguardar interface REALMENTE estável (menu anterior fechar completamente)
+        this.logger.log(`⏳ [UPLOAD-R] Aguardando 4 segundos para estabilização e fechamento de menus anteriores...`);
+        await page.waitForTimeout(4000);
         
         // Determinar se é Frame real ou FrameLocator
         const isRealFrame = !!frame.url;
