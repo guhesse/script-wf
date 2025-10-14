@@ -926,6 +926,94 @@ export class WorkfrontController {
     }
   }
 
+  @Delete('upload/clear-prepared')
+  @ApiOperation({ summary: 'Limpar arquivos preparados (staging) e jobs staged do usuário' })
+  @ApiResponse({ status: 200, description: 'Arquivos limpos com sucesso' })
+  async clearPreparedFiles(@CurrentUser() user?: AuthUser) {
+    try {
+      const userId = user?.userId || 'anonymous';
+      
+      // Obter job ativo do usuário (se existir)
+      const activeJob = this.uploadJobs.getActiveJobForUser(userId);
+      
+      const deletedFiles: string[] = [];
+      const errors: string[] = [];
+      
+      // Se há job ativo com arquivos staged
+      if (activeJob && activeJob.status === 'staged') {
+        const allPaths = [
+          activeJob.staged.assetZip,
+          ...(activeJob.staged.finalMaterials || [])
+        ].filter(Boolean) as string[];
+        
+        for (const relativePath of allPaths) {
+          try {
+            const absolutePath = path.resolve(process.cwd(), relativePath);
+            
+            // Verificar se arquivo existe antes de deletar
+            try {
+              await fs.access(absolutePath);
+              await fs.unlink(absolutePath);
+              deletedFiles.push(relativePath);
+              this.logger.log(`🗑️ Arquivo deletado: ${relativePath}`);
+            } catch {
+              // Arquivo não existe, apenas registrar
+              this.logger.warn(`⚠️ Arquivo não encontrado (já foi deletado?): ${relativePath}`);
+            }
+            
+            // Tentar deletar diretório pai (se vazio)
+            try {
+              const dir = path.dirname(absolutePath);
+              await fs.rmdir(dir);
+              this.logger.log(`📁 Diretório vazio removido: ${dir}`);
+            } catch {
+              // Diretório não vazio ou não existe, ignorar
+            }
+          } catch (err) {
+            errors.push(`Erro ao deletar ${relativePath}: ${(err as Error).message}`);
+            this.logger.error(`❌ Erro ao deletar ${relativePath}:`, err);
+          }
+        }
+        
+        // Cancelar o job
+        this.uploadJobs.cancel(activeJob.id, userId);
+        this.logger.log(`✅ Job ${activeJob.id} cancelado e arquivos limpos`);
+      }
+      
+      // Limpar diretórios antigos (>24h) do staging
+      try {
+        const stagingDir = path.join(process.cwd(), 'temp', 'staging');
+        const dirs = await fs.readdir(stagingDir).catch(() => []);
+        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        
+        for (const dirName of dirs) {
+          const dirPath = path.join(stagingDir, dirName);
+          const stats = await fs.stat(dirPath).catch(() => null);
+          
+          if (stats && stats.isDirectory() && stats.mtimeMs < cutoff) {
+            await fs.rm(dirPath, { recursive: true, force: true });
+            this.logger.log(`🗑️ Diretório antigo removido: ${dirName}`);
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`⚠️ Erro ao limpar diretórios antigos: ${(err as Error).message}`);
+      }
+      
+      return {
+        success: true,
+        deletedFiles: deletedFiles.length,
+        errors: errors.length > 0 ? errors : undefined,
+        message: `${deletedFiles.length} arquivo(s) deletado(s)${activeJob ? ', job cancelado' : ''}`
+      };
+    } catch (error) {
+      this.logger.error('❌ Erro ao limpar arquivos:', error);
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Post('upload/generate-direct-url')
   @ApiOperation({ summary: 'Gerar URL para upload direto ao Bunny CDN (arquivos grandes)' })
   @UseGuards(JwtAuthGuard)

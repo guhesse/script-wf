@@ -72,7 +72,7 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     const zipInputRef = useRef<HTMLInputElement>(null);
     // input único para todos os arquivos (reuse zipInputRef)
 
-    const { getActiveUploadJob, cancelUploadJob } = useWorkfrontApi();
+    const { getActiveUploadJob, cancelUploadJob, clearPreparedFiles } = useWorkfrontApi();
     const { token } = useAppAuth();
     const [jobId, setJobId] = useState<string | null>(null);
 
@@ -147,7 +147,18 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     };
 
     const removeFinal = (idx: number) => setFinalMaterials(f => f.filter((_, i) => i !== idx));
-    const clearAll = () => {
+    const clearAll = async () => {
+        try {
+            // Limpar arquivos preparados no backend
+            const result = await clearPreparedFiles();
+            if (result.success) {
+                console.log(`✅ ${result.deletedFiles} arquivo(s) deletado(s)`);
+            }
+        } catch (err) {
+            console.error('Erro ao limpar arquivos preparados:', err);
+        }
+        
+        // Limpar estado do React (File objects)
         setAssetZip(null);
         setFinalMaterials([]);
         setStagedPaths(null);
@@ -155,6 +166,9 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
         setResults(null);
         setExecuting(false);
         progress.reset(); // Limpa o progresso do workflow
+        
+        // Limpar localStorage
+        try { localStorage.removeItem('wf_activeUploadJob'); } catch { /* ignore */ }
     };    // Restaurar job ativo ao montar (por usuário atual simplificado)
     useEffect(() => {
         const saved = (() => { try { return JSON.parse(localStorage.getItem('wf_activeUploadJob') || 'null'); } catch { return null; } })();
