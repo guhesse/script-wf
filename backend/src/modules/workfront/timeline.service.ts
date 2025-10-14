@@ -409,8 +409,8 @@ export class TimelineService {
         const { assetZipPath, finalMaterialPaths = [], selectedUser = 'carol' } = params || {};
         if (!assetZipPath && finalMaterialPaths.length === 0) return { success: false, message: 'Nenhum arquivo para upload' };
         
-        // Validar se os paths são recentes (mesmo dia)
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        // Validar se os paths são recentes (mesmo dia) - usando timezone local
+        const today = this.getLocalDateString();
         const allPaths = [assetZipPath, ...finalMaterialPaths].filter(Boolean);
         
         for (const filePath of allPaths) {
@@ -496,6 +496,15 @@ export class TimelineService {
         } catch (e: any) {
             return { success: false, message: e?.message || 'Falha status sessão' };
         }
+    }
+
+    /** Retorna data local no formato YYYY-MM-DD (não usa UTC) */
+    private getLocalDateString(): string {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     private async hoursInSession(projectUrl: string, params: any, ctx: { page: Page; frame: any; headless: boolean }) {

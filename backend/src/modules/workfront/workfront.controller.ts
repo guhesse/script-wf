@@ -775,8 +775,8 @@ export class WorkfrontController {
         storagePath: string;
       }> = [];
 
-      // Timestamp base para todos os uploads desta sessão
-      const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      // Timestamp base para todos os uploads desta sessão (timezone local)
+      const timestamp = this.getLocalDateString();
 
       // Gerar paths locais para cada arquivo (SEM prefixo temp_)
       for (const fileInfo of body.files) {
@@ -1284,5 +1284,14 @@ export class WorkfrontController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  /** Retorna data local no formato YYYY-MM-DD (não usa UTC) */
+  private getLocalDateString(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
