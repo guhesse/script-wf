@@ -5,6 +5,7 @@ import * as fs from 'fs/promises';
 import { WorkfrontDomHelper } from './utils/workfront-dom.helper';
 import { resolveHeadless } from './utils/headless.util';
 import { createOptimizedContext, disposeBrowser } from './utils/playwright-optimization';
+import { ProgressService } from './progress.service';
 
 const STATE_FILE = 'wf_state.json';
 
@@ -47,6 +48,8 @@ const TEST_TEAM = [
 export class ShareAutomationService {
     private readonly logger = new Logger(ShareAutomationService.name);
 
+    constructor(private readonly progress: ProgressService) {}
+
     // (Retries migraram para WorkfrontDomHelper – manter apenas se precisarmos overrides futuros)
 
     /**
@@ -82,7 +85,7 @@ export class ShareAutomationService {
                     }
                     await this.selectDocument(frame, page, fileName);
                     await this.openShareModal(frame, page, { ensureFresh: true });
-                    await this.addUsersToShare(frame, page, this.getTeamUsers(selectedUser));
+                    await this.addUsersToShare(frame, page, this.getTeamUsers(selectedUser), projectUrl);
                     await this.saveShare(frame, page);
                     results.push({ folder, fileName, success: true, message: 'Compartilhado com sucesso' });
                     successCount++;
@@ -331,7 +334,7 @@ export class ShareAutomationService {
         throw new Error('Modal de compartilhamento não abriu após 3 tentativas');
     }
 
-    public async addUsersToShare(frameLocator: any, page: Page, users: { email: string; role: string }[]): Promise<void> {
+    public async addUsersToShare(frameLocator: any, page: Page, users: { email: string; role: string }[], projectUrl?: string): Promise<void> {
         const inputSelectors = ['input[role="combobox"]', 'input[aria-autocomplete="list"]', 'input[type="text"]'];
         let emailInput = null as any;
         for (const sel of inputSelectors) {
@@ -342,7 +345,25 @@ export class ShareAutomationService {
         }
         if (!emailInput) throw new Error('Campo de email não encontrado');
 
-        for (const user of users) {
+        for (let i = 0; i < users.length; i++) {
+            const user = users[i];
+            // Extrair nome da pessoa do email (ex: giovanna.deparis@dell.com -> Giovanna Deparis)
+            const userName = user.email.split('@')[0]
+                .split('.')
+                .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' ');
+            
+            // Emitir progresso: compartilhando com pessoa X de Y
+            if (projectUrl) {
+                this.progress.publish({
+                    projectUrl,
+                    phase: 'info',
+                    message: `Compartilhando com ${userName}`,
+                    subStepIndex: i + 1,
+                    subStepsTotal: users.length,
+                });
+            }
+            
             try {
                 await emailInput.click();
                 await emailInput.fill('');

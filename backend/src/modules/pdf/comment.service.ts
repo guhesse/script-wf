@@ -12,6 +12,7 @@ import { chromium, Page, Frame } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { WorkfrontDomHelper } from '../workfront/utils/workfront-dom.helper';
+import { ProgressService } from '../workfront/progress.service';
 
 // Configuração de usuários (alinhada com o legado)
 const USERS_CONFIG: Record<string, Array<{ name: string; email: string; id?: string }>> = {
@@ -48,7 +49,10 @@ const COMMENT_TEMPLATES: Record<CommentType, { text: string; mentions: boolean }
 export class CommentService {
     private readonly logger = new Logger(CommentService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly progress: ProgressService,
+    ) { }
 
     // ===== API principal =====
     async addComment(commentDto: AddCommentDto): Promise<AddCommentResponseDto> {
@@ -70,6 +74,14 @@ export class CommentService {
 
             // Gerar HTML completo para o comentário
             const rawHtml = this.generateCommentHtml(commentType, selectedUser);
+            
+            // Emitir evento de progresso: escrevendo comentário
+            const commentPreview = template.text.length > 50 ? template.text.substring(0, 47) + '...' : template.text;
+            this.progress.publish({
+                projectUrl,
+                phase: 'info',
+                message: `Escrevendo: "${commentPreview}"`,
+            });
 
             const auto = await this.performDocumentComment({
                 projectUrl,
