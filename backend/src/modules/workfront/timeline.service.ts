@@ -777,8 +777,8 @@ export class TimelineService {
                     
                     if (isVisible) {
                         await btn.click({ delay: 30, timeout: 5000 });
-                        this.logger.log(`⏳ [UPLOAD-R] Aguardando 2.5s para menu dropdown aparecer completamente...`);
-                        await page.waitForTimeout(2500); // Aguardar menu dropdown aparecer e renderizar completamente
+                        this.logger.log(`⏳ [UPLOAD-R] Aguardando 3.5s para menu dropdown aparecer completamente...`);
+                        await page.waitForTimeout(3500); // Aumentado para 3.5s para garantir renderização completa
                         opened = true;
                         this.logger.log(`✅ [UPLOAD-R] Botão Add new clicado: ${sel}`);
                         break;
@@ -799,8 +799,11 @@ export class TimelineService {
         const docSelectors = [
             'li[data-test-id="upload-file"]',
             'li.select-files-button',
+            'li[wf-upload-file-link]',
             'li:has-text("Document")',
-            '[role="menuitem"]:has-text("Document")'
+            '[role="menuitem"]:has-text("Document")',
+            'button:has-text("Document")',
+            '[aria-label*="Document" i]'
         ];
         
         let docClicked = false;
@@ -811,11 +814,24 @@ export class TimelineService {
                 const count = await m.count();
                 
                 if (count > 0) {
-                    this.logger.log(`   📊 Opção encontrada (count=${count}) - tentando clicar com force...`);
+                    this.logger.log(`   📊 Opção encontrada (count=${count}) - tentando clicar...`);
                     
-                    // Tentar clicar COM FORCE mesmo se não visível (menus dropdown podem ter visibilidade complexa)
+                    // Estratégia multi-tentativa: scroll → visible check → force click
                     try {
-                        await m.click({ timeout: 3000, force: true });
+                        // Tentar scroll primeiro
+                        await m.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+                        await page.waitForTimeout(300);
+                        
+                        // Tentar click normal
+                        const isVisible = await m.isVisible().catch(() => false);
+                        if (isVisible) {
+                            await m.click({ timeout: 3000 });
+                        } else {
+                            // Se não visível, forçar click
+                            this.logger.log(`   ⚠️ Não visível, tentando force click...`);
+                            await m.click({ timeout: 3000, force: true });
+                        }
+                        
                         this.logger.log(`✅ [UPLOAD-R] Document clicado: ${sel}`);
                         docClicked = true;
                         break;
@@ -849,6 +865,7 @@ export class TimelineService {
         const fs = require('fs').promises;
         const path = require('path');
         const absolutePaths: string[] = [];
+        let totalSizeBytes = 0;
         
         for (const filePath of filePaths) {
             // Converter para path absoluto se for relativo
@@ -858,11 +875,13 @@ export class TimelineService {
             
             this.logger.log(`📁 [UPLOAD-R] Validando arquivo: ${absolutePath}`);
             
-            // Verificar se arquivo existe
+            // Verificar se arquivo existe e coletar tamanho
             try {
                 const stats = await fs.stat(absolutePath);
-                this.logger.log(`✅ [UPLOAD-R] Arquivo encontrado: ${path.basename(absolutePath)} (${stats.size} bytes)`);
+                const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+                this.logger.log(`✅ [UPLOAD-R] Arquivo encontrado: ${path.basename(absolutePath)} (${sizeMB} MB)`);
                 absolutePaths.push(absolutePath);
+                totalSizeBytes += stats.size;
             } catch (err) {
                 this.logger.error(`❌ [UPLOAD-R] Arquivo não encontrado: ${absolutePath}`);
                 throw new Error(`Arquivo não encontrado: ${absolutePath}`);
@@ -874,9 +893,22 @@ export class TimelineService {
         await chooser.setFiles(absolutePaths);
         this.logger.log(`✅ [UPLOAD-R] ${absolutePaths.length} arquivo(s) enviado(s) com sucesso`);
         
-        // Aguardar processamento otimizado - Workfront processa em background
-        const waitTime = Math.max(6000, filePaths.length * 3000); // Mínimo 6s, 3s por arquivo (otimizado)
-        this.logger.log(`⏳ [UPLOAD-R] Aguardando ${waitTime}ms para processamento...`);
+        // Cálculo dinâmico de timeout baseado no tamanho dos arquivos
+        const totalSizeMB = totalSizeBytes / (1024 * 1024);
+        
+        // Fórmula: base (6s) + tempo por arquivo (2s) + tempo por MB (150ms/MB)
+        // Exemplos:
+        // - 3 arquivos de 1MB cada = 6000 + 6000 + 450 = 12.45s
+        // - 3 arquivos de 50MB cada = 6000 + 6000 + 22500 = 34.5s
+        // - 2 vídeos 50MB + 1 de 15MB = 6000 + 6000 + 17250 = 29.25s
+        const baseTime = 6000; // 6 segundos base
+        const timePerFile = filePaths.length * 2000; // 2 segundos por arquivo
+        const timePerMB = totalSizeMB * 150; // 150ms por MB
+        const waitTime = Math.ceil(baseTime + timePerFile + timePerMB);
+        
+        this.logger.log(`⏳ [UPLOAD-R] Tamanho total: ${totalSizeMB.toFixed(2)} MB`);
+        this.logger.log(`⏳ [UPLOAD-R] Tempo calculado: ${(waitTime / 1000).toFixed(1)}s (base=${baseTime}ms + arquivos=${timePerFile}ms + tamanho=${Math.ceil(timePerMB)}ms)`);
+        this.logger.log(`⏳ [UPLOAD-R] Aguardando processamento...`);
         await page.waitForTimeout(waitTime);
     }
 
@@ -932,10 +964,27 @@ export class TimelineService {
     this.progress.publish({ phase: 'info', action: 'upload', message: 'Definindo arquivos no file chooser' });
     await chooser.setFiles(filePaths);
 
-        // Tempo de espera pós-seleção (dinâmico)
-        const waitMs = 2500 + (filePaths.length * 1200);
-        this.logger.log(`⏳ Aguardando ${waitMs}ms para processamento inicial dos arquivos...`);
-        this.progress.publish({ phase: 'delay', action: 'upload', message: `Esperando processamento inicial (${waitMs}ms)`, extra: { fileCount: filePaths.length, waitMs } });
+        // Calcular tamanho dos arquivos para timeout dinâmico
+        const fs = require('fs').promises;
+        let totalSizeBytes = 0;
+        for (const filePath of filePaths) {
+            try {
+                const stats = await fs.stat(filePath);
+                totalSizeBytes += stats.size;
+            } catch {
+                // Ignorar erros de leitura
+            }
+        }
+        const totalSizeMB = totalSizeBytes / (1024 * 1024);
+        
+        // Tempo de espera pós-seleção (dinâmico baseado em tamanho)
+        const baseTime = 2500;
+        const timePerFile = filePaths.length * 1200;
+        const timePerMB = totalSizeMB * 150; // 150ms por MB
+        const waitMs = Math.ceil(baseTime + timePerFile + timePerMB);
+        
+        this.logger.log(`⏳ Aguardando ${(waitMs / 1000).toFixed(1)}s para processamento inicial (${totalSizeMB.toFixed(2)} MB)...`);
+        this.progress.publish({ phase: 'delay', action: 'upload', message: `Esperando processamento inicial (${(waitMs / 1000).toFixed(1)}s)`, extra: { fileCount: filePaths.length, totalSizeMB, waitMs } });
         await page.waitForTimeout(waitMs);
         this.progress.publish({ phase: 'success', action: 'upload', message: `Processamento inicial concluído (${filePaths.length} arquivo[s])` });
     }

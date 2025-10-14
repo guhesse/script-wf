@@ -259,7 +259,8 @@ export class CommentService {
             try {
                 await summaryBtn.click();
                 this.logger.log('💬 [Comment] ✅ Summary clicado');
-                await page.waitForTimeout(2500);
+                this.logger.log('💬 [Comment] ⏳ Aguardando 5s para painel carregar (arquivos grandes podem demorar)...');
+                await page.waitForTimeout(5000); // Aumentado para 5s para arquivos grandes
             } catch (e: any) {
                 this.logger.error(`💬 [Comment] ❌ Erro ao clicar summary: ${e?.message}`);
             }
@@ -320,29 +321,62 @@ export class CommentService {
     private async findCommentField(frameLocator: any, page: Page): Promise<{ locator: any; selector: string } | null> {
         this.logger.log('💬 [Comment] Procurando campo de comentário...');
 
-        // Aguardar carregamento
-        await page.waitForTimeout(1000);
+        // Aguardar carregamento (aumentado para dar tempo ao painel carregar com arquivos grandes)
+        await page.waitForTimeout(2500);
 
         const selectors = [
+            // Seletores específicos do Workfront
             'input[data-omega-element="add-comment-input"]',
+            'input[data-omega-action="toggle-RTE-mode"]',
+            
+            // Rich Text Editors
             '.react-spectrum-RichTextEditor-input[contenteditable="true"]',
+            'div[contenteditable="true"][data-lexical-editor="true"]',
             '[role="textbox"][contenteditable="true"]',
+            'div[contenteditable="true"]',
+            
+            // Inputs comuns
             'input[aria-label="Add comment"]',
+            'input[aria-label*="comment" i]',
+            'textarea[aria-label*="comment" i]',
+            
+            // Classes específicas
             '.zo2IKa_spectrum-Textfield-input',
+            'input[class*="Textfield-input"]',
+            
+            // Placeholder (clicar para ativar)
+            '.react-spectrum-RichTextEditor-placeholder',
         ];
 
         for (const selector of selectors) {
             try {
                 const field = frameLocator.locator(selector).first();
-                if (await field.count() > 0 && await field.isVisible()) {
-                    this.logger.log(`💬 [Field] ✅ Campo encontrado: ${selector}`);
-                    return { locator: field, selector };
+                const count = await field.count();
+                
+                if (count > 0) {
+                    const isVisible = await field.isVisible().catch(() => false);
+                    this.logger.log(`💬 [Field] 🔍 Testando "${selector}": count=${count}, visible=${isVisible}`);
+                    
+                    if (isVisible) {
+                        // Se for placeholder, clicar para ativar e procurar novamente
+                        if (selector.includes('placeholder')) {
+                            this.logger.log(`💬 [Field] 🎯 Clicando placeholder para ativar editor...`);
+                            await field.click({ force: true });
+                            await page.waitForTimeout(1000);
+                            // Recursão para encontrar o campo real ativado
+                            continue;
+                        }
+                        
+                        this.logger.log(`💬 [Field] ✅ Campo encontrado: ${selector}`);
+                        return { locator: field, selector };
+                    }
                 }
-            } catch {
-                // Continuar
+            } catch (e: any) {
+                this.logger.warn(`💬 [Field] ⚠️ Erro com "${selector}": ${e?.message}`);
             }
         }
 
+        this.logger.error('💬 [Field] ❌ Nenhum campo de comentário encontrado após testar todos seletores');
         return null;
     }
 
