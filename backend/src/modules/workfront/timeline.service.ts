@@ -777,7 +777,8 @@ export class TimelineService {
                     
                     if (isVisible) {
                         await btn.click({ delay: 30, timeout: 5000 });
-                        await page.waitForTimeout(800); // Aguardar menu aparecer
+                        this.logger.log(`⏳ [UPLOAD-R] Aguardando 2.5s para menu dropdown aparecer completamente...`);
+                        await page.waitForTimeout(2500); // Aguardar menu dropdown aparecer e renderizar completamente
                         opened = true;
                         this.logger.log(`✅ [UPLOAD-R] Botão Add new clicado: ${sel}`);
                         break;
