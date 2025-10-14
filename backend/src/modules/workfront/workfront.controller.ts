@@ -72,6 +72,15 @@ import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 import { resolveHeadless } from './utils/headless.util';
 import { BunnyUploadUrlService } from '../../services/bunny-upload-url.service';
 
+// Helper function para obter data local (standalone para uso em Multer)
+function getLocalDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 @ApiTags('Projetos')
 @Controller('api')
 export class WorkfrontController {
@@ -838,7 +847,7 @@ export class WorkfrontController {
       destination: async (req, file, cb) => {
         try {
           const uploadId = req.params.uploadId;
-          const timestamp = new Date().toISOString().slice(0, 10);
+          const timestamp = getLocalDateString(); // Usar timezone local standalone
           // Usar subdiretório único por uploadId para evitar colisões
           const tempDir = path.join(process.cwd(), 'temp', 'staging', timestamp, uploadId);
           
