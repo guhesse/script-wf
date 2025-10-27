@@ -117,17 +117,17 @@ export class StatusAutomationService {
             try {
                 // Sempre recaptura frame no início de cada tentativa
                 frame = WorkfrontDomHelper.frameLocator(page);
-                
+
                 if (!page.url().startsWith(url)) {
                     await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => { });
                     await page.waitForTimeout(3000);
                     // Recaptura frame após navigate
                     frame = WorkfrontDomHelper.frameLocator(page);
                 }
-                
+
                 // Aguarda um pouco para garantir que o conteúdo carregou
                 await page.waitForTimeout(1500);
-                
+
                 await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
                 await this.performStatusUpdateCore({ page, frame, deliverableStatus, url });
                 return { success: true, message: `Status do Deliverable alterado para '${deliverableStatus}' (sessão reutilizada)` };
@@ -136,8 +136,8 @@ export class StatusAutomationService {
                 this.logger.error(`❌ Erro in-session tentativa ${attempt}: ${e?.message}`);
                 if (attempt < maxAttempts) {
                     this.logger.log(`🔁 (sessão) reload + espera ${retryDelay}ms antes de retry`);
-                    try { 
-                        await page.reload({ waitUntil: 'domcontentloaded' }); 
+                    try {
+                        await page.reload({ waitUntil: 'domcontentloaded' });
                         await page.waitForTimeout(retryDelay);
                         // CRÍTICO: Recapturar frame após reload e espera!
                         frame = WorkfrontDomHelper.frameLocator(page);
@@ -164,17 +164,17 @@ export class StatusAutomationService {
         this.logger.log(`⌨️ Digitando status: "${deliverableStatus}"`);
         await input.click({ force: true });
         await page.waitForTimeout(300);
-        
+
         // Limpa o input e digita o novo valor
         await input.fill(''); // Limpa completamente o campo
         await page.waitForTimeout(200);
         await input.fill(deliverableStatus); // Preenche com o novo valor
         await page.waitForTimeout(400);
-        
+
         // Verifica o que foi digitado no input
         const inputValue = await input.inputValue();
         this.logger.log(`📝 Valor no input após digitação: "${inputValue}" (esperado: "${deliverableStatus}")`);
-        
+
         // Verifica onde está o foco antes do Tab
         const focusBeforeTab = await page.evaluate(() => {
             const el = document.activeElement;
@@ -186,12 +186,12 @@ export class StatusAutomationService {
             };
         });
         this.logger.log(`🎯 Foco antes do Tab: ${JSON.stringify(focusBeforeTab)}`);
-        
+        await page.keyboard.press('Enter');
         // Tab 2x para ir ao botão Save Changes + Enter para salvar
         this.logger.log('⏭️ Tab → Tab → Enter (navega para Save e salva)');
         await page.keyboard.press('Tab');
         await page.waitForTimeout(250);
-        
+
         const focusAfterTab1 = await page.evaluate(() => {
             const el = document.activeElement;
             return {
@@ -201,10 +201,10 @@ export class StatusAutomationService {
             };
         });
         this.logger.log(`🎯 Foco após 1º Tab: ${JSON.stringify(focusAfterTab1)}`);
-        
+
         await page.keyboard.press('Tab');
         await page.waitForTimeout(250);
-        
+
         const focusAfterTab2 = await page.evaluate(() => {
             const el = document.activeElement;
             return {
@@ -214,10 +214,23 @@ export class StatusAutomationService {
             };
         });
         this.logger.log(`🎯 Foco após 2º Tab: ${JSON.stringify(focusAfterTab2)}`);
-        
+
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(250);
+
+        const focusAfterTab3 = await page.evaluate(() => {
+            const el = document.activeElement;
+            return {
+                tag: el?.tagName,
+                testId: el?.getAttribute('data-testid'),
+                text: el?.textContent?.trim()
+            };
+        });
+        this.logger.log(`🎯 Foco após 3º Tab: ${JSON.stringify(focusAfterTab3)}`);
+
         await page.keyboard.press('Enter');
-        await page.waitForTimeout(7000);
-        
+        await page.waitForTimeout(5000);
+
         // Aguarda o indicador "Editing" desaparecer
         this.logger.log('⏳ Aguardando salvamento...');
         const editingIndicator = frame.locator('.css-gbkrod:has(h2:has-text("loc | Statuses")) .css-nn4pdh:has-text("Editing")').first();

@@ -120,7 +120,7 @@ export class TimelineService {
                 this.logger.log('🧩 Abrindo browser otimizado (sessão única) para ações: ' + sessionActions.map(a => a.action).join(', '));
                 // CONFIGURAÇÃO ESPECIAL PARA WORKFRONT - SEM OTIMIZAÇÕES AGRESSIVAS
                 this.logger.log('⚙️ Configurando browser sem otimizações agressivas para Workfront:');
-                this.logger.log('   - blockHeavy: false (permite imagens/fonts/mídia)');
+                this.logger.log('   - blockHeavy: true (não permite imagens/fonts/mídia)');
                 this.logger.log('   - serviceWorkers: allow (permite service workers)');
                 this.logger.log('   - reducedMotion: no-preference (permite animações)');
                 this.logger.log('   - extraHeaders: {} (sem Save-Data)');
@@ -130,10 +130,10 @@ export class TimelineService {
                     headless, 
                     storageStatePath: await WorkfrontDomHelper.ensureStateFile(), 
                     viewport: { width: 1280, height: 720 },
-                    blockHeavy: true,  // ❌ NÃO bloquear recursos pesados no Workfront
-                    extraHeaders: {},   // ❌ NÃO usar Save-Data que pode quebrar interface
-                    extraBlockDomains: [], // ❌ NÃO bloquear domínios extras
-                    shortCircuitGlobs: []  // ❌ NÃO short-circuit nenhum endpoint
+                    blockHeavy: true,  // ✅ NÃO bloquear recursos pesados no Workfront
+                    extraHeaders: {},   // ✅ NÃO usar Save-Data que pode quebrar interface
+                    extraBlockDomains: [], // ✅ NÃO bloquear domínios extras
+                    shortCircuitGlobs: []  // ✅ NÃO short-circuit nenhum endpoint
                 });
                 browser = b;
                 page = await context.newPage();

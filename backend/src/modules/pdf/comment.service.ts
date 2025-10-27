@@ -74,7 +74,7 @@ export class CommentService {
 
             // Gerar HTML completo para o comentário
             const rawHtml = this.generateCommentHtml(commentType, selectedUser);
-            
+
             // Emitir evento de progresso: escrevendo comentário
             const commentPreview = template.text.length > 50 ? template.text.substring(0, 47) + '...' : template.text;
             this.progress.publish({
@@ -328,22 +328,22 @@ export class CommentService {
             // Seletores específicos do Workfront
             'input[data-omega-element="add-comment-input"]',
             'input[data-omega-action="toggle-RTE-mode"]',
-            
+
             // Rich Text Editors
             '.react-spectrum-RichTextEditor-input[contenteditable="true"]',
             'div[contenteditable="true"][data-lexical-editor="true"]',
             '[role="textbox"][contenteditable="true"]',
             'div[contenteditable="true"]',
-            
+
             // Inputs comuns
             'input[aria-label="Add comment"]',
             'input[aria-label*="comment" i]',
             'textarea[aria-label*="comment" i]',
-            
+
             // Classes específicas
             '.zo2IKa_spectrum-Textfield-input',
             'input[class*="Textfield-input"]',
-            
+
             // Placeholder (clicar para ativar)
             '.react-spectrum-RichTextEditor-placeholder',
         ];
@@ -352,11 +352,11 @@ export class CommentService {
             try {
                 const field = frameLocator.locator(selector).first();
                 const count = await field.count();
-                
+
                 if (count > 0) {
                     const isVisible = await field.isVisible().catch(() => false);
                     this.logger.log(`💬 [Field] 🔍 Testando "${selector}": count=${count}, visible=${isVisible}`);
-                    
+
                     if (isVisible) {
                         // Se for placeholder, clicar para ativar e procurar novamente
                         if (selector.includes('placeholder')) {
@@ -366,7 +366,7 @@ export class CommentService {
                             // Recursão para encontrar o campo real ativado
                             continue;
                         }
-                        
+
                         this.logger.log(`💬 [Field] ✅ Campo encontrado: ${selector}`);
                         return { locator: field, selector };
                     }
@@ -1001,7 +1001,7 @@ export class CommentService {
                     const links = el.querySelectorAll('a');
                     const mentions = el.querySelectorAll('.mention, a[data-mention], [data-lexical-mention], span[data-mention]');
                     const atMentions = (el.textContent || '').match(/@\w+/g) || [];
-                    
+
                     return {
                         html: el.innerHTML,
                         text: el.textContent || '',
@@ -1029,18 +1029,18 @@ export class CommentService {
                 }
 
                 // SUCESSO: Se tem mentions OU tem @mentions OU tem conteúdo significativo
-                const isSuccess = (pasteCheck.mentionsCount > 0 || 
-                                 pasteCheck.atMentionsCount > 0 || 
-                                 pasteCheck.linksCount > 0 ||
-                                 (pasteCheck.hasContent && pasteCheck.text.includes('@'))) &&
-                                 pasteCheck.hasTextContent;
+                const isSuccess = (pasteCheck.mentionsCount > 0 ||
+                    pasteCheck.atMentionsCount > 0 ||
+                    pasteCheck.linksCount > 0 ||
+                    (pasteCheck.hasContent && pasteCheck.text.includes('@'))) &&
+                    pasteCheck.hasTextContent;
 
                 if (isSuccess) {
                     this.logger.log('💬 [RAW] ✅ Conteúdo inserido com sucesso! Mentions detectadas ou texto com @');
-                    
+
                     // Aguardar um pouco para garantir que o Workfront processou
                     await page.waitForTimeout(500);
-                    
+
                     return; // Sucesso - retorna para prosseguir com submit
                 }
 
@@ -1061,7 +1061,7 @@ export class CommentService {
                 this.logger.warn(`💬 [RAW] ⚠️ ${e.message} - mas prosseguindo pois tem conteúdo`);
                 return; // Prossegue mesmo com aviso
             }
-            
+
             this.logger.error(`💬 [RAW] Erro no método clipboard: ${e.message}`);
             throw e;
         }
