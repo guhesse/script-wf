@@ -7,7 +7,8 @@
 param(
   [string]$ServerHost = "147.93.68.250",
   [string]$ServerUser = "root",
-  [string]$RemoteDir = "/root/script-wf",
+  # Padronizar diretório remoto com o já existente na VPS
+  [string]$RemoteDir = "/var/www/script-wf",
   [string]$EnvFileLocalPath = ""
 )
 
