@@ -46,6 +46,7 @@
     "passport-jwt": "^4.0.1",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.4.149",
+    "archiver": "^6.0.1",
     "playwright": "^1.55.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
