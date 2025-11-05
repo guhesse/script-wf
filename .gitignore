@@ -1,0 +1,27 @@
+# Root ignores
+node_modules/
+dist/
+coverage/
+.DS_Store
+.idea/
+.vscode/
+
+# Env files (never commit real secrets)
+.env
+.env.*
+!/.env.example
+backend/.env
+backend/.env.*
+!/backend/.env.example
+frontend/.env
+frontend/.env.*
+!/frontend/.env.example
+
+# Logs
+*.log
+logs/
+
+# Temp
+temp/
+backend/temp/
+backend/Downloads/
