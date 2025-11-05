@@ -14,12 +14,13 @@ import {
   UseInterceptors,
   Logger,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { Express } from 'express';
+import type { Express, Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { WorkfrontService } from './workfront.service';
 import { PdfService } from '../pdf/pdf.service';
@@ -332,6 +333,62 @@ export class WorkfrontController {
           message: error.message,
           timestamp: new Date().toISOString(),
         },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // ===== EXPORTAR RESULTADOS (ZIP) =====
+  @Get('bulk-download/export')
+  @ApiOperation({ summary: 'Exportar pasta gerada (downloads) como ZIP' })
+  @ApiQuery({ name: 'folder', required: false, description: 'Nome da pasta dentro de downloads (ex.: DSID ou nome do projeto)' })
+  @ApiQuery({ name: 'dsid', required: false, description: 'DSID do projeto (atalho para folder)' })
+  @ApiQuery({ name: 'name', required: false, description: 'Nome do projeto (atalho para folder)' })
+  async exportFolderZip(
+    @Query('folder') folder: string | undefined,
+    @Query('dsid') dsid: string | undefined,
+    @Query('name') name: string | undefined,
+    @Res() res: Response,
+  ) {
+    try {
+      const basePath = path.join(process.cwd(), 'downloads');
+      const target = (folder || dsid || name || '').toString().trim();
+      if (!target) {
+        throw new HttpException('Informe ?folder=, ?dsid= ou ?name=', HttpStatus.BAD_REQUEST);
+      }
+
+      const projectPath = path.join(basePath, target);
+      try {
+        const stat = await fs.promises.stat(projectPath);
+        if (!stat.isDirectory()) {
+          throw new HttpException('Destino não é um diretório', HttpStatus.BAD_REQUEST);
+        }
+      } catch (e) {
+        throw new HttpException(`Pasta não encontrada: ${projectPath}`, HttpStatus.NOT_FOUND);
+      }
+
+      // Carregar archiver sob demanda para evitar erro caso não instalado
+      const archiverMod = await import('archiver');
+      const archiver = (archiverMod as any).default || archiverMod;
+
+      const safeName = target.replace(/[^a-zA-Z0-9-_\.]+/g, '_');
+      const fileName = `${safeName}.zip`;
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.on('error', (err: Error) => {
+        this.logger.error('Erro ao compactar pasta:', err.message);
+        try { res.status(500).end(`Erro ao compactar: ${err.message}`); } catch {}
+      });
+      archive.pipe(res as any);
+      archive.directory(projectPath, false);
+      await archive.finalize();
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        { success: false, message: (error as Error).message },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
