@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   LogOut,
@@ -7,7 +7,9 @@ import {
   History,
   FolderDown,
   FileText,
-  GalleryHorizontal
+  GalleryHorizontal,
+  MessageSquare,
+  LayoutDashboard
 } from 'lucide-react';
 import { ProjectHistory } from './ProjectHistory';
 import UploadSection from './UploadSection';
@@ -16,21 +18,64 @@ import BriefingContentViewer from './BriefingContentViewer';
 import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import MastersGallery from './MastersGallery';
 import { useAppAuth } from '@/hooks/useAppAuth';
+import CommentsGenerator from './CommentsGenerator';
+import { KanbanBoard } from './KanbanBoard';
 
 interface MainApplicationProps {
   onLogout: () => void;
+  wfReady: boolean;
+  onWfReconnect: () => void;
 }
 
-export const MainApplication = ({ onLogout }: MainApplicationProps) => {
-  const [projectUrl, setProjectUrl] = useState('');
-  // Estados de pastas/seleção foram removidos (não utilizados neste componente após refatoração)
-  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>('carol');
-  const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters'>('upload');
+export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplicationProps) => {
+  // Restaurar estados salvos do localStorage
+  const [projectUrl, setProjectUrl] = useState(() => {
+    try { return localStorage.getItem('wf_projectUrl') || ''; } catch { return ''; }
+  });
+  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>(() => {
+    try { 
+      const saved = localStorage.getItem('wf_selectedUser');
+      return (saved === 'carol' || saved === 'giovana' || saved === 'test') ? saved : 'carol';
+    } catch { return 'carol'; }
+  });
+  const [currentProject, setCurrentProject] = useState<{ title?: string; dsid?: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('wf_currentProject');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters' | 'comments' | 'kanban'>(() => {
+    try {
+      const saved = localStorage.getItem('wf_activeSection');
+      return (saved === 'upload' || saved === 'extract' || saved === 'bulk-download' || saved === 'briefing-content' || saved === 'history' || saved === 'masters' || saved === 'comments' || saved === 'kanban') ? saved : 'upload';
+    } catch { return 'upload'; }
+  });
 
   // Estado simples de carregamento
   const [showProgress, setShowProgress] = useState(false);
 
+  // Persistir estados no localStorage quando mudarem
+  useEffect(() => {
+    try { localStorage.setItem('wf_projectUrl', projectUrl); } catch { /* ignore */ }
+  }, [projectUrl]);
+
+  useEffect(() => {
+    try { localStorage.setItem('wf_selectedUser', selectedUser); } catch { /* ignore */ }
+  }, [selectedUser]);
+
+  useEffect(() => {
+    try { 
+      if (currentProject) {
+        localStorage.setItem('wf_currentProject', JSON.stringify(currentProject)); 
+      } else {
+        localStorage.removeItem('wf_currentProject');
+      }
+    } catch { /* ignore */ }
+  }, [currentProject]);
+
+  useEffect(() => {
+    try { localStorage.setItem('wf_activeSection', activeSection); } catch { /* ignore */ }
+  }, [activeSection]);
 
   const { extractDocuments, clearCache, getProjectByUrl } = useWorkfrontApi();
   const { logout: logoutApp, user } = useAppAuth();
@@ -87,7 +132,7 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
 
     try {
       setShowProgress(true);
-  await extractDocuments(urlToExtract);
+      await extractDocuments(urlToExtract);
       setShowProgress(false);
 
     } catch (error) {
@@ -110,15 +155,36 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 <UserCheck className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">{user?.name || 'Usuário'}</span>
               </div>
-              {/* Placeholder para indicador Workfront (já conectado nesta fase) */}
-              <div className="text-xs text-green-500 border border-green-600/40 px-2 py-0.5 rounded">Workfront OK</div>
+              {/* Indicador de status do Workfront */}
+              {wfReady ? (
+                <>
+                  <div className="text-xs text-green-500 border border-green-600/40 px-2 py-0.5 rounded">Workfront OK</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogoutWithCacheClearing}
+                    title="Limpar cache e reconectar Workfront"
+                  >
+                    Desconectar WF
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onWfReconnect}
+                  className="border-amber-600/40 text-amber-500 hover:bg-amber-900/20"
+                >
+                  Login Workfront
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { handleLogoutWithCacheClearing(); logoutApp(); }}
+                onClick={logoutApp}
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Sair
+                Sair da Aplicação
               </Button>
             </div>
           </div>
@@ -191,6 +257,26 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
                 <GalleryHorizontal className="h-5 w-5" />
                 <span className="font-medium">Masters</span>
               </button>
+              <button
+                onClick={() => setActiveSection('comments')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'comments'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+              >
+                <MessageSquare className="h-5 w-5" />
+                <span className="font-medium">Comentários Workfront</span>
+              </button>
+              <button
+                onClick={() => setActiveSection('kanban')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'kanban'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+              >
+                <LayoutDashboard className="h-5 w-5" />
+                <span className="font-medium">Kanban Board</span>
+              </button>
             </nav>
           </div>
 
@@ -225,6 +311,16 @@ export const MainApplication = ({ onLogout }: MainApplicationProps) => {
             )}
             {activeSection === 'masters' && (
               <MastersGallery />
+            )}
+
+            {/* Comments Generator Section */}
+            {activeSection === 'comments' && (
+              <CommentsGenerator />
+            )}
+
+            {/* Kanban Board Section */}
+            {activeSection === 'kanban' && (
+              <KanbanBoard />
             )}
           </div>
         </div>

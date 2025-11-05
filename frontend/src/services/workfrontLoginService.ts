@@ -1,4 +1,4 @@
-import type { LoginProgressState, LoginStatusResponse, StartLoginResponse } from '../types/workfrontLogin';
+import type { LoginProgressState, LoginStatusResponse, StartLoginResponse, LoginCredentials } from '../types/workfrontLogin';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -19,9 +19,17 @@ async function http<T>(path: string, options: RequestInit = {}): Promise<T> {
     return res.json();
 }
 
-export async function startLogin(): Promise<StartLoginResponse> {
+export async function startLogin(options?: { headless?: boolean; credentials?: LoginCredentials }): Promise<StartLoginResponse> {
     try {
-        return await http<StartLoginResponse>('/login/start', { method: 'POST', body: JSON.stringify({}) });
+        const headlessParam = options?.headless !== undefined ? `?headless=${options.headless}` : '';
+        const body = options?.credentials ? JSON.stringify(options.credentials) : JSON.stringify({});
+        
+        console.log(`🐛 LOGIN SERVICE - Enviando requisição:`);
+        console.log(`🐛   - URL: /login/start${headlessParam}`);
+        console.log(`🐛   - headless option: ${options?.headless}`);
+        console.log(`🐛   - credentials provided: ${!!options?.credentials?.email}`);
+        
+        return await http<StartLoginResponse>(`/login/start${headlessParam}`, { method: 'POST', body });
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes('409')) {
@@ -43,4 +51,19 @@ export interface UseLoginProgressOptions {
     intervalMs?: number;
     backoffFactor?: number;
     maxIntervalMs?: number;
+}
+
+interface DebugHeadlessResponse {
+    environment: Record<string, string | undefined>;
+    tests: Record<string, boolean | null>;
+    timestamp: string;
+}
+
+export async function debugHeadless(override?: boolean): Promise<DebugHeadlessResponse> {
+    const overrideParam = override !== undefined ? `?override=${override}` : '';
+    return http<DebugHeadlessResponse>(`/debug/headless${overrideParam}`);
+}
+
+export async function cancelLogin(): Promise<{ success: boolean; message: string }> {
+    return http<{ success: boolean; message: string }>('/login/cancel', { method: 'POST', body: JSON.stringify({}) });
 }

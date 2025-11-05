@@ -11,6 +11,8 @@ import {
 import { chromium, Page, Frame } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { WorkfrontDomHelper } from '../workfront/utils/workfront-dom.helper';
+import { ProgressService } from '../workfront/progress.service';
 
 // Configuração de usuários (alinhada com o legado)
 const USERS_CONFIG: Record<string, Array<{ name: string; email: string; id?: string }>> = {
@@ -47,7 +49,10 @@ const COMMENT_TEMPLATES: Record<CommentType, { text: string; mentions: boolean }
 export class CommentService {
     private readonly logger = new Logger(CommentService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly progress: ProgressService,
+    ) { }
 
     // ===== API principal =====
     async addComment(commentDto: AddCommentDto): Promise<AddCommentResponseDto> {
@@ -69,6 +74,14 @@ export class CommentService {
 
             // Gerar HTML completo para o comentário
             const rawHtml = this.generateCommentHtml(commentType, selectedUser);
+
+            // Emitir evento de progresso: escrevendo comentário
+            const commentPreview = template.text.length > 50 ? template.text.substring(0, 47) + '...' : template.text;
+            this.progress.publish({
+                projectUrl,
+                phase: 'info',
+                message: `Escrevendo: "${commentPreview}"`,
+            });
 
             const auto = await this.performDocumentComment({
                 projectUrl,
@@ -231,48 +244,8 @@ export class CommentService {
     }
 
     private async selectDocument(frameLocator: any, page: Page, fileName: string): Promise<void> {
-        await this.closeSidebarIfOpen(frameLocator, page);
-        await page.waitForTimeout(800);
-
-        // Tentar encontrar documento por diferentes métodos
-        const docCandidates = await frameLocator.locator('body').evaluate((body, target: string) => {
-            const found: Array<{ index: number; ariaLabel?: string; isVisible: boolean }> = [];
-            const elements = (body as any).querySelectorAll('.doc-detail-view');
-            elements.forEach((el: any, idx: number) => {
-                const aria = el.getAttribute('aria-label') || '';
-                const text = (el.textContent || '').toLowerCase();
-                if (aria.includes(target) || text.includes(target.toLowerCase())) {
-                    found.push({
-                        index: idx,
-                        ariaLabel: aria,
-                        isVisible: el.offsetWidth > 0 && el.offsetHeight > 0
-                    });
-                }
-            });
-            return found;
-        }, fileName);
-
-        if (docCandidates && docCandidates.length > 0) {
-            const target = docCandidates.find(d => d.isVisible) || docCandidates[0];
-            if (target?.ariaLabel) {
-                await frameLocator.locator(`[aria-label="${target.ariaLabel}"]`).first().click();
-            } else {
-                await frameLocator.locator(`.doc-detail-view:nth-of-type(${target.index + 1})`).click();
-            }
-        } else {
-            // Fallback: tentar outros seletores
-            const row = frameLocator.locator(`[role="row"]:has-text("${fileName}")`).first();
-            if (await row.count() > 0) {
-                await row.click();
-            } else {
-                const clickable = frameLocator.locator(`a:has-text("${fileName}"), button:has-text("${fileName}")`).first();
-                if (await clickable.count() > 0) {
-                    await clickable.click();
-                }
-            }
-        }
-
-        await page.waitForTimeout(800);
+        // Usar WorkfrontDomHelper otimizado ao invés de implementação própria
+        return WorkfrontDomHelper.selectDocument(frameLocator, page, fileName);
     }
 
     private async openCommentPanel(frameLocator: any, page: Page): Promise<void> {
@@ -286,7 +259,8 @@ export class CommentService {
             try {
                 await summaryBtn.click();
                 this.logger.log('💬 [Comment] ✅ Summary clicado');
-                await page.waitForTimeout(2500);
+                this.logger.log('💬 [Comment] ⏳ Aguardando 5s para painel carregar (arquivos grandes podem demorar)...');
+                await page.waitForTimeout(5000); // Aumentado para 5s para arquivos grandes
             } catch (e: any) {
                 this.logger.error(`💬 [Comment] ❌ Erro ao clicar summary: ${e?.message}`);
             }
@@ -347,29 +321,62 @@ export class CommentService {
     private async findCommentField(frameLocator: any, page: Page): Promise<{ locator: any; selector: string } | null> {
         this.logger.log('💬 [Comment] Procurando campo de comentário...');
 
-        // Aguardar carregamento
-        await page.waitForTimeout(1000);
+        // Aguardar carregamento (aumentado para dar tempo ao painel carregar com arquivos grandes)
+        await page.waitForTimeout(2500);
 
         const selectors = [
+            // Seletores específicos do Workfront
             'input[data-omega-element="add-comment-input"]',
+            'input[data-omega-action="toggle-RTE-mode"]',
+
+            // Rich Text Editors
             '.react-spectrum-RichTextEditor-input[contenteditable="true"]',
+            'div[contenteditable="true"][data-lexical-editor="true"]',
             '[role="textbox"][contenteditable="true"]',
+            'div[contenteditable="true"]',
+
+            // Inputs comuns
             'input[aria-label="Add comment"]',
+            'input[aria-label*="comment" i]',
+            'textarea[aria-label*="comment" i]',
+
+            // Classes específicas
             '.zo2IKa_spectrum-Textfield-input',
+            'input[class*="Textfield-input"]',
+
+            // Placeholder (clicar para ativar)
+            '.react-spectrum-RichTextEditor-placeholder',
         ];
 
         for (const selector of selectors) {
             try {
                 const field = frameLocator.locator(selector).first();
-                if (await field.count() > 0 && await field.isVisible()) {
-                    this.logger.log(`💬 [Field] ✅ Campo encontrado: ${selector}`);
-                    return { locator: field, selector };
+                const count = await field.count();
+
+                if (count > 0) {
+                    const isVisible = await field.isVisible().catch(() => false);
+                    this.logger.log(`💬 [Field] 🔍 Testando "${selector}": count=${count}, visible=${isVisible}`);
+
+                    if (isVisible) {
+                        // Se for placeholder, clicar para ativar e procurar novamente
+                        if (selector.includes('placeholder')) {
+                            this.logger.log(`💬 [Field] 🎯 Clicando placeholder para ativar editor...`);
+                            await field.click({ force: true });
+                            await page.waitForTimeout(1000);
+                            // Recursão para encontrar o campo real ativado
+                            continue;
+                        }
+
+                        this.logger.log(`💬 [Field] ✅ Campo encontrado: ${selector}`);
+                        return { locator: field, selector };
+                    }
                 }
-            } catch {
-                // Continuar
+            } catch (e: any) {
+                this.logger.warn(`💬 [Field] ⚠️ Erro com "${selector}": ${e?.message}`);
             }
         }
 
+        this.logger.error('💬 [Field] ❌ Nenhum campo de comentário encontrado após testar todos seletores');
         return null;
     }
 
@@ -994,7 +1001,7 @@ export class CommentService {
                     const links = el.querySelectorAll('a');
                     const mentions = el.querySelectorAll('.mention, a[data-mention], [data-lexical-mention], span[data-mention]');
                     const atMentions = (el.textContent || '').match(/@\w+/g) || [];
-                    
+
                     return {
                         html: el.innerHTML,
                         text: el.textContent || '',
@@ -1022,18 +1029,18 @@ export class CommentService {
                 }
 
                 // SUCESSO: Se tem mentions OU tem @mentions OU tem conteúdo significativo
-                const isSuccess = (pasteCheck.mentionsCount > 0 || 
-                                 pasteCheck.atMentionsCount > 0 || 
-                                 pasteCheck.linksCount > 0 ||
-                                 (pasteCheck.hasContent && pasteCheck.text.includes('@'))) &&
-                                 pasteCheck.hasTextContent;
+                const isSuccess = (pasteCheck.mentionsCount > 0 ||
+                    pasteCheck.atMentionsCount > 0 ||
+                    pasteCheck.linksCount > 0 ||
+                    (pasteCheck.hasContent && pasteCheck.text.includes('@'))) &&
+                    pasteCheck.hasTextContent;
 
                 if (isSuccess) {
                     this.logger.log('💬 [RAW] ✅ Conteúdo inserido com sucesso! Mentions detectadas ou texto com @');
-                    
+
                     // Aguardar um pouco para garantir que o Workfront processou
                     await page.waitForTimeout(500);
-                    
+
                     return; // Sucesso - retorna para prosseguir com submit
                 }
 
@@ -1054,7 +1061,7 @@ export class CommentService {
                 this.logger.warn(`💬 [RAW] ⚠️ ${e.message} - mas prosseguindo pois tem conteúdo`);
                 return; // Prossegue mesmo com aviso
             }
-            
+
             this.logger.error(`💬 [RAW] Erro no método clipboard: ${e.message}`);
             throw e;
         }

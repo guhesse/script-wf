@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-scriptwf}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-L4r01EC4DAXA7UwG}
       POSTGRES_DB: ${POSTGRES_DB:-scriptwf}
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
     healthcheck:
@@ -16,8 +18,11 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: docker/backend.Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile.dev
+      target: development
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -33,8 +38,7 @@ services:
   frontend:
     build:
       context: .
-    # (mantém seu docker/frontend.Dockerfile se necessário)
-    dockerfile: docker/frontend.Dockerfile
+      dockerfile: docker/frontend.Dockerfile
     restart: unless-stopped
     depends_on:
       - backend

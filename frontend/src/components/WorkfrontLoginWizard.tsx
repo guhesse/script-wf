@@ -1,112 +1,236 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWorkfrontLoginProgress } from '../hooks/useWorkfrontLoginProgress';
-import type { LoginPhase } from '../types/workfrontLogin';
+import type { LoginPhase, LoginCredentials } from '../types/workfrontLogin';
+import { 
+  Loader2, 
+  Chrome, 
+  Globe, 
+  LogIn, 
+  Wifi, 
+  Smartphone, 
+  CheckCircle, 
+  Save,
+  X,
+  Rocket
+} from 'lucide-react';
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-const phaseLabels: Record<LoginPhase, string> = {
-  IDLE: 'Aguardando',
-  STARTING: 'Iniciando',
-  OPENING_EXPERIENCE_CLOUD: 'Abrindo Adobe Experience Cloud',
-  WAITING_SSO_MFA: 'Aguardando SSO / MFA',
-  CHECKING_SESSION: 'Validando sessão',
-  PERSISTING_STATE: 'Persistindo sessão',
-  COMPLETED: 'Concluído',
-  FAILED: 'Falhou'
+// Mapeamento de fases para ícones e labels
+const phaseConfig: Record<LoginPhase, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
+  IDLE: { icon: Globe, label: 'Aguardando' },
+  STARTING: { icon: Rocket, label: 'Iniciando processo' },
+  LAUNCHING_BROWSER: { icon: Chrome, label: 'Abrindo navegador' },
+  NAVIGATING: { icon: Globe, label: 'Navegando para Adobe' },
+  AUTOMATIC_LOGIN: { icon: LogIn, label: 'Login automático' },
+  WAITING_SSO: { icon: Wifi, label: 'Aguardando SSO' },
+  DETECTED_BUTTON: { icon: CheckCircle, label: 'Sessão detectada' },
+  WAITING_DEVICE_CONFIRMATION: { icon: Smartphone, label: 'Autenticação necessária' },
+  DEVICE_CONFIRMED: { icon: CheckCircle, label: 'Confirmação recebida' },
+  PERSISTING: { icon: Save, label: 'Salvando sessão' },
+  SUCCESS: { icon: CheckCircle, label: 'Concluído' },
+  FAILED: { icon: X, label: 'Falhou' }
 };
 
-const isActivePhase = (phase: LoginPhase, current?: LoginPhase) => phase === current;
-
 export const WorkfrontLoginWizard: React.FC<Props> = ({ open, onClose }) => {
-  const { progress, status, running, error, alreadyRunning, start } = useWorkfrontLoginProgress();
+  const [headlessMode, setHeadlessMode] = useState(true);
+  const [credentials, setCredentials] = useState<LoginCredentials>({
+    email: 'gustavo.hesse@vml.com',
+    workfrontPassword: 'UDbYFBH5avYKF@v',
+    oktaPassword: 'UDbYFBH5avYKF@v'
+  });
+
+  const { progress, status, running, error, alreadyRunning, start, cancel } = useWorkfrontLoginProgress();
+
+  const currentPhase = progress?.phase || 'IDLE';
+  const showStartButton = !running && !progress?.done && currentPhase === 'IDLE' && !alreadyRunning && !status?.loggedIn;
+  const alreadyLoggedIn = status?.loggedIn && progress?.phase !== 'SUCCESS';
+
+  const handleLogin = async () => {
+    if (!credentials.email || !credentials.workfrontPassword || !credentials.oktaPassword) {
+      alert('Por favor, preencha todos os campos');
+      return;
+    }
+
+    await start({
+      credentials,
+      headless: headlessMode
+    });
+  };
 
   if (!open) return null;
 
-  const currentPhase = progress?.phase || 'IDLE';
-  const phases: LoginPhase[] = [
-    'STARTING',
-    'OPENING_EXPERIENCE_CLOUD',
-    'WAITING_SSO_MFA',
-    'CHECKING_SESSION',
-    'PERSISTING_STATE',
-    'COMPLETED'
-  ];
-
-  const showStartButton = !running && !progress?.done && currentPhase === 'IDLE' && !alreadyRunning && !status?.loggedIn;
-  const alreadyLoggedIn = status?.loggedIn && progress?.phase !== 'COMPLETED';
+  const CurrentIcon = phaseConfig[currentPhase]?.icon || Globe;
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <h2 style={{ marginTop: 0 }}>Login Workfront</h2>
-        {alreadyLoggedIn && <div style={infoBox}>Sessão já ativa. Você pode fechar.</div>}
-        {alreadyRunning && <div style={infoBox}>Um login já está em andamento — exibindo progresso.</div>}
-        {error && <div style={errorBox}>Erro: {error}</div>}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '12px 0' }}>
-          {phases.map(p => {
-            const label = phaseLabels[p];
-            const active = isActivePhase(p, currentPhase as LoginPhase);
-            const done = progress && (progress.phase === 'COMPLETED' || progress.phase === 'FAILED') && p === 'COMPLETED';
-            return (
-              <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <StatusDot phase={p} active={active} current={currentPhase as LoginPhase} />
-                <span>{label}</span>
-                {active && progress?.message && <span style={{ fontSize: 12, opacity: 0.7 }}> - {progress.message}</span>}
-                {done && progress?.success && <span style={{ fontSize: 12, color: 'green' }}> (ok)</span>}
-                {done && !progress?.success && <span style={{ fontSize: 12, color: 'red' }}> (falhou)</span>}
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-background border border-border rounded-lg w-[480px] p-6 shadow-lg">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Login Workfront</h2>
+        
+        {alreadyLoggedIn && (
+          <div className="bg-primary/10 text-primary border border-primary/20 px-3 py-2 rounded text-sm mb-4">
+            Sessão já ativa. Você pode fechar.
+          </div>
+        )}
+        
+        {/* Campos de credenciais - sempre visíveis */}
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              Email Adobe Experience Cloud
+            </label>
+            <input
+              type="email"
+              value={credentials.email}
+              onChange={(e) => setCredentials({...credentials, email: e.target.value})}
+              disabled={running}
+              className="w-full px-3 py-2 bg-input border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="seu.email@empresa.com"
+            />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              Senha Workfront
+            </label>
+            <input
+              type="password"
+              value={credentials.workfrontPassword}
+              onChange={(e) => setCredentials({...credentials, workfrontPassword: e.target.value})}
+              disabled={running}
+              className="w-full px-3 py-2 bg-input border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="Sua senha do Workfront"
+            />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              Senha Okta
+            </label>
+            <input
+              type="password"
+              value={credentials.oktaPassword}
+              onChange={(e) => setCredentials({...credentials, oktaPassword: e.target.value})}
+              disabled={running}
+              className="w-full px-3 py-2 bg-input border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="Sua senha do Okta"
+            />
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="headless"
+              checked={headlessMode}
+              onChange={(e) => setHeadlessMode(e.target.checked)}
+              disabled={running}
+              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded disabled:opacity-50"
+            />
+            <label htmlFor="headless" className="text-sm text-muted-foreground">
+              Modo invisível
+            </label>
+          </div>
+        </div>
+        
+        {/* Botões de ação */}
+        {showStartButton && (
+          <button
+            onClick={handleLogin}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md font-medium transition-colors mb-4"
+          >
+            Iniciar Login
+          </button>
+        )}
+        
+        {running && (
+          <button
+            onClick={cancel}
+            className="w-full bg-destructive/20 hover:bg-destructive/30 text-destructive px-4 py-2 rounded-md font-medium transition-colors border border-destructive/20 mb-4"
+          >
+            Cancelar Login
+          </button>
+        )}
+        
+        {/* Status atual - apenas o passo ativo */}
+        {running && currentPhase && currentPhase !== 'IDLE' && (
+          <div className="bg-muted/50 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <CurrentIcon className="w-5 h-5 text-primary" />
+                <span className="font-medium text-primary">
+                  {phaseConfig[currentPhase]?.label || 'Processando...'}
+                </span>
               </div>
-            );
-          })}
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-          {showStartButton && <button onClick={() => start()}>Iniciar login</button>}
-          {!showStartButton && !running && <button onClick={onClose}>Fechar</button>}
-          {running && <button disabled style={{ opacity: 0.6 }}>Em andamento...</button>}
-        </div>
+              
+              {/* Loading no canto direito */}
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            </div>
+            
+            {progress?.message && (
+              <p className="text-sm text-muted-foreground mt-2 ml-8">
+                {progress.message}
+              </p>
+            )}
+            
+            {error && (
+              <div className="mt-3 ml-8 bg-destructive/10 text-destructive border border-destructive/20 px-3 py-2 rounded text-sm">
+                {error}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Estados finais */}
+        {(progress?.done && currentPhase === 'SUCCESS') && (
+          <div className="space-y-4">
+            <div className="bg-primary/10 text-primary border border-primary/20 px-3 py-2 rounded text-sm flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4" />
+              <span>Login realizado com sucesso!</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md font-medium transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
+        
+        {(progress?.done && currentPhase === 'FAILED') && (
+          <div className="space-y-4">
+            <div className="bg-destructive/10 text-destructive border border-destructive/20 px-3 py-2 rounded text-sm flex items-center space-x-2">
+              <X className="w-4 h-4" />
+              <span>{error || 'Falha no login'}</span>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md font-medium transition-colors text-sm"
+              >
+                Tentar Novamente
+              </button>
+              <button
+                onClick={onClose}
+                className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground px-4 py-2 rounded-md font-medium transition-colors text-sm"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {!running && !progress?.done && currentPhase === 'IDLE' && !showStartButton && (
+          <button
+            onClick={onClose}
+            className="w-full bg-muted hover:bg-muted/80 text-muted-foreground px-4 py-2 rounded-md font-medium transition-colors"
+          >
+            Fechar
+          </button>
+        )}
       </div>
     </div>
   );
 };
-
-const StatusDot: React.FC<{ phase: LoginPhase; active: boolean; current: LoginPhase }> = ({ phase, active, current }) => {
-  const base: React.CSSProperties = {
-    width: 12,
-    height: 12,
-    borderRadius: '50%',
-    background: '#ccc',
-    display: 'inline-block'
-  };
-  if (phase === 'COMPLETED' && current === 'COMPLETED') {
-    return <span style={{ ...base, background: '#16a34a' }} />;
-  }
-  if (phase === 'COMPLETED') {
-    return <span style={{ ...base, background: '#0ea5e9', opacity: 0.4 }} />;
-  }
-  if (active) {
-    return <span style={{ ...base, background: '#2563eb', animation: 'pulse 1.2s ease-in-out infinite' }} />;
-  }
-  return <span style={base} />;
-};
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-};
-
-const modalStyle: React.CSSProperties = {
-  background: '#fff', padding: 24, borderRadius: 8, width: 480, boxShadow: '0 10px 30px -10px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif'
-};
-
-const infoBox: React.CSSProperties = {
-  background: '#e0f2fe', color: '#075985', padding: '8px 10px', borderRadius: 4, fontSize: 13
-};
-
-const errorBox: React.CSSProperties = {
-  background: '#fee2e2', color: '#991b1b', padding: '8px 10px', borderRadius: 4, fontSize: 13
-};
-
-export default WorkfrontLoginWizard;

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
@@ -14,173 +8,245 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =============================
-// Autenticação & Autorização
-// =============================
-
-/// Perfis / papéis de acesso do sistema
-enum Role {
-  ADMIN // Acesso total
-  EDITOR // Pode criar/atualizar recursos (masters, briefings)
-  VIEWER // Acesso somente leitura
-}
-
-/// Status de aprovação de usuários
-enum UserStatus {
-  PENDING // Aguardando aprovação de um ADMIN
-  ACTIVE // Aprovado e pode autenticar / usar sistema
-  REJECTED // Reprovado / bloqueado
-}
-
 /// Usuários da aplicação
 model User {
   id           String     @id @default(cuid())
   name         String
   email        String     @unique
   passwordHash String
-  roles        Role[]     @default([VIEWER]) // Um usuário pode ter múltiplos papéis
-  status       UserStatus @default(PENDING)
+  roles        Role[]     @default([VIEWER])
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  status       UserStatus @default(PENDING)
 
   @@index([email])
   @@map("users")
 }
 
-// Modelo para armazenar o histórico de links/projetos do Workfront
 model WorkfrontProject {
-  id          String     @id @default(cuid())
-  url         String     @unique
-  title       String?
-  description String?
-  projectId   String? // ID do projeto no Workfront
-  dsid        String? // DSID extraído do nome do projeto
-  status      LinkStatus @default(ACTIVE)
-  accessedAt  DateTime   @default(now())
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  // Relacionamento com sessões de acesso
-  accessSessions AccessSession[]
-
-  // Relacionamento com downloads de briefing
+  id                String             @id @default(cuid())
+  url               String             @unique
+  title             String?
+  description       String?
+  projectId         String?
+  dsid              String?
+  status            LinkStatus         @default(ACTIVE)
+  accessedAt        DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  accessSessions    AccessSession[]
   briefingDownloads BriefingDownload[]
 
   @@map("workfront_projects")
 }
 
-// Modelo para rastrear sessões de acesso aos projetos
 model AccessSession {
-  id         String   @id @default(cuid())
+  id         String           @id @default(cuid())
   projectId  String
   userAgent  String?
   ipAddress  String?
-  accessedAt DateTime @default(now())
-
-  // Relacionamento com o projeto
-  project WorkfrontProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  accessedAt DateTime         @default(now())
+  project    WorkfrontProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("access_sessions")
 }
 
-// Modelo para armazenar downloads de briefings processados
 model BriefingDownload {
-  id          String         @id @default(cuid())
+  id          String           @id @default(cuid())
   projectId   String
   projectName String
   dsid        String?
-  totalFiles  Int            @default(0)
-  totalSize   BigInt         @default(0)
-  status      DownloadStatus @default(PROCESSING)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  // Relacionamento com o projeto Workfront
-  project WorkfrontProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  // Relacionamento com arquivos PDF processados
-  pdfFiles PdfFile[]
+  totalFiles  Int              @default(0)
+  totalSize   BigInt           @default(0)
+  status      DownloadStatus   @default(PROCESSING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  project     WorkfrontProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pdfFiles    PdfFile[]
 
   @@map("briefing_downloads")
 }
 
-// Modelo para arquivos PDF processados (conteúdo apenas, sem arquivo físico)
 model PdfFile {
-  id               String   @id @default(cuid())
+  id               String               @id @default(cuid())
   downloadId       String
   originalFileName String
-  originalUrl      String? // URL original de onde o PDF foi baixado
-  fileSize         BigInt   @default(0)
-  pageCount        Int      @default(0)
-  hasContent       Boolean  @default(false)
-  hasComments      Boolean  @default(false)
-  processedAt      DateTime @default(now())
-  createdAt        DateTime @default(now())
-
-  // Relacionamento com o download
-  download BriefingDownload @relation(fields: [downloadId], references: [id], onDelete: Cascade)
-
-  // Relacionamento com conteúdo extraído
+  originalUrl      String?
+  fileSize         BigInt               @default(0)
+  pageCount        Int                  @default(0)
+  hasContent       Boolean              @default(false)
+  hasComments      Boolean              @default(false)
+  processedAt      DateTime             @default(now())
+  createdAt        DateTime             @default(now())
   extractedContent PdfExtractedContent?
-
-  // Relacionamento com dados estruturados
-  structuredData PdfStructuredData?
+  download         BriefingDownload     @relation(fields: [downloadId], references: [id], onDelete: Cascade)
+  structuredData   PdfStructuredData?
 
   @@map("pdf_files")
 }
 
-// Modelo para conteúdo extraído dos PDFs
 model PdfExtractedContent {
-  id        String  @id @default(cuid())
-  pdfFileId String  @unique
-  fullText  String? @db.Text
-
-  // Comentários agrupados por autor
-  comments Json? // Armazena comentários estruturados por autor
-
-  // Links extraídos
-  links String[] // Array de links encontrados
-
+  id        String   @id @default(cuid())
+  pdfFileId String   @unique
+  fullText  String?
+  comments  Json?
+  links     String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relacionamento com o arquivo PDF
-  pdfFile PdfFile @relation(fields: [pdfFileId], references: [id], onDelete: Cascade)
+  pdfFile   PdfFile  @relation(fields: [pdfFileId], references: [id], onDelete: Cascade)
 
   @@map("pdf_extracted_content")
 }
 
-// Modelo para dados estruturados extraídos dos PDFs
 model PdfStructuredData {
-  id        String @id @default(cuid())
-  pdfFileId String @unique
-
-  // Campos estruturados extraídos dos comentários
+  id              String   @id @default(cuid())
+  pdfFileId       String   @unique
   liveDate        String?
-  vf              String? // Visual Framework
-  headline        String?
-  copy            String? @db.Text
-  description     String? @db.Text
+  vf              String?
+  copy            String?
+  description     String?
   cta             String?
-  copyColor       String?
   backgroundColor String?
-  postcopy        String? @db.Text
+  copyColor       String?
+  postcopy        String?
   urn             String?
   allocadia       String?
-  formats         Json? // Formatos de assets (solicitados e existentes)
-
-  // Metadados
-  extractedAt DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relacionamento com o arquivo PDF
-  pdfFile PdfFile @relation(fields: [pdfFileId], references: [id], onDelete: Cascade)
+  extractedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  headline        String?
+  formats         Json?
+  pdfFile         PdfFile  @relation(fields: [pdfFileId], references: [id], onDelete: Cascade)
 
   @@map("pdf_structured_data")
 }
 
-// Enum para status dos projetos
+/// Registro de master assets armazenados no Bunny CDN
+model MasterAsset {
+  id              String             @id @default(cuid())
+  title           String
+  brand           String?
+  description     String?
+  fileName        String
+  fileType        MasterFileType
+  editableType    MasterEditableType
+  fileSize        BigInt
+  frameCount      Int?
+  width           Int?
+  height          Int?
+  aspectRatio     String?
+  checksum        String?            @unique
+  bunnyPath       String
+  bunnyCdnUrl     String
+  previewImageUrl String?
+  tags            String[]
+  version         Int                @default(1)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  archivedAt      DateTime?
+
+  @@index([brand])
+  @@index([fileType])
+  @@index([editableType])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("master_assets")
+}
+
+/// Registro de uploads temporários no Bunny CDN (para limpeza automática)
+model TempUpload {
+  id          String    @id
+  storagePath String    @unique
+  cdnUrl      String
+  fileName    String
+  fileSize    BigInt?
+  userId      String?
+  projectUrl  String?
+  isUsed      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  deletedAt   DateTime?
+
+  @@index([expiresAt])
+  @@index([isUsed])
+  @@index([createdAt])
+  @@map("temp_uploads")
+}
+
+/// Cards do quadro Kanban baseado no CSV de jobs
+model KanbanCard {
+  id                String          @id @default(cuid())
+  bi                Boolean         @default(true)
+  anotacoes         String?
+  start             DateTime?
+  realDeliv         DateTime?
+  prevDeliv         DateTime?
+  dsid              String?
+  atividade         String
+  status            KanbanStatus    @default(BACKLOG)
+  studio            String?
+  vf                VFType?         @default(NO_VF)
+  tipoAsset         AssetType       @default(OTHER)
+  numeroAssets      Int             @default(1)
+  cliente           String?
+  brand             String?
+  week              String?
+  quarter           String?
+  frente            WorkfrontFrente @default(SOCIAL)
+  fy                FiscalYear?
+  entregaR1VML      DateTime?
+  feedbackR1Dell    DateTime?
+  entregaR2VML      DateTime?
+  feedbackR2Dell    DateTime?
+  entregaR3VML      DateTime?
+  feedbackR3Dell    DateTime?
+  entregaR4VML      DateTime?
+  feedbackR4Dell    DateTime?
+  diasStartR1VML    Int?
+  diasR1VMLR1Dell   Int?
+  diasR1DellR2VML   Int?
+  diasR2VMLR2Dell   Int?
+  diasR2DellR3VML   Int?
+  diasR3VMLR3Dell   Int?
+  diasR3DellR4VML   Int?
+  diasR4VMLR4Dell   Int?
+  diasNaVMLPercent  Float?
+  diasNaDellPercent Float?
+  position          Int             @default(0)
+  columnId          String?
+  createdBy         String?
+  updatedBy         String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  round             Int?
+
+  @@index([status])
+  @@index([week])
+  @@index([quarter])
+  @@index([fy])
+  @@index([cliente])
+  @@index([brand])
+  @@index([frente])
+  @@index([columnId])
+  @@index([createdAt])
+  @@map("kanban_cards")
+}
+
+/// Perfis / papéis de acesso do sistema
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+/// Status de aprovação de usuários
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
 enum LinkStatus {
   ACTIVE
   ARCHIVED
@@ -188,17 +254,12 @@ enum LinkStatus {
   ERROR
 }
 
-// Enum para status dos downloads
 enum DownloadStatus {
   PROCESSING
   COMPLETED
   FAILED
   PARTIAL
 }
-
-// =============================
-// Masters (Arquivos principais)
-// =============================
 
 /// Tipo de arquivo master (extensão/base)
 enum MasterFileType {
@@ -225,36 +286,51 @@ enum MasterEditableType {
   OTHER
 }
 
-/// Registro de master assets armazenados no Bunny CDN
-model MasterAsset {
-  id              String             @id @default(cuid())
-  title           String
-  brand           String? // Nome da marca
-  description     String?
-  fileName        String // Nome do arquivo original
-  fileType        MasterFileType // Tipo do arquivo (PSD, AI, etc)
-  editableType    MasterEditableType // Classificação de uso
-  fileSize        BigInt // Em bytes
-  frameCount      Int? // Quantidade de frames (se aplicável - animações / vídeos)
-  width           Int? // Largura em px (quando aplicável)
-  height          Int? // Altura em px (quando aplicável)
-  aspectRatio     String? // Ex: 16:9, 1:1
-  checksum        String?            @unique // Hash (MD5/SHA1) p/ deduplicação
-  bunnyPath       String // Caminho relativo na storage do Bunny
-  bunnyCdnUrl     String // URL CDN pública
-  previewImageUrl String? // Miniatura gerada (armazenada também no Bunny)
-  tags            String[] // Tags livres
-  version         Int                @default(1)
-  isActive        Boolean            @default(true)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  archivedAt      DateTime?
+/// Status do card no Kanban
+enum KanbanStatus {
+  BACKLOG
+  FILES_TO_STUDIO
+  REVISAO_TEXTO
+  REVIEW_DELL
+  FINAL_MATERIAL
+  ASSET_RELEASE
+  COMPLETED
+}
 
-  // Índices auxiliares
-  @@index([brand])
-  @@index([fileType])
-  @@index([editableType])
-  @@index([isActive])
-  @@index([createdAt])
-  @@map("master_assets")
+/// Tipo de Visual Framework
+enum VFType {
+  NO_VF
+  MICROSOFT_JMA_CS
+  OTHER
+}
+
+/// Tipo de Asset
+enum AssetType {
+  ESTATICO
+  VIDEO
+  WIREFRAME
+  GIF
+  STORY
+  MOLDURA
+  AW_STORY
+  HTML
+  OTHER
+}
+
+/// Frente de trabalho
+enum WorkfrontFrente {
+  SOCIAL
+  DISPLAY
+  EMAIL
+  LANDING_PAGE
+  PRINT
+  OTHER
+}
+
+/// Ano fiscal
+enum FiscalYear {
+  FY25
+  FY26
+  FY27
+  FY28
 }

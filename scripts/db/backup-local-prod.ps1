@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 Write-Host "[LOCAL PROD BACKUP] Gerando dump para $fullPath"
 
 $HOST='localhost'
-$PORT=5433
+$PORT=5432
 $DB='scriptwf'
 $USER='scriptwf'
 $ENV:PGPASSWORD='ChangeMeStrong!'

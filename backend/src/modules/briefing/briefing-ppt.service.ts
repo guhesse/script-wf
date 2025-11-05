@@ -116,7 +116,13 @@ export class BriefingPptService {
         // Primeiro tentar decompor a partir do fileName (mais confiável), depois taskName, depois structuredData
         const fileNameTokens = this.parseFileNameTokens(data.fileName || '');
         let week = data.week || fileNameTokens.week || this.deriveWeek(sd) || 'W?';
-        const wireframeTitle = data.wireframeTitle || sd.headline || data.headline || 'WIREFRAME – SEM TÍTULO';
+        // Derivar título de campanha a partir do nome do arquivo (ex.: BLACK FRIDAY - WAVE 2)
+        const campaignTitle = this.deriveCampaignTitleFromFileName(data.fileName || '');
+        const formatLabel = this.deriveFormatLabelFromFileName(data.fileName || '');
+        const preferredTitle = campaignTitle
+            ? (formatLabel ? `${formatLabel.toUpperCase()} - ${campaignTitle}` : campaignTitle)
+            : undefined;
+        const wireframeTitle = preferredTitle || data.wireframeTitle || sd.headline || data.headline || 'WIREFRAME – SEM TÍTULO';
 
         const liveDate = data.liveDate || sd.liveDate || null;
         const vf = data.vf || sd.vf || null;
@@ -223,7 +229,7 @@ export class BriefingPptService {
             ]);
         };
 
-        pushLabelValue('Live Date', this.formatLiveDate(liveDate));
+    pushLabelValue('Live Date', this.formatLiveDate(liveDate));
         pushLabelValue('VF', vf || undefined);
         pushLabelValue('Headline Copy', headline || undefined);
         pushLabelValue('Copy', copy || undefined);
@@ -334,8 +340,12 @@ export class BriefingPptService {
         const original = liveDate.trim();
         if (!original) return undefined;
 
-        // Normalizar separadores comuns
-        let s = original.replace(/–/g, '-').replace(/to/i, '-').replace(/\s{2,}/g, ' ').trim();
+        // Normalizar separadores comuns (inclui português: "a", "à", "até")
+        let s = original
+            .replace(/[–—]/g, '-')
+            .replace(/\s+(?:to|a|à|ate|até)\s+/gi, ' - ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
 
         // Map meses (abreviações inglesas) - usaremos new Date fallback se necessário
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -347,39 +357,43 @@ export class BriefingPptService {
         }
 
         // Padrões tipo MM/DD - MM/DD ou MM/DD-MM/DD
-        const mmddRange = /^(\d{1,2})\/(\d{1,2})\s*-\s*(\d{1,2})\/(\d{1,2})$/;
+        const mmddRange = /^(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?\s*-\s*(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?$/;
         const matchRange = s.match(mmddRange);
         if (matchRange) {
             const [, m1, d1, m2, d2] = matchRange;
             const m1i = Math.min(Math.max(parseInt(m1, 10) - 1, 0), 11);
             const m2i = Math.min(Math.max(parseInt(m2, 10) - 1, 0), 11);
-            return `${monthNames[m1i]},${d1} - ${monthNames[m2i]},${d2}`;
+            const dd1 = d1.padStart(2, '0');
+            const dd2 = d2.padStart(2, '0');
+            return `${dd1}, ${monthNames[m1i]} – ${dd2}, ${monthNames[m2i]}`;
         }
 
         // Padrões com ' to ' ainda não normalizados (ex: 10/10 to 10/31)
-        const toPattern = /^(\d{1,2})\/(\d{1,2})\s+to\s+(\d{1,2})\/(\d{1,2})$/i;
+        const toPattern = /^(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?\s+(?:to|a|à|ate|até)\s+(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?$/i;
         const toMatch = original.match(toPattern);
         if (toMatch) {
             const [, m1, d1, m2, d2] = toMatch;
             const m1i = Math.min(Math.max(parseInt(m1, 10) - 1, 0), 11);
             const m2i = Math.min(Math.max(parseInt(m2, 10) - 1, 0), 11);
-            return `${monthNames[m1i]},${d1} - ${monthNames[m2i]},${d2}`;
+            const dd1 = d1.padStart(2, '0');
+            const dd2 = d2.padStart(2, '0');
+            return `${dd1}, ${monthNames[m1i]} – ${dd2}, ${monthNames[m2i]}`;
         }
 
         // Padrão único MM/DD (retorna só uma data formatada)
-        const single = /^(\d{1,2})\/(\d{1,2})$/;
+    const single = /^(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?$/;
         const mSingle = s.match(single);
         if (mSingle) {
             const [, m, d] = mSingle;
             const mi = Math.min(Math.max(parseInt(m, 10) - 1, 0), 11);
-            return `${monthNames[mi]},${d}`;
+            return `${d.padStart(2, '0')}, ${monthNames[mi]}`;
         }
 
         // Se contém mês por extenso + número já deixamos (apenas padronizar vírgula caso exista espaço)
         if (/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}/i.test(s)) {
             return s.replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})/gi, (m, mon, day) => {
                 const std = mon.slice(0, 3);
-                return `${std.charAt(0).toUpperCase()}${std.slice(1).toLowerCase()},${day}`;
+                return `${day.padStart(2, '0')}, ${std.charAt(0).toUpperCase()}${std.slice(1).toLowerCase()}`;
             });
         }
 
@@ -473,6 +487,53 @@ export class BriefingPptService {
             if (audienceMap[low]) { audience = audienceMap[low]; break; }
         }
         return { language, audience };
+    }
+
+    // Extrai um possível formato criativo do nome do arquivo (ex.: "AW_Vídeo2" => "AW Vídeo 2", "Screenfill")
+    private deriveFormatLabelFromFileName(fileName?: string): string | undefined {
+        if (!fileName) return undefined;
+        const base = fileName.replace(/\.pdf$/i, '');
+        const parts = base.split(/[_]+/).filter(Boolean);
+        // Procurar padrões conhecidos
+        for (const p of parts) {
+            const s = p.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+            // AW_Video2, AW_Video_2, AW_Video, AW_Video10
+            const mAwVid = s.match(/^(aw)[-_]?video(?:[_-]?(\d+))?$/i);
+            if (mAwVid) {
+                const n = mAwVid[2] ? ` ${mAwVid[2]}` : '';
+                return `AW Vídeo${n}`;
+            }
+            if (/^screenfill/i.test(p)) return 'Screenfill';
+            if (/^banner/i.test(p)) return 'Banner';
+        }
+        // Busca livre por "video"/"vídeo" com dígito
+        const m = base.match(/\b(AW)[^A-Za-z0-9]*(?:V[ií]deo|Video)[^0-9]*(\d+)\b/i);
+        if (m) return `AW Vídeo ${m[2]}`;
+        return undefined;
+    }
+
+    // Extrai um possível título de campanha do nome do arquivo (ex.: "Black-Friday-Wave-2" => "BLACK FRIDAY - WAVE 2")
+    private deriveCampaignTitleFromFileName(fileName?: string): string | undefined {
+        if (!fileName) return undefined;
+        const base = fileName.replace(/\.pdf$/i, '');
+        const parts = base.split(/[_]+/).filter(Boolean);
+        // Heurística: pegar o primeiro trecho com "black" e/ou "wave"
+        let candidate = parts.find(p => /black[-_ ]?friday/i.test(p)) || parts.find(p => /wave[-_ ]?\d+/i.test(p));
+        if (!candidate) return undefined;
+        // Se o token com black friday e wave estiver separado, tente combinar subsequentes
+        const idx = parts.indexOf(candidate);
+        if (idx >= 0 && idx + 1 < parts.length && /wave[-_ ]?\d+/i.test(parts[idx + 1])) {
+            candidate = `${candidate}-${parts[idx + 1]}`;
+        }
+        // Transformar em "BLACK FRIDAY - WAVE 2"
+        const tokens = candidate.split(/[-]+/).filter(Boolean);
+        if (tokens.length >= 4 && tokens[2].toLowerCase().startsWith('wave')) {
+            const first = tokens.slice(0, 2).join(' ').toUpperCase();
+            const waveNum = tokens[3];
+            return `${first} - WAVE ${waveNum}`;
+        }
+        // Genérico: juntar com espaços e caixa alta
+        return tokens.join(' ').toUpperCase();
     }
 
     // Parser dedicado para nome de arquivo do PDF conforme padrão informado

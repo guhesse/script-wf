@@ -523,6 +523,20 @@ export const useWorkfrontApi = () => {
     } catch { return false; }
   }, [authHeaders]);
 
+  const clearPreparedFiles = useCallback(async (): Promise<{ success: boolean; deletedFiles: number; message: string }> => {
+    try {
+      const resp = await fetch(`/api/upload/clear-prepared`, { method: 'DELETE', headers: authHeaders() });
+      const data = await resp.json();
+      if (data.success) {
+        try { localStorage.removeItem('wf_activeUploadJob'); } catch { /* ignore */ }
+      }
+      return data;
+    } catch (err) {
+      console.error('Erro ao limpar arquivos:', err);
+      return { success: false, deletedFiles: 0, message: (err as Error).message };
+    }
+  }, [authHeaders]);
+
   interface FrontendWorkflowStep { action: string; enabled?: boolean; params?: Record<string, unknown>; }
   const executeWorkflow = useCallback(async (config: {
     projectUrl: string;
@@ -587,6 +601,7 @@ export const useWorkfrontApi = () => {
     shareDocuments,
     shareAndComment,
     clearCache,
+    clearPreparedFiles,
     getProjectHistory,
     getProjectByUrl,
     addComment,

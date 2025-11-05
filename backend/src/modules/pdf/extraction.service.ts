@@ -1,10 +1,15 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { WorkfrontService } from '../workfront/workfront.service';
+import { CommentEnhancementService } from './comment-enhancement.service';
 import {
     ExtractDocumentsDto,
     ExtractDocumentsResponseDto,
 } from './dto/pdf.dto';
+import { 
+    EnhanceExtractionDto, 
+    EnhanceExtractionResponseDto 
+} from './dto/ai-processing.dto';
 import { chromium } from 'playwright';
 
 @Injectable()
@@ -15,6 +20,7 @@ export class ExtractionService {
         private readonly prisma: PrismaService,
         @Inject(forwardRef(() => WorkfrontService))
         private readonly workfrontService: WorkfrontService,
+        private readonly commentEnhancement: CommentEnhancementService,
     ) {}
 
     /**
@@ -161,5 +167,109 @@ export class ExtractionService {
             this.logger.error(`❌ Erro na extração com stream: ${error.message}`);
             throw new Error(`Falha na extração com stream: ${error.message}`);
         }
+    }
+
+    /**
+     * Extrair comentários de texto com IA enhancement
+     */
+    async extractCommentsWithAI(
+        text: string, 
+        documentContext?: string,
+        useAI: boolean = true
+    ): Promise<EnhanceExtractionResponseDto> {
+        try {
+            this.logger.log(`🔍 Extraindo comentários de texto (${text.length} chars)`);
+
+            // 1. Extração tradicional usando regex/parsing
+            const extractedComments = this.extractCommentsTraditional(text);
+            
+            // 2. Se IA está habilitada, tentar melhorar
+            if (useAI) {
+                const enhanceDto: EnhanceExtractionDto = {
+                    originalText: text,
+                    extractedComments,
+                    useAIEnhancement: true,
+                    confidenceThreshold: 0.7,
+                    documentContext
+                };
+
+                return await this.commentEnhancement.enhanceExtraction(enhanceDto);
+            } else {
+                // Retornar apenas extração tradicional
+                return {
+                    success: true,
+                    aiEnhanced: false,
+                    extractedData: {
+                        feedback: extractedComments,
+                        actionItems: extractedComments.filter(c => 
+                            /\b(alterar|mudar|corrigir|ajustar|revisar)\b/i.test(c)
+                        ),
+                        approvalStatus: 'pending',
+                        priority: 'medium',
+                        categories: ['general'],
+                        mentions: []
+                    } as any,
+                    originalConfidence: 0.8,
+                    finalConfidence: 0.8,
+                    originalComments: extractedComments,
+                    processingTime: 0,
+                    processingDetails: {
+                        originalMethod: 'parsing',
+                        triggeredEnhancement: false,
+                        reason: 'IA desabilitada pelo usuário'
+                    }
+                };
+            }
+
+        } catch (error) {
+            this.logger.error(`❌ Erro na extração de comentários: ${error.message}`);
+            throw new Error(`Falha na extração de comentários: ${error.message}`);
+        }
+    }
+
+    /**
+     * Extração tradicional de comentários usando regex
+     */
+    private extractCommentsTraditional(text: string): string[] {
+        const comments: string[] = [];
+
+        // Padrões comuns de comentários em PDFs
+        const patterns = [
+            // Comentários com prefixos
+            /(?:comentário|comment|feedback|observação):\s*(.+?)(?:\n|$)/gi,
+            // Linhas que começam com "-" ou "•"
+            /^[\-•]\s*(.+?)$/gm,
+            // Texto entre parênteses ou colchetes (possíveis comentários)
+            /[\(\[]((?:(?![\)\]]).)+)[\)\]]/g,
+            // Frases que parecem feedback
+            /\b(?:alterar|mudar|corrigir|ajustar|revisar|remover|adicionar)\b.+?(?:\.|$)/gi,
+            // Menções de aprovação/rejeição
+            /\b(?:aprovado|rejeitado|ok|não ok|aprovação|rejeição)\b.+?(?:\.|$)/gi,
+        ];
+
+        for (const pattern of patterns) {
+            const matches = text.match(pattern);
+            if (matches) {
+                for (const match of matches) {
+                    const cleaned = match.replace(/^[\-•\(\[\s]+|[\)\]\s]+$/g, '').trim();
+                    if (cleaned.length > 5 && !comments.includes(cleaned)) {
+                        comments.push(cleaned);
+                    }
+                }
+            }
+        }
+
+        // Filtrar comentários muito curtos ou genéricos
+        return comments.filter(comment => 
+            comment.length > 10 && 
+            !/^(sim|não|ok|test|página|page|\d+)$/i.test(comment.trim())
+        );
+    }
+
+    /**
+     * Verificar se IA está disponível para processamento
+     */
+    async isAIAvailable(): Promise<boolean> {
+        return this.commentEnhancement.isAvailable();
     }
 }

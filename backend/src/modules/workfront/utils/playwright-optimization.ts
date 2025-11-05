@@ -34,7 +34,12 @@ const DEFAULT_BLOCK_DOMAINS = [
 const HEAVY_TYPES = new Set(['image', 'media', 'font']);
 
 export async function ensureBrowser(headless: boolean = true, launchOpts: LaunchOptions = {}): Promise<Browser> {
-    return chromium.launch({ headless, args: headless ? [] : ['--start-maximized'], ...launchOpts });
+    const args = headless ? [] : ['--start-maximized', '--disable-blink-features=AutomationControlled'];
+    return chromium.launch({ 
+        headless, 
+        args,
+        ...launchOpts 
+    });
 }
 
 export async function createOptimizedContext(opts: OptimizedContextOptions = {}): Promise<{ browser: Browser; context: BrowserContext }> {
@@ -51,37 +56,53 @@ export async function createOptimizedContext(opts: OptimizedContextOptions = {})
 
     const browser = passedBrowser || await ensureBrowser(headless);
 
-    const context = await browser.newContext({
+    // Se não é headless, usa null para maximizar (ignora viewport configurado)
+    const contextViewport = headless ? viewport : null;
+
+    // Configurações do contexto (deviceScaleFactor só pode ser usado com viewport definido)
+    const contextOptions: any = {
         storageState: storageStatePath,
-        viewport,
-        deviceScaleFactor: 1,
-        reducedMotion: 'reduce',
-        serviceWorkers: 'block',
+        viewport: contextViewport,
+        reducedMotion: blockHeavy ? 'reduce' : 'no-preference',
+        serviceWorkers: blockHeavy ? 'block' : 'allow',
         extraHTTPHeaders: extraHeaders
-    });
+    };
 
-    await context.route('**/*', async (route: Route) => {
-        try {
-            const req = route.request();
-            const url = req.url();
-            const type = req.resourceType();
+    // Só adiciona deviceScaleFactor se viewport não for null
+    if (contextViewport !== null) {
+        contextOptions.deviceScaleFactor = 1;
+    }
 
-            // Short circuit endpoints pesados configurados
-            if (shortCircuitGlobs.some(g => matchGlob(url, g))) {
-                return route.fulfill({ status: 204, body: '' });
-            }
+    const context = await browser.newContext(contextOptions);
 
-            if (blockHeavy && HEAVY_TYPES.has(type)) {
-                return route.abort();
+    // Aplicar roteamento apenas se há configurações de bloqueio
+    if (blockHeavy || extraBlockDomains.length > 0 || shortCircuitGlobs.length > 0) {
+        await context.route('**/*', async (route: Route) => {
+            try {
+                const req = route.request();
+                const url = req.url();
+                const type = req.resourceType();
+
+                // Short circuit endpoints pesados configurados
+                if (shortCircuitGlobs.length > 0 && shortCircuitGlobs.some(g => matchGlob(url, g))) {
+                    return route.fulfill({ status: 204, body: '' });
+                }
+
+                if (blockHeavy && HEAVY_TYPES.has(type)) {
+                    return route.abort();
+                }
+                
+                const blockDomains = [...DEFAULT_BLOCK_DOMAINS, ...extraBlockDomains];
+                if (blockDomains.length > 0 && blockDomains.some(d => url.includes(d))) {
+                    return route.abort();
+                }
+                
+                return route.continue();
+            } catch {
+                return route.continue();
             }
-            if ([...DEFAULT_BLOCK_DOMAINS, ...extraBlockDomains].some(d => url.includes(d))) {
-                return route.abort();
-            }
-            return route.continue();
-        } catch {
-            return route.continue();
-        }
-    });
+        });
+    }
 
     return { browser, context };
 }

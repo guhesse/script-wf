@@ -7,7 +7,7 @@ import { resolveHeadless } from './utils/headless.util';
 export class HoursAutomationService {
   private readonly logger = new Logger(HoursAutomationService.name);
   // Valor fixo de horas lançadas por tarefa. Se quiser tornar configurável, mover para variáveis de ambiente.
-  static readonly FORCED_HOURS_PER_TASK = 0.3;
+  static readonly FORCED_HOURS_PER_TASK = 0.4;
   // Métodos utilitários agora centralizados em WorkfrontDomHelper
 
   // NOVO: formata horas (usa vírgula como solicitado)
@@ -69,6 +69,17 @@ export class HoursAutomationService {
     const normalize = (s: string) => s.trim().toLowerCase();
     const sanitize = (s: string) => normalize(s.replace(/^\d+\.\s*/, '')); // remove "13. "
     const target = sanitize(taskName);
+    
+    // NOVO: Wait inicial para garantir que DOM está carregado
+    this.logger.log('⏳ Aguardando elementos da lista de tarefas carregarem...');
+    try {
+      await frame.locator(baseSelector).first().waitFor({ state: 'visible', timeout: 10000 });
+      this.logger.log('✅ Elementos detectados, iniciando busca...');
+    } catch {
+      this.logger.error('❌ Timeout: elementos de tarefa não carregaram em 10s');
+      return false;
+    }
+    
     let scrollSel = await this.findScrollableContainer(frame);
     let lastScrollTop = -1;
     let stagnation = 0;
@@ -77,32 +88,39 @@ export class HoursAutomationService {
       // Captura mapa das âncoras atuais
       let foundHref: string | null = null;
       try {
-        const scan = await frame.locator(baseSelector).evaluateAll(
-          (nodes, tgt) => {
-            const norm = (s: string) => s.trim().toLowerCase();
-            const san = (s: string) => norm(s.replace(/^\d+\.\s*/, ''));
-            const list = nodes.map(n => {
-              const txt = (n.textContent || '').trim();
-              return {
-                raw: txt,
-                sanitized: san(txt),
-                href: (n as HTMLAnchorElement).getAttribute('href') || ''
-              };
-            });
-            const exact = list.find(l => l.sanitized === tgt);
-            const partial = exact || list.find(l => l.sanitized.includes(tgt));
-            return { list, match: partial || null };
-          },
-          target
-        );
-        if (scan.match) {
-          foundHref = scan.match.href;
-          this.logger.log(`🔗 Match encontrado (tentativa ${attempt}) raw="${scan.match.raw}" sanitized="${scan.match.sanitized}" href=${scan.match.href}`);
+        // Verificar se há elementos antes de avaliar
+        const count = await frame.locator(baseSelector).count();
+        if (count === 0) {
+          this.logger.warn(`⚠️ Tentativa ${attempt}: Nenhum anchor '${baseSelector}' encontrado no DOM`);
+          // Continuar para scroll e tentar novamente
         } else {
-          this.logger.log(`📑 Tentativa ${attempt}: ${scan.list.length} anchors visíveis (nenhum match ainda)`);
+          const scan = await frame.locator(baseSelector).evaluateAll(
+            (nodes, tgt) => {
+              const norm = (s: string) => s.trim().toLowerCase();
+              const san = (s: string) => norm(s.replace(/^\d+\.\s*/, ''));
+              const list = nodes.map(n => {
+                const txt = (n.textContent || '').trim();
+                return {
+                  raw: txt,
+                  sanitized: san(txt),
+                  href: (n as HTMLAnchorElement).getAttribute('href') || ''
+                };
+              });
+              const exact = list.find(l => l.sanitized === tgt);
+              const partial = exact || list.find(l => l.sanitized.includes(tgt));
+              return { list, match: partial || null };
+            },
+            target
+          );
+          if (scan.match) {
+            foundHref = scan.match.href;
+            this.logger.log(`🔗 Match encontrado (tentativa ${attempt}) raw="${scan.match.raw}" sanitized="${scan.match.sanitized}" href=${scan.match.href}`);
+          } else {
+            this.logger.log(`📑 Tentativa ${attempt}: ${scan.list.length} anchors visíveis (nenhum match ainda)`);
+          }
         }
-      } catch {
-        this.logger.warn(`⚠️ Falha ao avaliar anchors (tentativa ${attempt})`);
+      } catch (e: any) {
+        this.logger.warn(`⚠️ Falha ao avaliar anchors (tentativa ${attempt}): ${e?.message || 'unknown'}`);
       }
 
       if (foundHref) {
@@ -313,9 +331,11 @@ export class HoursAutomationService {
     try {
       const page = await context.newPage();
       await page.goto(tasksUrl, { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(7000);
+      this.logger.log('⏳ Aguardando página carregar completamente (networkidle)...');
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
   const frame = WorkfrontDomHelper.frameLocator(page);
   await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
+      await this.expandCollapsedHierarchy(frame, page);
 
       const data = await this.collectPageMap(frame);
       this.logger.log('📌 Resumo do mapa:');
@@ -390,9 +410,13 @@ export class HoursAutomationService {
       page = await context.newPage();
       this.logger.log('🌐 Carregando página de tasks...');
       await page.goto(tasksUrl, { waitUntil: 'domcontentloaded' });
+      this.logger.log('⏳ Aguardando página carregar completamente (networkidle)...');
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+      this.logger.log('⏳ Aguardando 8s adicional para renderização...');
       await page.waitForTimeout(8000);
   frame = WorkfrontDomHelper.frameLocator(page);
   await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
+      await this.expandCollapsedHierarchy(frame, page);
 
       let collectedMap: any | undefined;
       if (debugMap) {
@@ -419,7 +443,7 @@ export class HoursAutomationService {
 
       return {
         success: allOk,
-        message: allOk ? `Horas (0.3) lançadas em todas as tarefas` : 'Concluído com falhas em algumas tarefas',
+        message: allOk ? `Horas (0.4) lançadas em todas as etapas` : 'Concluído com falhas em algumas tarefas',
         loggedHours: totalLogged,
         map: debugMap ? collectedMap : undefined
       };
@@ -441,9 +465,21 @@ export class HoursAutomationService {
       if (!/\/tasks(\?|$)/.test(page.url())) {
         this.logger.log('🌐 Navegando para página de tasks dentro da sessão existente...');
         await page.goto(tasksUrl, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(6000);
+        this.logger.log('⏳ Aguardando página carregar completamente (networkidle)...');
+        await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+        this.logger.log('⏳ Aguardando 8s adicional para renderização...');
+        await page.waitForTimeout(8000);
+      } else {
+        // Mesmo já estando na URL correta, dar tempo para garantir que DOM está pronto
+        this.logger.log('✅ Já na página de tasks, aguardando estabilização (5s)...');
+        await page.waitForTimeout(5000);
       }
   await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
+      
+      // Expandir hierarquias colapsadas para garantir que tarefas estejam visíveis
+      this.logger.log('🔍 Expandindo hierarquias colapsadas...');
+      await this.expandCollapsedHierarchy(frame, page);
+      await page.waitForTimeout(2000);
 
       let collectedMap: any | undefined;
       if (debugMap) {
@@ -474,8 +510,14 @@ export class HoursAutomationService {
           if (!ok && attempt < maxAttempts) {
             this.logger.warn(`⚠️ Falha ao lançar horas para "${t}" (tentativa ${attempt}): ${lastMsg}. Recarregando página e tentando novamente em ${retryDelay}ms...`);
             await page.reload({ waitUntil: 'domcontentloaded' });
+            this.logger.log('⏳ Aguardando página recarregar completamente (networkidle)...');
+            await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+            this.logger.log(`⏳ Aguardando ${retryDelay}ms adicional para renderização...`);
             await page.waitForTimeout(retryDelay);
             await WorkfrontDomHelper.closeSidebarIfOpen(frame, page);
+            this.logger.log('🔍 Expandindo hierarquias após reload...');
+            await this.expandCollapsedHierarchy(frame, page);
+            await page.waitForTimeout(2000);
           }
         }
         results.push({ task: t, success: ok, message: lastMsg });

@@ -9,6 +9,11 @@ import { logHeadlessConfigOnce } from './modules/workfront/utils/headless.util';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Configure body parser limits for large uploads
+  app.use(require('express').raw({ limit: '100mb' }));
+  app.use(require('express').json({ limit: '100mb' }));
+  app.use(require('express').urlencoded({ extended: true, limit: '100mb' }));
+
   // Enable CORS
   app.enableCors({
     origin: process.env.NODE_ENV === 'production'
