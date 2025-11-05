@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Edit2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { kanbanService } from '@/services/kanbanService';

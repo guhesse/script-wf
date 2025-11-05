@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsBoolean, IsOptional, IsInt, IsEnum, IsDateString, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { WorkfrontFrente, FiscalYear } from '@prisma/client';
 
 export enum KanbanStatus {
   BACKLOG = 'BACKLOG',
@@ -30,19 +31,7 @@ export enum AssetType {
   OTHER = 'OTHER',
 }
 
-export enum WorkfrontFrente {
-  OOH = 'OOH',
-  SOCIAL = 'SOCIAL',
-  EMAIL = 'EMAIL',
-  BANNER = 'BANNER',
-}
-
-export enum FiscalYear {
-  FY25 = 'FY25',
-  FY26 = 'FY26',
-  FY27 = 'FY27',
-  FY28 = 'FY28',
-}
+// Os enums WorkfrontFrente e FiscalYear são importados do @prisma/client
 
 export class CreateKanbanCardDto {
   @ApiProperty({ description: 'Se está incluído no BI', default: true })
@@ -131,10 +120,10 @@ export class CreateKanbanCardDto {
   @IsOptional()
   quarter?: string;
 
-  @ApiProperty({ enum: WorkfrontFrente, default: WorkfrontFrente.OOH })
+  @ApiProperty({ enum: WorkfrontFrente, default: WorkfrontFrente.OTHER })
   @IsEnum(WorkfrontFrente)
   @IsOptional()
-  frente?: WorkfrontFrente = WorkfrontFrente.OOH;
+  frente?: WorkfrontFrente = WorkfrontFrente.OTHER;
 
   @ApiPropertyOptional({ enum: FiscalYear })
   @IsEnum(FiscalYear)

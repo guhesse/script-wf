@@ -4,9 +4,10 @@ import { BriefingService } from './briefing.service';
 import { BriefingExtractionService } from './briefing-extraction.service';
 import { BriefingPptService } from './briefing-ppt.service';
 import { WorkfrontModule } from '../workfront/workfront.module';
+import { PdfModule } from '../pdf/pdf.module';
 
 @Module({
-  imports: [forwardRef(() => WorkfrontModule)],
+  imports: [forwardRef(() => WorkfrontModule), forwardRef(() => PdfModule)],
   controllers: [BriefingController],
   providers: [BriefingService, BriefingExtractionService, BriefingPptService],
   exports: [BriefingService, BriefingExtractionService, BriefingPptService],

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CommentEnhancementService } from '../pdf/comment-enhancement.service';
 import { BriefingPptService } from './briefing-ppt.service';
 import { canonicalizeColorName, getColorMeta } from '../../common/colors/dell-colors';
 import { PrismaService } from '../database/prisma.service';
@@ -66,6 +67,7 @@ export class BriefingExtractionService {
         private readonly prisma: PrismaService,
         private readonly workfrontService: WorkfrontService,
         private readonly pptService: BriefingPptService,
+        private readonly commentEnhancement: CommentEnhancementService,
     ) {
         // Usar diretório temporário do sistema
         this.tempDownloadPath = path.join(os.tmpdir(), 'workfront-briefing-temp');
@@ -193,7 +195,7 @@ export class BriefingExtractionService {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
             });
-            await page.waitForTimeout(5000);
+            await page.waitForTimeout(2500);
 
             // Extrair nome do projeto
             const projectName = await this.extractProjectName(page, projectUrl, projectNumber);
@@ -209,10 +211,10 @@ export class BriefingExtractionService {
             // Navegar para a pasta "05. Briefing" com retries
             progress?.({ type: 'stage', data: { projectNumber, stage: 'navigating-briefing-folder' } });
             await this.retryNavigateToBriefingFolder(page, {
-                attempts: this.toInt(options.briefingRetryCount, parseInt(process.env.WF_BRIEFING_RETRY_COUNT || '8', 10), 1, 20),
-                initialDelay: this.toInt(options.briefingRetryDelayMs, parseInt(process.env.WF_BRIEFING_RETRY_DELAY_MS || '1200', 10), 200, 20000),
-                maxDelay: this.toInt(options.briefingRetryMaxDelayMs, parseInt(process.env.WF_BRIEFING_RETRY_MAX_DELAY_MS || '8000', 10), 500, 60000),
-                progressiveFactor: this.toFloat(options.briefingRetryFactor, parseFloat(process.env.WF_BRIEFING_RETRY_FACTOR || '1.4'), 1.0, 3.0)
+                attempts: this.toInt(options.briefingRetryCount, parseInt(process.env.WF_BRIEFING_RETRY_COUNT || '10', 10), 1, 20),
+                initialDelay: this.toInt(options.briefingRetryDelayMs, parseInt(process.env.WF_BRIEFING_RETRY_DELAY_MS || '900', 10), 200, 20000),
+                maxDelay: this.toInt(options.briefingRetryMaxDelayMs, parseInt(process.env.WF_BRIEFING_RETRY_MAX_DELAY_MS || '4000', 10), 500, 60000),
+                progressiveFactor: this.toFloat(options.briefingRetryFactor, parseFloat(process.env.WF_BRIEFING_RETRY_FACTOR || '1.25'), 1.0, 3.0)
             });
 
             // Simular download e processamento (implementação básica)
@@ -225,9 +227,38 @@ export class BriefingExtractionService {
                 try {
                     // Usar primeiro PDF processado para extrair structuredData
                     const firstPdf = downloadResult?.pdfProcessing?.results?.[0];
-                    const structured = firstPdf?.structuredData || null;
-                    const dsidMeta = this.extractDSIDFromProjectName(projectName);
+                    let structured = firstPdf?.structuredData || null;
+
+                    // Tentar enriquecer via IA usando comentários do briefing principal
+                    try {
+                        const commentsRaw = (firstPdf?.comments) ?? (firstPdf as any)?.extractedContent?.comments ?? [];
+                        const comments: string[] = Array.isArray(commentsRaw)
+                            ? commentsRaw.map((c: any) => typeof c === 'string' ? c : (c?.text || '')).filter(Boolean)
+                            : [];
+                        if (comments.length > 0) {
+                            this.logger.log(`🧠 IA: analisando ${comments.length} comentários para enriquecer structuredFields...`);
+                            const ai = await this.commentEnhancement.processWithAI({ comments });
+                            const sf = (ai?.extractedData as any)?.structuredFields;
+                            if (sf && Object.keys(sf).length) {
+                                structured = { ...(structured || {}), ...sf };
+                                // Se IA forneceu liveDate normalizado, preferir para o PPT
+                                if (sf.liveDateNormalized) {
+                                    (structured as any).liveDate = sf.liveDateNormalized;
+                                }
+                                const filled = Object.keys(sf).filter(k => (sf as any)[k]);
+                                this.logger.log(`✅ IA: structuredFields preenchidos (${filled.length}): ${filled.join(', ')}`);
+                            } else {
+                                this.logger.warn('⚠️ IA: nenhum structuredField retornado.');
+                            }
+                        } else {
+                            this.logger.warn('⚠️ IA: nenhum comentário disponível para análise.');
+                        }
+                    } catch (e) {
+                        this.logger.warn(`⚠️ Enriquecimento IA para PPT falhou: ${(e as Error).message}`);
+                    }
                     const primaryPdfFileName = firstPdf?.fileName || structured?.originalFileName || undefined;
+                    const dsidFromPdf = this.extractDSIDFromProjectName(primaryPdfFileName || '');
+                    const dsidMeta = this.extractDSIDFromProjectName(projectName) || dsidFromPdf;
                     const pptResult = await this.pptService.generateBriefingPpt({
                         dsid: dsidMeta || undefined,
                         structuredData: structured,
@@ -284,8 +315,8 @@ export class BriefingExtractionService {
 
         const frameLocator = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
 
-        // Aguardar pasta carregar
-        await page.waitForTimeout(3000);
+    // Aguardar pasta carregar
+    await page.waitForTimeout(1500);
 
         // Encontrar todos os arquivos PDF na pasta (metadados)
         let pdfFiles = await this.findAllDownloadableFiles(frameLocator, page, projectName);
@@ -421,7 +452,7 @@ export class BriefingExtractionService {
         for (const file of pdfFiles) {
             try { await this.safeClick(file.element); await page.waitForTimeout(300); } catch { }
         }
-        await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
         const downloadButtonSelectors = [
             'button[data-testid="downloadselected"]',
             'button[title="Download selected"]',
@@ -447,9 +478,9 @@ export class BriefingExtractionService {
         page.on('download', downloadListener);
         try {
             await button.click({ timeout: 3000 }).catch(async () => { await button.click({ force: true, timeout: 2000 }); });
-            const maxWait = Date.now() + 20000;
+            const maxWait = Date.now() + 16000;
             while (Date.now() < maxWait) {
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(700);
                 // heurística simples: se número de downloads >= número selecionado ou passou 5s sem novos
                 if (downloaded.length >= pdfFiles.length) break;
             }
@@ -669,40 +700,38 @@ export class BriefingExtractionService {
      */
     private async extractProjectName(page: Page, projectUrl: string, projectNumber: number): Promise<string> {
         try {
-            // Aguardar a interface carregar
-            await page.waitForTimeout(3000);
-
-            // Procurar pelo frame do Workfront
+            // Aguardar a interface carregar de forma incremental (polling)
             const frameLocator = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
-
-            // Tentar extrair da página
             const titleSelectors = [
                 'h1',
                 '[data-testid*="title"]',
                 '.project-title',
-                '.project-name'
+                '.project-name',
+                '[role="heading"]'
             ];
-
-            for (const selector of titleSelectors) {
-                try {
-                    const titleElement = frameLocator.locator(selector).first();
-                    const count = await titleElement.count();
-
-                    if (count > 0) {
-                        const title = await titleElement.textContent();
-                        if (title && title.trim()) {
-                            this.logger.log(`📋 Título extraído: ${title.trim()}`);
-                            const dsid = this.extractDSIDFromProjectName(title.trim());
+            const deadline = Date.now() + 8000; // até 8s tentando
+            while (Date.now() < deadline) {
+                for (const selector of titleSelectors) {
+                    try {
+                        const el = frameLocator.locator(selector).first();
+                        const count = await el.count();
+                        if (count === 0) continue;
+                        const visible = await el.isVisible().catch(() => false);
+                        if (!visible) continue;
+                        const title = (await el.textContent()) || '';
+                        const clean = title.trim();
+                        if (clean) {
+                            this.logger.log(`📋 Título extraído: ${clean}`);
+                            const dsid = this.extractDSIDFromProjectName(clean);
                             if (dsid) {
                                 this.logger.log(`🎯 DSID encontrado: ${dsid}`);
-                                return dsid;
+                                return dsid; // manter compat: retornar DSID quando presente
                             }
-                            return this.sanitizeFileName(title.trim());
+                            return this.sanitizeFileName(clean);
                         }
-                    }
-                } catch (e) {
-                    continue;
+                    } catch { /* tenta próximo selector/loop */ }
                 }
+                await page.waitForTimeout(400);
             }
         } catch (e) {
             this.logger.log('⚠️ Não foi possível extrair nome do projeto da página');
@@ -717,7 +746,7 @@ export class BriefingExtractionService {
      */
     private async navigateToBriefingFolder(page: Page) {
         this.logger.log('📁 Navegando para pasta "05. Briefing"...');
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(1500);
         const frameLocator = page.frameLocator('iframe[src*="workfront"], iframe[src*="experience"], iframe').first();
 
         const folderSelectors = [
@@ -754,7 +783,7 @@ export class BriefingExtractionService {
                 } catch {
                     try { await element.click({ force: true, timeout: 1000 }); } catch { }
                 }
-                await page.waitForTimeout(4000);
+                await page.waitForTimeout(2000);
                 navigationSuccess = true;
                 break;
             } catch (e) {
@@ -822,7 +851,7 @@ export class BriefingExtractionService {
         } catch (e) {
             this.logger.log('⚠️ Não foi possível fechar sidebar');
         }
-        await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     }
 
     /** Clique robusto (porta parcial do legado) */
@@ -898,7 +927,7 @@ export class BriefingExtractionService {
     private async findAllDownloadableFiles(frameLocator: any, page: Page, projectName: string): Promise<any[]> {
         try {
             this.logger.log('🔍 Procurando arquivos selecionáveis (modo avançado)...');
-            await page.waitForTimeout(2500);
+            await page.waitForTimeout(1200);
 
             // Estratégia avançada inspirada no legado
             const fileSelectors = [

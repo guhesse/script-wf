@@ -35,7 +35,7 @@ export const KanbanBoard = () => {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [hideEmptyColumns, setHideEmptyColumns] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [colorKey, setColorKey] = useState(0); // Para forçar re-render quando cores mudarem
+    const [, setColorKey] = useState(0); // Para forçar re-render quando cores mudarem
 
     // DnD Sensors
     const sensors = useSensors(

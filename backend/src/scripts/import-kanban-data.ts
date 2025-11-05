@@ -84,11 +84,14 @@ const assetTypeMapping: Record<string, AssetType> = {
 };
 
 const frenteMapping: Record<string, WorkfrontFrente> = {
-  'OOH': WorkfrontFrente.OOH,
+  'OOH': WorkfrontFrente.OTHER,
   'Social': WorkfrontFrente.SOCIAL,
   'Email': WorkfrontFrente.EMAIL,
   'E-mail': WorkfrontFrente.EMAIL,
-  'Banner': WorkfrontFrente.BANNER,
+  'Banner': WorkfrontFrente.DISPLAY,
+  'Display': WorkfrontFrente.DISPLAY,
+  'Landing Page': WorkfrontFrente.LANDING_PAGE,
+  'Print': WorkfrontFrente.PRINT,
 };const fyMapping: Record<string, FiscalYear> = {
     'FY25': FiscalYear.FY25,
     'FY26': FiscalYear.FY26,
@@ -160,7 +163,7 @@ async function importData(jsonPath: string) {
                 const status = item.STATUS ? (statusMapping[item.STATUS] || KanbanStatus.BACKLOG) : KanbanStatus.BACKLOG;
                 const vf = item.VF ? (vfMapping[item.VF] || VFType.NO_VF) : VFType.NO_VF;
                 const tipoAsset = item['TIPO DE ASSET'] ? (assetTypeMapping[item['TIPO DE ASSET']] || AssetType.OTHER) : AssetType.OTHER;
-                const frente = item.FRENTE ? (frenteMapping[item.FRENTE] || WorkfrontFrente.OOH) : WorkfrontFrente.OOH;
+                const frente = item.FRENTE ? (frenteMapping[item.FRENTE] || WorkfrontFrente.OTHER) : WorkfrontFrente.OTHER;
                 const fy = item.FY ? (fyMapping[item.FY] || undefined) : undefined;
 
                 // Dados do card

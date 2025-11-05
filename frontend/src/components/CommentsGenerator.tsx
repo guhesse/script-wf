@@ -10,7 +10,7 @@ interface User {
     url: string;
 }
 
-const users: Record<'carol' | 'giovana', User> = {
+const users: Record<'carol' | 'giovana' | 'marcia', User> = {
     carol: {
         name: '@Carolina Lipinski',
         id: 'USER_6404f185031cb4594c66a99fa57c36e5',
@@ -20,12 +20,17 @@ const users: Record<'carol' | 'giovana', User> = {
         name: '@Giovana Jockyman',
         id: 'USER_6414745101140908a941c911fbe572b4',
         url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/6414745101140908a941c911fbe572b4'
+    },
+    marcia: {
+        name: '@Marcia Briones',
+        id: 'USER_650c9a9b0276208240fa616516513a5d',
+        url: 'https://experience.adobe.com/#/@dell/so:dell-Production/workfront/user/650c9a9b0276208240fa616516513a5d'
     }
 };
 
 const CommentsGenerator = () => {
-  const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana'>('carol');
-  const [copiedSection, setCopiedSection] = useState<number | null>(null);    const copyToClipboard = async (contentId: string, sectionNum: number, message: string) => {
+    const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'marcia'>('carol');
+    const [copiedSection, setCopiedSection] = useState<number | null>(null); const copyToClipboard = async (contentId: string, sectionNum: number, message: string) => {
         const content = document.getElementById(contentId);
         if (!content) return;
 
@@ -209,7 +214,7 @@ const CommentsGenerator = () => {
                     , segue a pasta com os assets finais da tarefa.
                 </p>
             );
-        } else {
+        } else if (selectedUser === 'giovana') {
             return (
                 <p className="mb-0">
                     <a
@@ -234,6 +239,23 @@ const CommentsGenerator = () => {
                         @Gislaine Orico Paz
                     </a>
                     <span> </span>
+                    <a
+                        href={user.url}
+                        className="mention"
+                        data-mention={user.id}
+                        data-lexical-mention="true"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        {user.name}
+                    </a>
+                    , segue a pasta com os assets finais da tarefa.
+                </p>
+            );
+        } else {
+            // Marcia Briones - usando a mesma estrutura base
+            return (
+                <p className="mb-0">
                     <a
                         href={user.url}
                         className="mention"
@@ -301,6 +323,13 @@ const CommentsGenerator = () => {
                             onClick={() => setSelectedUser('giovana')}
                         >
                             Giovana Jockyman
+                        </Button>
+                        <Button
+                            variant={selectedUser === 'marcia' ? 'default' : 'outline'}
+                            className="flex-1"
+                            onClick={() => setSelectedUser('marcia')}
+                        >
+                            Marcia Briones
                         </Button>
                     </div>
                 </CardContent>

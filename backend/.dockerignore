@@ -1,0 +1,21 @@
+# Excluir dependências e artefatos locais do contexto de build
+node_modules/
+dist/
+.cache/
+.next/
+coverage/
+.tmp/
+
+# VCS e editor
+.git/
+.gitignore
+.vscode/
+.DS_Store
+
+# Env e segredos
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-error.log*
