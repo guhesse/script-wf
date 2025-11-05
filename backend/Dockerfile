@@ -5,7 +5,7 @@
 # Rebuild rápido: ~30-60s (vs 3-5min antes)
 # ============================================
 
-FROM node:18-slim AS base
+FROM node:20-slim AS base
 
 WORKDIR /app
 
