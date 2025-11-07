@@ -633,21 +633,47 @@ export class ShareAutomationService {
                                 // Screenshot do modal aberto COM underlay
                                 await this.captureDebugScreenshot(page, 'modal_01_opened_with_underlay');
                                 
-                                // ⚠️ CRÍTICO: NÃO REMOVER O UNDERLAY!
-                                // Aguardar ele desaparecer naturalmente ou ignorá-lo
-                                this.logger.log('⏳ Aguardando 300ms após underlay aparecer...');
-                                await page.waitForTimeout(300);
-                                await this.captureDebugScreenshot(page, 'modal_02_after_300ms');
+                                // 🎯 ESTRATÉGIA 1: Tornar underlay não-bloqueante
+                                this.logger.log('🔧 Tornando underlay não-bloqueante (pointer-events: none)...');
+                                try {
+                                    await frameLocator.evaluate(() => {
+                                        const underlays = document.querySelectorAll('[data-testid="underlay"]');
+                                        underlays.forEach((el: any) => {
+                                            if (el) {
+                                                el.style.pointerEvents = 'none';
+                                                el.style.zIndex = '-1';
+                                            }
+                                        });
+                                    });
+                                    this.logger.log('✅ Underlay tornado não-bloqueante');
+                                } catch (err: any) {
+                                    this.logger.warn(`⚠️ Erro ao modificar underlay: ${err?.message}`);
+                                }
                                 
-                                // Mais 300ms
-                                this.logger.log('⏳ Aguardando mais 300ms...');
-                                await page.waitForTimeout(300);
-                                await this.captureDebugScreenshot(page, 'modal_03_after_600ms');
+                                // 🎯 ESTRATÉGIA 2: Forçar z-index do modal
+                                this.logger.log('🔧 Forçando z-index do modal para topo...');
+                                try {
+                                    await frameLocator.evaluate(() => {
+                                        // Busca o container do modal
+                                        const modals = document.querySelectorAll('[role="dialog"], [data-testid*="modal"], .spectrum-Modal, [class*="Modal"]');
+                                        modals.forEach((el: any) => {
+                                            if (el) {
+                                                el.style.zIndex = '99999';
+                                                el.style.position = 'relative';
+                                            }
+                                        });
+                                    });
+                                    this.logger.log('✅ Z-index do modal ajustado');
+                                } catch (err: any) {
+                                    this.logger.warn(`⚠️ Erro ao ajustar z-index: ${err?.message}`);
+                                }
                                 
-                                // Mais 500ms
-                                this.logger.log('⏳ Aguardando mais 500ms...');
-                                await page.waitForTimeout(500);
-                                await this.captureDebugScreenshot(page, 'modal_04_after_1100ms');
+                                await this.captureDebugScreenshot(page, 'modal_02_after_underlay_fixed');
+                                
+                                // Aguarda um pouco para modal estabilizar
+                                this.logger.log('⏳ Aguardando 800ms para modal estabilizar...');
+                                await page.waitForTimeout(800);
+                                await this.captureDebugScreenshot(page, 'modal_03_after_800ms');
                                 
                                 // Verifica se houve erro no modal
                                 this.logger.log('🔍 Verificando se modal tem erro...');
@@ -662,20 +688,10 @@ export class ShareAutomationService {
                                     if (checkErr.message.includes('Modal mostrou erro')) throw checkErr;
                                 }
                                 
-                                // Mais 400ms (total 1500ms)
-                                this.logger.log('⏳ Aguardando mais 400ms (total 1500ms)...');
-                                await page.waitForTimeout(400);
-                                await this.captureDebugScreenshot(page, 'modal_05_after_1500ms_READY');
-                                
-                                // Verifica novamente se modal ainda está OK
-                                const stillHasError = await frameLocator.locator('text=/An error has occurred/i').first().isVisible().catch(() => false);
-                                if (stillHasError) {
-                                    this.logger.error('❌ MODAL CONTINUA COM ERRO após 1.5s');
-                                    await this.captureDebugScreenshot(page, 'modal_ERROR_still_present');
-                                    throw new Error('Modal continua mostrando erro após aguardar');
-                                }
+                                // Screenshot final do modal pronto para interação
+                                await this.captureDebugScreenshot(page, 'modal_04_READY_for_interaction');
 
-                                this.logger.log('✅ Modal pronto sem erros - retornando sucesso!');
+                                this.logger.log('✅ Modal pronto sem erros e underlay não-bloqueante - retornando sucesso!');
                                 return;
                             } catch (underlayErr: any) {
                                 lastError = underlayErr;
@@ -861,9 +877,6 @@ export class ShareAutomationService {
         }
 
         if (!emailInput) {
-            // Screenshot do estado quando não encontra o campo
-            await this.captureDebugScreenshot(page, 'email_field_not_found');
-            
             for (const scope of scopes) {
                 try {
                     const availableInputs = await scope
@@ -885,8 +898,7 @@ export class ShareAutomationService {
             throw new Error('Campo de email não encontrado');
         }
 
-        this.logger.log(`✅ Campo de email encontrado! (${matchedScope}) - Tirando screenshot...`);
-        await this.captureDebugScreenshot(page, 'email_field_found');
+        this.logger.log(`✅ Campo de email encontrado! (${matchedScope})`);
 
         const selectAllShortcut = process.platform === 'darwin' ? 'Meta+A' : 'Control+A';
 
@@ -909,8 +921,13 @@ export class ShareAutomationService {
             }
 
             try {
+                this.logger.log(`👤 Adicionando usuário ${i + 1}/${users.length}: ${user.email}`);
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_01_before_click_field`);
+                
                 await emailInput.click({ force: true });
                 await page.waitForTimeout(150);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_02_after_click_field`);
 
                 if (inputIsContentEditable) {
                     await page.keyboard.press(selectAllShortcut);
@@ -925,6 +942,8 @@ export class ShareAutomationService {
                 }
 
                 await page.waitForTimeout(50);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_03_after_clear_field`);
 
                 if (inputIsContentEditable) {
                     await page.keyboard.type(user.email, { delay: 20 });
@@ -933,19 +952,32 @@ export class ShareAutomationService {
                 }
 
                 await page.waitForTimeout(600);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_04_after_type_email`);
 
                 const option = frameLocator.locator(`[role="option"]:has-text("${user.email}")`).first();
                 if ((await option.count()) > 0) {
+                    this.logger.log(`✅ Opção encontrada no dropdown para ${user.email}`);
+                    await this.captureDebugScreenshot(page, `add_user_${i + 1}_05_before_click_option`);
                     await option.click({ force: true });
                 } else if (inputIsContentEditable) {
+                    this.logger.log(`⚠️ Opção não encontrada, usando Enter`);
                     await page.keyboard.press('Enter');
                 } else {
+                    this.logger.log(`⚠️ Opção não encontrada, usando Enter`);
                     await emailInput.press('Enter');
                 }
-
+                
                 await page.waitForTimeout(250);
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_06_after_select_option`);
+                
                 const desiredRole = user.role === 'VIEW' ? 'VIEW' : 'MANAGE';
+                this.logger.log(`🔐 Definindo permissão ${desiredRole} para ${user.email}`);
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_07_before_set_permission`);
+                
                 await this.setUserPermission(frameLocator, page, user.email, desiredRole);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_08_after_set_permission`);
             } catch (e: any) {
                 this.logger.warn(`Não conseguiu adicionar usuário ${user.email} (scope=${matchedScope}, input=${matchedSelector}, contentEditable=${inputIsContentEditable}): ${e?.message}`);
             }
@@ -1093,10 +1125,11 @@ export class ShareAutomationService {
         selectedUser: TeamKey;
         headless?: boolean;
     }): Promise<{ results: ShareResult[]; summary: { total: number; success: number; errors: number } }> {
-        // ATIVAR DEBUG MODE PARA CAPTURAR SCREENSHOTS
-        this.enableDebugMode(true);
-        this.screenshotCounter = 0;
-        this.logger.log('📸 DEBUG MODE ATIVADO - Screenshots serão capturados');
+        // DEBUG MODE: Desativado por padrão
+        // Para ativar debug com screenshots, descomente a linha abaixo:
+        // this.enableDebugMode(true);
+        // this.screenshotCounter = 0;
+        // this.logger.log('📸 DEBUG MODE ATIVADO - Screenshots serão capturados');
         
         const { page, frame, selections, selectedUser } = params;
         const results: ShareResult[] = [];
@@ -1108,59 +1141,37 @@ export class ShareAutomationService {
             while (attempt < maxAttempts && !shared) {
                 attempt++;
                 try {
-                    this.logger.log(`📸 Capturando screenshot inicial da tentativa ${attempt}...`);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_01_start`);
-                    
                     // Navega para pasta se necessário
                     if (folder && folder !== 'root') {
                         this.logger.log(`📁 Navegando para pasta: ${folder}`);
                         await this.navigateToFolder(frame, page, folder);
-                        await page.waitForTimeout(800); // Espera adicional após navegação
-                        await this.captureDebugScreenshot(page, `attempt_${attempt}_02_after_folder_nav`);
+                        await page.waitForTimeout(800);
                     }
 
                     // Seleciona documento
                     this.logger.log(`📄 Selecionando documento: ${fileName}`);
                     await this.selectDocument(frame, page, fileName);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_03_after_doc_select`);
 
                     // Espera adicional crucial para garantir que o documento está selecionado e a UI atualizou
                     await page.waitForTimeout(1200);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_04_after_wait_ui_update`);
 
                     // Fecha sidebar se estiver aberta (pode bloquear o botão Share)
                     await this.closeSidebarIfOpen(frame, page);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_05_after_close_sidebar`);
 
                     // Tenta abrir modal de share
-                    this.logger.log(`📸 ANTES de abrir modal (tentativa ${attempt})...`);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_06_BEFORE_open_modal`);
-                    
                     await this.openShareModal(frame, page, { ensureFresh: attempt > 1 });
-                    
-                    this.logger.log(`📸 DEPOIS de abrir modal (tentativa ${attempt})...`);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_07_AFTER_open_modal`);
 
                     // Adiciona usuários
-                    this.logger.log(`📸 ANTES de adicionar usuários (tentativa ${attempt})...`);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_08_BEFORE_add_users`);
-                    
                     await this.addUsersToShare(frame, page, this.getTeamUsers(selectedUser));
-                    
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_09_AFTER_add_users`);
 
                     // Salva
                     await this.saveShare(frame, page);
-                    await this.captureDebugScreenshot(page, `attempt_${attempt}_10_AFTER_save`);
 
                     results.push({ folder, fileName, success: true, message: `Compartilhado (tentativa ${attempt})` });
                     success++; shared = true; break;
                 } catch (e: any) {
                     lastErr = e;
                     this.logger.warn(`⚠️ Share tentativa ${attempt} falhou para ${fileName}: ${e?.message}`);
-
-                    // Captura screenshot do erro
-                    await this.captureDebugScreenshot(page, `share_error_attempt_${attempt}_${fileName.substring(0, 30)}`);
 
                     if (attempt < maxAttempts) {
                         this.logger.log(`🔄 Tentando novamente... (${attempt + 1}/${maxAttempts})`);
