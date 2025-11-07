@@ -9,7 +9,7 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://scriptwfdev:Dev2024ScriptWF3mL8@db:5432/scriptwf_dev
       JWT_SECRET: ${JWT_SECRET}
-      WF_HEADLESS_DEFAULT: false
+      WF_HEADLESS_DEFAULT: true
       INITIAL_GRACE_MS: 40000
       POLL_INTERVAL_MS: 3000
       MAX_PERSIST_ATTEMPTS: 15
@@ -20,6 +20,7 @@ services:
       - "3000:3000"
     volumes:
       - ./temp:/app/temp  # Para arquivos temporários
+      - ./backend/automation_debug:/app/automation_debug  # Para screenshots de debug
 
   frontend:
     build:

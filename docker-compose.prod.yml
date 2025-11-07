@@ -18,9 +18,6 @@ services:
       BUNNY_STORAGE_ZONE: ${BUNNY_STORAGE_ZONE}
       BUNNY_CDN_BASE_URL: ${BUNNY_CDN_BASE_URL}
       BUNNY_STORAGE_HOST: ${BUNNY_STORAGE_HOST}
-    # Depende do container DB do docker-compose.multi-db.yml
-    external_links:
-      - script-wf-db-1:db
     expose:
       - "3000"
 
@@ -39,3 +36,8 @@ services:
 # Produção compartilha o mesmo container DB mas usa database separado
 # Development: scriptwf_dev (scriptwfdev user)  
 # Production: scriptwf_prod (scriptwf_prod user)
+
+networks:
+  default:
+    name: script-wf_default
+    external: true

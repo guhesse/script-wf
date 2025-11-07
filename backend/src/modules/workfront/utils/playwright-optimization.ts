@@ -65,7 +65,15 @@ export async function createOptimizedContext(opts: OptimizedContextOptions = {})
         viewport: contextViewport,
         reducedMotion: blockHeavy ? 'reduce' : 'no-preference',
         serviceWorkers: blockHeavy ? 'block' : 'allow',
-        extraHTTPHeaders: extraHeaders
+        extraHTTPHeaders: extraHeaders,
+        // User Agent realista para evitar detecção de headless
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        // Permissões para evitar erros
+        permissions: ['geolocation', 'notifications'],
+        // Timezone consistente
+        timezoneId: 'America/Sao_Paulo',
+        // Locale consistente
+        locale: 'pt-BR',
     };
 
     // Só adiciona deviceScaleFactor se viewport não for null
@@ -74,6 +82,28 @@ export async function createOptimizedContext(opts: OptimizedContextOptions = {})
     }
 
     const context = await browser.newContext(contextOptions);
+    
+    // Adiciona scripts anti-detecção de headless/automation
+    await context.addInitScript(() => {
+        // Remove propriedades que indicam automação
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => false,
+        });
+        
+        // Mascara headless
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5],
+        });
+        
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['pt-BR', 'pt', 'en-US', 'en'],
+        });
+        
+        // Chrome runtime
+        (window as any).chrome = {
+            runtime: {},
+        };
+    });
 
     // Aplicar roteamento apenas se há configurações de bloqueio
     if (blockHeavy || extraBlockDomains.length > 0 || shortCircuitGlobs.length > 0) {

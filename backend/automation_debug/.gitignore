@@ -1,0 +1,6 @@
+# Ignora screenshots de debug (podem ser grandes)
+share_modal/*.png
+share_modal/*.jpg
+
+# Mas mantém a estrutura de pastas
+!share_modal/.gitkeep

@@ -1,0 +1,51 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "http://localhost:3000/api/debug-share-modal",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "projectUrl": "COLE_AQUI_A_URL_DO_PROJETO",
+      "folderName": "root",
+      "fileName": "NOME_DO_ARQUIVO.pdf",
+      "headless": false
+    }
+  },
+  "examples": [
+    {
+      "name": "Documento na raiz",
+      "body": {
+        "projectUrl": "https://experience.workfront.com/s/pj/672a5f8901dc1b2def22aede8b0896fc/overview",
+        "folderName": "root",
+        "fileName": "documento.pdf",
+        "headless": false
+      }
+    },
+    {
+      "name": "Documento em pasta específica",
+      "body": {
+        "projectUrl": "https://experience.workfront.com/s/pj/672a5f8901dc1b2def22aede8b0896fc/overview",
+        "folderName": "Layouts",
+        "fileName": "arte_final.pdf",
+        "headless": false
+      }
+    },
+    {
+      "name": "Modo headless (sem interface visual)",
+      "body": {
+        "projectUrl": "https://experience.workfront.com/s/pj/672a5f8901dc1b2def22aede8b0896fc/overview",
+        "folderName": "root",
+        "fileName": "teste.pdf",
+        "headless": true
+      }
+    }
+  ],
+  "notes": [
+    "📸 Screenshots salvos em: backend/automation_debug/share_modal/",
+    "🔍 Cada estratégia recarrega a página completamente (isolamento total)",
+    "🐛 Use headless: false para ver o navegador em ação durante o debug",
+    "📊 O resultado mostra qual estratégia funcionou (se alguma)",
+    "💡 Analise os screenshots para entender exatamente onde está falhando"
+  ]
+}

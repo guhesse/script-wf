@@ -9,6 +9,9 @@ import { ProgressService } from './progress.service';
 
 const STATE_FILE = 'wf_state.json';
 
+// Diretório para screenshots de debug
+const DEBUG_SCREENSHOTS_DIR = path.join(process.cwd(), 'automation_debug', 'share_modal');
+
 type TeamKey = 'carol' | 'giovana' | 'test';
 
 interface ShareSelection {
@@ -47,10 +50,319 @@ const TEST_TEAM = [
 @Injectable()
 export class ShareAutomationService {
     private readonly logger = new Logger(ShareAutomationService.name);
+    private debugMode = false; // Ativar via método público para debug
+    private screenshotCounter = 0;
 
     constructor(private readonly progress: ProgressService) {}
 
+    /**
+     * Ativa modo debug com screenshots e logs detalhados
+     */
+    public enableDebugMode(enabled = true) {
+        this.debugMode = enabled;
+        this.logger.log(`🐛 Modo debug ${enabled ? 'ATIVADO' : 'DESATIVADO'}`);
+    }
+
+    /**
+     * Captura screenshot com timestamp e contexto
+     */
+    private async captureDebugScreenshot(page: Page, context: string): Promise<string | null> {
+        if (!this.debugMode) return null;
+
+        try {
+            await fs.mkdir(DEBUG_SCREENSHOTS_DIR, { recursive: true });
+            
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            this.screenshotCounter++;
+            const filename = `${this.screenshotCounter.toString().padStart(3, '0')}_${timestamp}_${context}.png`;
+            const filepath = path.join(DEBUG_SCREENSHOTS_DIR, filename);
+            
+            await page.screenshot({ path: filepath, fullPage: true });
+            this.logger.log(`📸 Screenshot salvo: ${filename}`);
+            
+            return filepath;
+        } catch (err: any) {
+            this.logger.warn(`⚠️ Erro ao capturar screenshot: ${err?.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Captura logs do console do browser
+     */
+    private setupConsoleCapture(page: Page): void {
+        if (!this.debugMode) return;
+
+        page.on('console', msg => {
+            const type = msg.type();
+            const text = msg.text();
+            
+            if (type === 'error') {
+                this.logger.error(`🔴 [Browser Console Error] ${text}`);
+            } else if (type === 'warning') {
+                this.logger.warn(`🟡 [Browser Console Warning] ${text}`);
+            } else if (this.debugMode) {
+                this.logger.debug(`🔵 [Browser Console] ${text}`);
+            }
+        });
+
+        page.on('pageerror', err => {
+            this.logger.error(`🔴 [Page Error] ${err.message}`);
+        });
+    }
+
     // (Retries migraram para WorkfrontDomHelper – manter apenas se precisarmos overrides futuros)
+
+    /**
+     * Modo DEBUG INTENSIVO: Testa múltiplas estratégias de abertura de modal com reload entre tentativas
+     * Use apenas para diagnóstico - cria sessão isolada do browser
+     */
+    async debugShareModalStrategies(
+        projectUrl: string,
+        folderName: string,
+        fileName: string,
+        headless = true, // Forçar visível para debug
+    ): Promise<{ results: Array<{ strategy: string; success: boolean; error?: string; screenshots: string[] }> }> {
+        this.enableDebugMode(true);
+        this.screenshotCounter = 0;
+
+        this.logger.log('🐛🐛🐛 INICIANDO DEBUG INTENSIVO DO MODAL DE COMPARTILHAMENTO 🐛🐛🐛');
+        
+        // Limpa diretório de screenshots
+        try {
+            await fs.rm(DEBUG_SCREENSHOTS_DIR, { recursive: true, force: true });
+            await fs.mkdir(DEBUG_SCREENSHOTS_DIR, { recursive: true });
+        } catch { }
+
+        const strategies = [
+            {
+                name: 'baseline',
+                description: 'Estratégia padrão atual',
+                modifications: async (page: Page, frame: any) => {
+                    // Sem modificações - usa código atual
+                }
+            },
+            {
+                name: 'wait_longer',
+                description: 'Aguarda mais tempo após seleção de documento',
+                modifications: async (page: Page, frame: any) => {
+                    this.logger.log('⏰ Aguardando 3s extras após seleção...');
+                    await page.waitForTimeout(3000);
+                }
+            },
+            {
+                name: 'close_all_modals',
+                description: 'Fecha todos os modais/overlays antes de abrir share',
+                modifications: async (page: Page, frame: any) => {
+                    this.logger.log('🚪 Tentando fechar todos os modais/overlays...');
+                    try {
+                        // Pressiona ESC múltiplas vezes
+                        await page.keyboard.press('Escape');
+                        await page.waitForTimeout(300);
+                        await page.keyboard.press('Escape');
+                        await page.waitForTimeout(300);
+                        
+                        // Remove todos os underlays
+                        await frame.locator('[data-testid="underlay"]').evaluateAll((els: HTMLElement[]) => {
+                            els.forEach(el => el.remove());
+                        });
+                    } catch { }
+                }
+            },
+            {
+                name: 'disable_animations',
+                description: 'Desabilita animações CSS',
+                modifications: async (page: Page, frame: any) => {
+                    this.logger.log('🎬 Desabilitando animações...');
+                    await page.addStyleTag({
+                        content: `
+                            *, *::before, *::after {
+                                animation-duration: 0s !important;
+                                animation-delay: 0s !important;
+                                transition-duration: 0s !important;
+                                transition-delay: 0s !important;
+                            }
+                        `
+                    });
+                }
+            },
+            {
+                name: 'force_visibility',
+                description: 'Remove z-index e overlays que podem estar bloqueando',
+                modifications: async (page: Page, frame: any) => {
+                    this.logger.log('👁️ Forçando visibilidade de elementos...');
+                    await frame.evaluate(() => {
+                        // Remove underlays
+                        document.querySelectorAll('[data-testid="underlay"]').forEach(el => el.remove());
+                        
+                        // Remove overlays genéricos
+                        document.querySelectorAll('[class*="overlay"], [class*="Overlay"]').forEach((el: any) => {
+                            if (el.style) el.style.display = 'none';
+                        });
+                    });
+                }
+            },
+            {
+                name: 'click_with_js',
+                description: 'Clica no botão usando JavaScript direto',
+                modifications: async (page: Page, frame: any) => {
+                    this.logger.log('🖱️ Tentando clicar via JavaScript...');
+                    try {
+                        await frame.evaluate(() => {
+                            const shareBtn = document.querySelector('button[data-testid="share"]') as HTMLButtonElement;
+                            if (shareBtn) {
+                                shareBtn.click();
+                                return true;
+                            }
+                            return false;
+                        });
+                        await page.waitForTimeout(2000);
+                    } catch { }
+                }
+            },
+        ];
+
+        const results: Array<{ strategy: string; success: boolean; error?: string; screenshots: string[] }> = [];
+
+        for (let i = 0; i < strategies.length; i++) {
+            const strategy = strategies[i];
+            const screenshots: string[] = [];
+
+            this.logger.log(`\n${'='.repeat(80)}`);
+            this.logger.log(`🧪 TESTANDO ESTRATÉGIA ${i + 1}/${strategies.length}: ${strategy.name}`);
+            this.logger.log(`📝 ${strategy.description}`);
+            this.logger.log('='.repeat(80));
+
+            // Cria nova instância do browser para cada teste (isolamento total)
+            const { browser, context } = await createOptimizedContext({
+                headless,
+                storageStatePath: await this.ensureStateFile(),
+                viewport: { width: 1366, height: 900 }
+            });
+
+            try {
+                const page = await context.newPage();
+                
+                // Configura captura de console
+                this.setupConsoleCapture(page);
+
+                // Injeta script para capturar erros da página
+                await page.addInitScript(() => {
+                    (window as any).__pageErrors = [];
+                    window.addEventListener('error', (e) => {
+                        (window as any).__pageErrors.push({
+                            message: e.message,
+                            filename: e.filename,
+                            lineno: e.lineno,
+                            colno: e.colno
+                        });
+                    });
+                });
+
+                this.logger.log('🌍 Abrindo projeto...');
+                await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
+                await page.waitForTimeout(3000);
+
+                let screenshot = await this.captureDebugScreenshot(page, `${strategy.name}_01_initial_load`);
+                if (screenshot) screenshots.push(screenshot);
+
+                const frame = this.frameLocator(page);
+                await this.closeSidebarIfOpen(frame, page);
+
+                screenshot = await this.captureDebugScreenshot(page, `${strategy.name}_02_after_close_sidebar`);
+                if (screenshot) screenshots.push(screenshot);
+
+                // Navega para pasta se necessário
+                if (folderName && folderName !== 'root') {
+                    this.logger.log(`📁 Navegando para pasta: ${folderName}`);
+                    await this.navigateToFolder(frame, page, folderName);
+                    
+                    screenshot = await this.captureDebugScreenshot(page, `${strategy.name}_03_after_folder_nav`);
+                    if (screenshot) screenshots.push(screenshot);
+                }
+
+                // Seleciona documento
+                this.logger.log(`📄 Selecionando documento: ${fileName}`);
+                await this.selectDocument(frame, page, fileName);
+                
+                screenshot = await this.captureDebugScreenshot(page, `${strategy.name}_04_after_select_doc`);
+                if (screenshot) screenshots.push(screenshot);
+
+                // Aplica modificações específicas da estratégia
+                await strategy.modifications(page, frame);
+
+                screenshot = await this.captureDebugScreenshot(page, `${strategy.name}_05_after_modifications`);
+                if (screenshot) screenshots.push(screenshot);
+
+                // Tenta abrir modal
+                this.logger.log('🔓 Tentando abrir modal...');
+                await this.openShareModal(frame, page, { ensureFresh: true });
+
+                screenshot = await this.captureDebugScreenshot(page, `${strategy.name}_06_modal_opened`);
+                if (screenshot) screenshots.push(screenshot);
+
+                // Verifica se modal realmente abriu
+                const modalOpen = await this.verifyShareModal(frame);
+
+                if (modalOpen) {
+                    this.logger.log(`✅ SUCESSO! Estratégia "${strategy.name}" funcionou!`);
+                    results.push({
+                        strategy: strategy.name,
+                        success: true,
+                        screenshots
+                    });
+                } else {
+                    throw new Error('Modal não foi aberto ou verificação falhou');
+                }
+
+            } catch (err: any) {
+                this.logger.error(`❌ FALHA na estratégia "${strategy.name}": ${err?.message}`);
+                
+                const screenshot = await this.captureDebugScreenshot(
+                    (await context.pages())[0],
+                    `${strategy.name}_99_error`
+                );
+                if (screenshot) screenshots.push(screenshot);
+
+                results.push({
+                    strategy: strategy.name,
+                    success: false,
+                    error: err?.message || String(err),
+                    screenshots
+                });
+            } finally {
+                // Fecha browser (reload completo para próxima estratégia)
+                try {
+                    await disposeBrowser(undefined, browser as Browser);
+                } catch { }
+            }
+
+            // Pausa entre estratégias
+            if (i < strategies.length - 1) {
+                this.logger.log('⏸️ Aguardando 2s antes da próxima estratégia...\n');
+                await this.delay(2000);
+            }
+        }
+
+        // Relatório final
+        this.logger.log('\n' + '='.repeat(80));
+        this.logger.log('📊 RELATÓRIO FINAL DE DEBUG');
+        this.logger.log('='.repeat(80));
+
+        const successCount = results.filter(r => r.success).length;
+        this.logger.log(`✅ Estratégias bem-sucedidas: ${successCount}/${results.length}`);
+
+        results.forEach((result, idx) => {
+            const status = result.success ? '✅' : '❌';
+            this.logger.log(`${status} ${idx + 1}. ${result.strategy}: ${result.success ? 'SUCESSO' : result.error}`);
+            this.logger.log(`   Screenshots: ${result.screenshots.length} capturados`);
+        });
+
+        this.logger.log(`\n📁 Screenshots salvos em: ${DEBUG_SCREENSHOTS_DIR}`);
+        this.logger.log('='.repeat(80) + '\n');
+
+        return { results };
+    }
 
     /**
      * Compartilhar documentos selecionados
@@ -114,9 +426,16 @@ export class ShareAutomationService {
         const { browser, context } = await createOptimizedContext({ headless, storageStatePath: await this.ensureStateFile(), viewport: { width: 1366, height: 900 } });
         const page = await context.newPage();
 
+        // Configura captura de console se debug ativado
+        this.setupConsoleCapture(page);
+
         this.logger.log('🌍 Abrindo projeto...');
+        await this.captureDebugScreenshot(page, 'open_project_start');
+        
         await page.goto(projectUrl, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(3000);
+
+        await this.captureDebugScreenshot(page, 'project_loaded');
 
         this.logger.log('🔍 Encontrando frame do Workfront...');
         // Aguarda iframe do Workfront estar presente
@@ -126,16 +445,22 @@ export class ShareAutomationService {
         const frameLocator = this.frameLocator(page);
         await this.closeSidebarIfOpen(frameLocator, page);
 
+        await this.captureDebugScreenshot(page, 'sidebar_closed');
+
         if (folderName && folderName !== 'root') {
             this.logger.log(`📁 Navegando para a pasta: ${folderName}`);
             await this.navigateToFolder(frameLocator, page, folderName);
             this.logger.log(`📁 Pasta aberta: ${folderName}`);
+            
+            await this.captureDebugScreenshot(page, 'folder_opened');
         }
 
         // Selecionar documento
         this.logger.log(`📄 Selecionando documento: ${fileName}`);
         await this.selectDocument(frameLocator, page, fileName);
         this.logger.log(`📄 Documento selecionado: ${fileName}`);
+
+        await this.captureDebugScreenshot(page, 'document_selected');
 
         return { browser, page, frame: frameLocator };
     }
@@ -191,6 +516,9 @@ export class ShareAutomationService {
     public async openShareModal(frameLocator: any, page: Page, opts: { ensureFresh?: boolean } = {}): Promise<void> {
         this.logger.log('🔓 Tentando abrir modal de compartilhamento...');
 
+        // Screenshot ANTES de tentar abrir modal
+        await this.captureDebugScreenshot(page, 'before_open_share_modal');
+
         if (opts.ensureFresh) {
             // Fecha modal antigo se estiver aberto para evitar sobreposição
             try {
@@ -217,6 +545,8 @@ export class ShareAutomationService {
             'button:has([data-testid="share-tooltip"])',
         ];
 
+        let lastError: any = null;
+
         for (let attempt = 1; attempt <= 3; attempt++) {
             this.logger.log(`🔍 Tentativa ${attempt}/3 de abrir modal...`);
 
@@ -239,13 +569,49 @@ export class ShareAutomationService {
 
                             this.logger.log(`✅ Botão Share encontrado com seletor: ${sel}`);
 
+                            // Screenshot do botão encontrado
+                            await this.captureDebugScreenshot(page, `share_button_found_${sel.substring(0, 20)}`);
+
+                            // Captura erros de console ANTES de clicar
+                            const consoleErrors: string[] = [];
+                            page.on('console', msg => {
+                                if (msg.type() === 'error') {
+                                    consoleErrors.push(msg.text());
+                                }
+                            });
+                            
+                            // Captura erros de página ANTES de clicar
+                            const pageErrors: any[] = [];
+                            page.on('pageerror', error => {
+                                pageErrors.push({
+                                    message: error.message,
+                                    stack: error.stack,
+                                });
+                            });
+
+                            // AGUARDA um pouco para garantir que JS está pronto
+                            this.logger.log('⏳ Aguardando 500ms para garantir JS pronto...');
+                            await page.waitForTimeout(500);
+
                             // Tenta clicar com força (ignora elementos sobrepostos)
+                            this.logger.log('🖱️ Clicando no botão Share...');
                             await btn.click({ force: true }).catch(async () => {
                                 // Fallback: scroll até o elemento e clica
                                 await btn.scrollIntoViewIfNeeded();
                                 await page.waitForTimeout(300);
                                 await btn.click();
                             });
+
+                            // Screenshot APÓS clicar
+                            await this.captureDebugScreenshot(page, 'after_click_share_button');
+                            
+                            // Log de erros capturados
+                            if (consoleErrors.length > 0) {
+                                this.logger.error(`🔴 ERROS DE CONSOLE detectados após clicar: ${JSON.stringify(consoleErrors)}`);
+                            }
+                            if (pageErrors.length > 0) {
+                                this.logger.error(`🔴 ERROS DE PÁGINA detectados após clicar: ${JSON.stringify(pageErrors)}`);
+                            }
 
                             // IMPORTANTE: Aguarda o underlay aparecer (confirma que modal abriu)
                             this.logger.log('⏳ Aguardando underlay aparecer...');
@@ -255,31 +621,105 @@ export class ShareAutomationService {
                                     timeout: 2000
                                 });
                                 this.logger.log('✅ Underlay apareceu - modal está aberto!');
-
-                                // Remove underlay para liberar acesso aos elementos
-                                try {
-                                    await frameLocator.locator('[data-testid="underlay"]').first().evaluate((el: HTMLElement) => {
-                                        el.remove();
-                                    });
-                                    this.logger.log('🗑️ Underlay removido');
-                                } catch {
-                                    this.logger.warn('⚠️ Não conseguiu remover underlay, continuando...');
+                                
+                                // Log de erros após underlay aparecer
+                                if (consoleErrors.length > 0) {
+                                    this.logger.error(`🔴 TOTAL DE ${consoleErrors.length} ERROS DE CONSOLE`);
+                                }
+                                if (pageErrors.length > 0) {
+                                    this.logger.error(`🔴 TOTAL DE ${pageErrors.length} ERROS DE PÁGINA`);
                                 }
 
-                                // Aguarda animação do modal completar
-                                await page.waitForTimeout(1500);
+                                // Screenshot do modal aberto COM underlay
+                                await this.captureDebugScreenshot(page, 'modal_01_opened_with_underlay');
+                                
+                                // 🎯 ESTRATÉGIA 1: Tornar underlay não-bloqueante
+                                this.logger.log('🔧 Tornando underlay não-bloqueante (pointer-events: none)...');
+                                try {
+                                    await frameLocator.evaluate(() => {
+                                        const underlays = document.querySelectorAll('[data-testid="underlay"]');
+                                        underlays.forEach((el: any) => {
+                                            if (el) {
+                                                el.style.pointerEvents = 'none';
+                                                el.style.zIndex = '-1';
+                                            }
+                                        });
+                                    });
+                                    this.logger.log('✅ Underlay tornado não-bloqueante');
+                                } catch (err: any) {
+                                    this.logger.warn(`⚠️ Erro ao modificar underlay: ${err?.message}`);
+                                }
+                                
+                                // 🎯 ESTRATÉGIA 2: Forçar z-index do modal
+                                this.logger.log('🔧 Forçando z-index do modal para topo...');
+                                try {
+                                    await frameLocator.evaluate(() => {
+                                        // Busca o container do modal
+                                        const modals = document.querySelectorAll('[role="dialog"], [data-testid*="modal"], .spectrum-Modal, [class*="Modal"]');
+                                        modals.forEach((el: any) => {
+                                            if (el) {
+                                                el.style.zIndex = '99999';
+                                                el.style.position = 'relative';
+                                            }
+                                        });
+                                    });
+                                    this.logger.log('✅ Z-index do modal ajustado');
+                                } catch (err: any) {
+                                    this.logger.warn(`⚠️ Erro ao ajustar z-index: ${err?.message}`);
+                                }
+                                
+                                await this.captureDebugScreenshot(page, 'modal_02_after_underlay_fixed');
+                                
+                                // Aguarda um pouco para modal estabilizar
+                                this.logger.log('⏳ Aguardando 800ms para modal estabilizar...');
+                                await page.waitForTimeout(800);
+                                await this.captureDebugScreenshot(page, 'modal_03_after_800ms');
+                                
+                                // Verifica se houve erro no modal
+                                this.logger.log('🔍 Verificando se modal tem erro...');
+                                try {
+                                    const hasError = await frameLocator.locator('text=/An error has occurred/i').first().isVisible().catch(() => false);
+                                    if (hasError) {
+                                        this.logger.error('❌ MODAL MOSTRANDO ERRO: "An error has occurred"');
+                                        await this.captureDebugScreenshot(page, 'modal_ERROR_detected');
+                                        throw new Error('Modal mostrou erro interno do Workfront');
+                                    }
+                                } catch (checkErr: any) {
+                                    if (checkErr.message.includes('Modal mostrou erro')) throw checkErr;
+                                }
+                                
+                                // Screenshot final do modal pronto para interação
+                                await this.captureDebugScreenshot(page, 'modal_04_READY_for_interaction');
 
-                                this.logger.log('✅ Modal pronto - retornando sucesso!');
+                                this.logger.log('✅ Modal pronto sem erros e underlay não-bloqueante - retornando sucesso!');
                                 return;
-                            } catch {
-                                this.logger.warn('⚠️ Underlay não detectado, continuando...');
+                            } catch (underlayErr: any) {
+                                lastError = underlayErr;
+                                this.logger.warn(`⚠️ Underlay não detectado: ${underlayErr?.message}`);
+                                
+                                // Screenshot do erro
+                                await this.captureDebugScreenshot(page, 'underlay_not_detected');
+
+                                // Captura erros da página
+                                if (this.debugMode) {
+                                    try {
+                                        const pageErrors = await page.evaluate(() => {
+                                            return (window as any).__pageErrors || [];
+                                        });
+                                        if (pageErrors.length > 0) {
+                                            this.logger.error(`🔴 Erros da página: ${JSON.stringify(pageErrors)}`);
+                                        }
+                                    } catch { }
+                                }
                             }
                         } else {
                             this.logger.warn(`⚠️ Botão encontrado mas não está visível: ${sel}`);
                         }
                     }
                 } catch (e: any) {
+                    lastError = e;
                     this.logger.warn(`⚠️ Erro ao tentar seletor ${sel}: ${e?.message}`);
+                    await this.captureDebugScreenshot(page, `error_${sel.substring(0, 20)}`);
                 }
             }
 
@@ -300,11 +740,16 @@ export class ShareAutomationService {
                                 const isVisible = await parentBtn.isVisible();
                                 if (isVisible) {
                                     this.logger.log(`✅ Botão Share encontrado via SVG pai`);
+                                    await this.captureDebugScreenshot(page, 'svg_parent_button_found');
+                                    
                                     await parentBtn.click({ force: true });
                                     await page.waitForTimeout(2500);
 
+                                    await this.captureDebugScreenshot(page, 'after_svg_parent_click');
+
                                     if (await this.verifyShareModal(frameLocator)) {
                                         this.logger.log('✅ Modal aberto via SVG pai!');
+                                        await this.captureDebugScreenshot(page, 'modal_opened_via_svg');
                                         return;
                                     }
                                 }
@@ -312,6 +757,7 @@ export class ShareAutomationService {
                         } catch { }
                     }
                 } catch (e: any) {
+                    lastError = e;
                     this.logger.warn(`⚠️ Erro na busca por SVG: ${e?.message}`);
                 }
             }
@@ -319,6 +765,7 @@ export class ShareAutomationService {
             // Espera entre tentativas
             if (attempt < 3) {
                 this.logger.log('⏳ Aguardando 1.5s antes de nova tentativa...');
+                await this.captureDebugScreenshot(page, `before_retry_${attempt + 1}`);
                 await page.waitForTimeout(1500);
             }
         }
@@ -331,29 +778,138 @@ export class ShareAutomationService {
             this.logger.error(`❌ data-testid disponíveis: ${JSON.stringify(allTestIds)}`);
         } catch { }
 
-        throw new Error('Modal de compartilhamento não abriu após 3 tentativas');
+        // Screenshot final do erro
+        await this.captureDebugScreenshot(page, 'final_error_state');
+
+        throw new Error(`Modal de compartilhamento não abriu após 3 tentativas. Último erro: ${lastError?.message || 'Desconhecido'}`);
     }
 
     public async addUsersToShare(frameLocator: any, page: Page, users: { email: string; role: string }[], projectUrl?: string): Promise<void> {
-        const inputSelectors = ['input[role="combobox"]', 'input[aria-autocomplete="list"]', 'input[type="text"]'];
-        let emailInput = null as any;
-        for (const sel of inputSelectors) {
-            try {
-                const inp = frameLocator.locator(sel).first();
-                if ((await inp.count()) > 0 && await inp.isVisible()) { emailInput = inp; break; }
-            } catch { }
+        // Screenshot ANTES de procurar o campo
+        await this.captureDebugScreenshot(page, 'before_search_email_field');
+        
+        // Log COMPLETO da estrutura do modal
+        this.logger.log('🔍 ANALISANDO ESTRUTURA COMPLETA DO MODAL...');
+        try {
+            // Busca TODOS os elementos interativos no frame
+            const allInteractive = await frameLocator
+                .locator('input, textarea, button, [contenteditable="true"], [role="textbox"], [role="combobox"], [role="button"], [data-testid], [aria-label]')
+                .evaluateAll((els: Element[]) =>
+                    els.slice(0, 50).map((el: Element) => {
+                        const rect = el.getBoundingClientRect();
+                        return {
+                            tag: el.tagName,
+                            type: (el as HTMLInputElement).type || null,
+                            role: el.getAttribute('role'),
+                            'aria-label': el.getAttribute('aria-label'),
+                            'data-testid': el.getAttribute('data-testid'),
+                            placeholder: (el as HTMLInputElement).placeholder || null,
+                            contenteditable: el.getAttribute('contenteditable'),
+                            visible: rect.width > 0 && rect.height > 0,
+                            className: el.className?.substring(0, 50) || null,
+                        };
+                    })
+                );
+            this.logger.log(`🔍 ELEMENTOS INTERATIVOS NO MODAL (frame): ${JSON.stringify(allInteractive, null, 2)}`);
+        } catch (err) {
+            this.logger.warn(`⚠️ Erro ao analisar elementos: ${(err as Error)?.message}`);
         }
-        if (!emailInput) throw new Error('Campo de email não encontrado');
+        
+        const inputSelectors = [
+            'input[role="combobox"][aria-autocomplete="list"]',
+            'input[aria-controls*="token"]',
+            'input[data-testid*="token"]',
+            'input[type="text"]',
+            'input[placeholder*="Add"]',
+            '[data-testid*="token"] input',
+            'div[contenteditable="true"][role="textbox"]',
+            'div[contenteditable="true"][aria-autocomplete="list"]',
+            '[data-testid*="token"] div[contenteditable="true"]',
+            '[role="combobox"][contenteditable="true"]',
+            '[role="textbox"][contenteditable="true"]',
+        ];
+
+        const scopes: Array<{
+            name: 'frame' | 'page';
+            locate: (selector: string) => ReturnType<Page['locator']>;
+        }> = [];
+
+        if (frameLocator?.locator) {
+            scopes.push({
+                name: 'frame',
+                locate: (selector: string) => frameLocator.locator(selector),
+            });
+        }
+
+        scopes.push({
+            name: 'page',
+            locate: (selector: string) => page.locator(selector),
+        });
+
+        let emailInput: any = null;
+        let inputIsContentEditable = false;
+        let matchedSelector: string | null = null;
+        let matchedScope: 'frame' | 'page' | null = null;
+
+        for (const scope of scopes) {
+            for (const sel of inputSelectors) {
+                try {
+                    const candidate = scope.locate(sel).first();
+                    if ((await candidate.count()) === 0) continue;
+                    const isVisible = await candidate.isVisible().catch(() => false);
+                    if (!isVisible) continue;
+
+                    inputIsContentEditable = await candidate.evaluate((el: Element) => {
+                        const element = el as HTMLElement;
+                        return element.hasAttribute('contenteditable') && element.getAttribute('contenteditable') !== 'false';
+                    }).catch(() => false);
+
+                    emailInput = candidate;
+                    matchedSelector = sel;
+                    matchedScope = scope.name;
+                    this.logger.log(`✅ Campo de compartilhamento localizado (${scope.name}) via seletor: ${sel}`);
+                    break;
+                } catch (err) {
+                    this.logger.debug(`Falha ao testar seletor ${sel} (${scope.name}): ${(err as Error)?.message}`);
+                }
+            }
+            if (emailInput) break;
+        }
+
+        if (!emailInput) {
+            for (const scope of scopes) {
+                try {
+                    const availableInputs = await scope
+                        .locate('input, textarea, [contenteditable="true"], [role="textbox"], [role="combobox"]')
+                        .evaluateAll((els: Element[]) =>
+                            els.slice(0, 15).map((el: Element) => ({
+                                tag: el.tagName,
+                                attrs: Array.from(el.attributes).reduce((acc: Record<string, string>, attr) => {
+                                    acc[attr.name] = attr.value;
+                                    return acc;
+                                }, {}),
+                            }))
+                        );
+                    if (availableInputs.length > 0) {
+                        this.logger.warn(`⚠️ Inputs disponíveis no modal (${scope.name}): ${JSON.stringify(availableInputs)}`);
+                    }
+                } catch { }
+            }
+            throw new Error('Campo de email não encontrado');
+        }
+
+        this.logger.log(`✅ Campo de email encontrado! (${matchedScope})`);
+
+        const selectAllShortcut = process.platform === 'darwin' ? 'Meta+A' : 'Control+A';
 
         for (let i = 0; i < users.length; i++) {
             const user = users[i];
-            // Extrair nome da pessoa do email (ex: giovanna.deparis@dell.com -> Giovanna Deparis)
-            const userName = user.email.split('@')[0]
+            const userName = user.email
+                .split('@')[0]
                 .split('.')
                 .map(part => part.charAt(0).toUpperCase() + part.slice(1))
                 .join(' ');
-            
-            // Emitir progresso: compartilhando com pessoa X de Y
+
             if (projectUrl) {
                 this.progress.publish({
                     projectUrl,
@@ -363,20 +919,67 @@ export class ShareAutomationService {
                     subStepsTotal: users.length,
                 });
             }
-            
+
             try {
-                await emailInput.click();
-                await emailInput.fill('');
-                await emailInput.fill(user.email);
+                this.logger.log(`👤 Adicionando usuário ${i + 1}/${users.length}: ${user.email}`);
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_01_before_click_field`);
+                
+                await emailInput.click({ force: true });
+                await page.waitForTimeout(150);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_02_after_click_field`);
+
+                if (inputIsContentEditable) {
+                    await page.keyboard.press(selectAllShortcut);
+                    await page.keyboard.press('Delete');
+                } else {
+                    await emailInput.press(selectAllShortcut).catch(async () => {
+                        await page.keyboard.press(selectAllShortcut);
+                    });
+                    await emailInput.press('Delete').catch(async () => {
+                        await page.keyboard.press('Delete');
+                    });
+                }
+
+                await page.waitForTimeout(50);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_03_after_clear_field`);
+
+                if (inputIsContentEditable) {
+                    await page.keyboard.type(user.email, { delay: 20 });
+                } else {
+                    await emailInput.type(user.email, { delay: 20 });
+                }
+
                 await page.waitForTimeout(600);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_04_after_type_email`);
+
                 const option = frameLocator.locator(`[role="option"]:has-text("${user.email}")`).first();
-                if ((await option.count()) > 0) { await option.click(); }
-                else { await emailInput.press('Enter'); }
+                if ((await option.count()) > 0) {
+                    this.logger.log(`✅ Opção encontrada no dropdown para ${user.email}`);
+                    await this.captureDebugScreenshot(page, `add_user_${i + 1}_05_before_click_option`);
+                    await option.click({ force: true });
+                } else if (inputIsContentEditable) {
+                    this.logger.log(`⚠️ Opção não encontrada, usando Enter`);
+                    await page.keyboard.press('Enter');
+                } else {
+                    this.logger.log(`⚠️ Opção não encontrada, usando Enter`);
+                    await emailInput.press('Enter');
+                }
+                
                 await page.waitForTimeout(250);
-                const desiredRole = (user.role === 'VIEW' ? 'VIEW' : 'MANAGE');
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_06_after_select_option`);
+                
+                const desiredRole = user.role === 'VIEW' ? 'VIEW' : 'MANAGE';
+                this.logger.log(`🔐 Definindo permissão ${desiredRole} para ${user.email}`);
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_07_before_set_permission`);
+                
                 await this.setUserPermission(frameLocator, page, user.email, desiredRole);
+                
+                await this.captureDebugScreenshot(page, `add_user_${i + 1}_08_after_set_permission`);
             } catch (e: any) {
-                this.logger.warn(`Não conseguiu adicionar usuário ${user.email}: ${e?.message}`);
+                this.logger.warn(`Não conseguiu adicionar usuário ${user.email} (scope=${matchedScope}, input=${matchedSelector}, contentEditable=${inputIsContentEditable}): ${e?.message}`);
             }
         }
     }
@@ -522,6 +1125,12 @@ export class ShareAutomationService {
         selectedUser: TeamKey;
         headless?: boolean;
     }): Promise<{ results: ShareResult[]; summary: { total: number; success: number; errors: number } }> {
+        // DEBUG MODE: Desativado por padrão
+        // Para ativar debug com screenshots, descomente a linha abaixo:
+        // this.enableDebugMode(true);
+        // this.screenshotCounter = 0;
+        // this.logger.log('📸 DEBUG MODE ATIVADO - Screenshots serão capturados');
+        
         const { page, frame, selections, selectedUser } = params;
         const results: ShareResult[] = [];
         let success = 0; let errors = 0;
@@ -536,7 +1145,7 @@ export class ShareAutomationService {
                     if (folder && folder !== 'root') {
                         this.logger.log(`📁 Navegando para pasta: ${folder}`);
                         await this.navigateToFolder(frame, page, folder);
-                        await page.waitForTimeout(800); // Espera adicional após navegação
+                        await page.waitForTimeout(800);
                     }
 
                     // Seleciona documento
@@ -570,10 +1179,16 @@ export class ShareAutomationService {
                         // Tenta fechar qualquer modal que possa estar aberto
                         try {
                             await page.keyboard.press('Escape');
+                            await page.waitForTimeout(500);
+                            await page.keyboard.press('Escape'); // Duas vezes para garantir
                             await page.waitForTimeout(300);
                         } catch { }
 
-
+                        // Força deselecionar o documento clicando fora
+                        try {
+                            await page.locator('body').click({ position: { x: 10, y: 10 } });
+                            await page.waitForTimeout(300);
+                        } catch { }
 
                         await page.waitForTimeout(1500); // Aumentado o delay entre tentativas
                     }
