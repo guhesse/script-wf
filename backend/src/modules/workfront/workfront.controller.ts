@@ -307,6 +307,204 @@ export class WorkfrontController {
     }
   }
 
+  @Post('debug-share-modal')
+  @ApiOperation({ 
+    summary: '[DEBUG] Testa múltiplas estratégias de abertura do modal de compartilhamento',
+    description: 'Endpoint de debug que testa diferentes abordagens para abrir o modal com screenshots e logs detalhados. Recarrega a página entre cada estratégia.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Relatório de debug gerado com sucesso',
+  })
+  async debugShareModal(
+    @Body() debugData: {
+      projectUrl: string;
+      folderName?: string;
+      fileName: string;
+      headless?: boolean;
+    }
+  ) {
+    try {
+      this.logger.log('🐛 Iniciando debug intensivo do modal de compartilhamento...');
+      
+      const result = await this.shareAutomationService.debugShareModalStrategies(
+        debugData.projectUrl,
+        debugData.folderName || 'root',
+        debugData.fileName,
+        debugData.headless !== undefined ? debugData.headless : true, // Debug sempre visível por padrão
+      );
+
+      return {
+        success: true,
+        message: 'Debug concluído',
+        ...result,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logger.error(`❌ Erro durante debug: ${error.message}`);
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('debug/screenshots')
+  @ApiOperation({ summary: '[DEBUG] Listar screenshots de debug disponíveis' })
+  @ApiResponse({ status: 200, description: 'Lista de screenshots com metadata' })
+  async listDebugScreenshots() {
+    try {
+      const debugDir = path.join(process.cwd(), 'automation_debug', 'share_modal');
+      
+      try {
+        await fs.access(debugDir);
+      } catch {
+        return {
+          success: true,
+          screenshots: [],
+          message: 'Nenhum screenshot encontrado. Execute /api/debug-share-modal primeiro.',
+        };
+      }
+
+      const files = await fs.readdir(debugDir);
+      const screenshots = await Promise.all(
+        files
+          .filter(f => f.endsWith('.png'))
+          .map(async (filename) => {
+            const filepath = path.join(debugDir, filename);
+            const stats = await fs.stat(filepath);
+            
+            // Parse filename: 001_2025-11-07T14-30-45-123Z_context.png
+            const match = filename.match(/^(\d+)_(.+?)_(.+)\.png$/);
+            const sequence = match ? match[1] : '000';
+            const timestamp = match ? match[2] : '';
+            const context = match ? match[3] : filename.replace('.png', '');
+
+            return {
+              filename,
+              sequence: parseInt(sequence),
+              timestamp: timestamp.replace(/T|Z/g, ' ').replace(/-/g, ':'),
+              context: context.replace(/_/g, ' '),
+              size: stats.size,
+              created: stats.ctime,
+              url: `/api/debug/screenshots/${filename}`,
+            };
+          })
+      );
+
+      screenshots.sort((a, b) => b.sequence - a.sequence);
+
+      return {
+        success: true,
+        total: screenshots.length,
+        screenshots,
+        directory: debugDir,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('debug/screenshots')
+  @ApiOperation({ summary: '[DEBUG] Limpar todos os screenshots' })
+  @ApiResponse({ status: 200, description: 'Screenshots removidos com sucesso' })
+  async clearDebugScreenshots() {
+    try {
+      const debugDir = path.join(process.cwd(), 'automation_debug', 'share_modal');
+      
+      try {
+        const files = await fs.readdir(debugDir);
+        const deletePromises = files
+          .filter(f => f.endsWith('.png'))
+          .map(f => fs.unlink(path.join(debugDir, f)));
+        
+        await Promise.all(deletePromises);
+        
+        return {
+          success: true,
+          message: `${deletePromises.length} screenshot(s) removido(s)`,
+          deleted: deletePromises.length,
+        };
+      } catch {
+        return {
+          success: true,
+          message: 'Nenhum screenshot para remover',
+          deleted: 0,
+        };
+      }
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('debug/screenshots/:filename')
+  @ApiOperation({ summary: '[DEBUG] Baixar screenshot específico' })
+  @ApiParam({ name: 'filename', description: 'Nome do arquivo de screenshot' })
+  @ApiResponse({ status: 200, description: 'Imagem PNG' })
+  async getDebugScreenshot(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    try {
+      // Sanitiza filename para evitar path traversal
+      const safeName = path.basename(filename);
+      if (!safeName.endsWith('.png')) {
+        throw new HttpException('Arquivo inválido', HttpStatus.BAD_REQUEST);
+      }
+
+      const filepath = path.join(
+        process.cwd(),
+        'automation_debug',
+        'share_modal',
+        safeName,
+      );
+
+      try {
+        await fs.access(filepath);
+      } catch {
+        throw new HttpException('Screenshot não encontrado', HttpStatus.NOT_FOUND);
+      }
+
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.sendFile(filepath);
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('debug/viewer')
+  @ApiOperation({ summary: '[DEBUG] Interface web para visualizar screenshots' })
+  @ApiResponse({ status: 200, description: 'HTML viewer' })
+  async debugScreenshotViewer(@Res() res: Response) {
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Debug Screenshots</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:20px}.header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:12px;margin-bottom:30px;box-shadow:0 10px 30px rgba(0,0,0,.3)}h1{font-size:32px;margin-bottom:10px;color:#fff}.subtitle{color:rgba(255,255,255,.9);font-size:16px}.controls{background:#1a1a1a;padding:20px;border-radius:8px;margin-bottom:20px;display:flex;gap:15px;align-items:center;flex-wrap:wrap}button{background:#667eea;color:#fff;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s}button:hover{background:#5568d3;transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,.4)}button:disabled{background:#333;cursor:not-allowed;transform:none}.btn-download{background:#10b981}button.btn-download:hover{background:#059669}.btn-clear{background:#ef4444}button.btn-clear:hover{background:#dc2626}.stats{display:flex;gap:20px;margin-left:auto;font-size:14px;color:#888}.stat-item{display:flex;align-items:center;gap:8px}.stat-value{color:#667eea;font-weight:600}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:20px}.screenshot-card{background:#1a1a1a;border-radius:12px;overflow:hidden;transition:transform .2s,box-shadow .2s;border:1px solid #333}.screenshot-card:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,0,0,.5);border-color:#667eea}.screenshot-img{width:100%;height:250px;object-fit:cover;cursor:pointer;background:#0a0a0a}.screenshot-info{padding:16px}.screenshot-sequence{display:inline-block;background:#667eea;color:#fff;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:8px}.screenshot-context{font-size:14px;color:#e0e0e0;margin-bottom:8px;font-weight:500}.screenshot-timestamp{font-size:12px;color:#888}.screenshot-size{font-size:12px;color:#666;margin-top:4px}.loading{text-align:center;padding:60px;font-size:18px;color:#888}.spinner{border:3px solid #333;border-top:3px solid #667eea;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}.lightbox{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.95);z-index:1000;align-items:center;justify-content:center;padding:20px}.lightbox.active{display:flex}.lightbox-img{max-width:95%;max-height:95%;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.8)}.lightbox-close{position:absolute;top:20px;right:20px;font-size:40px;color:#fff;cursor:pointer;background:rgba(0,0,0,.5);width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}.lightbox-close:hover{background:rgba(102,126,234,.8);transform:rotate(90deg)}.empty-state{text-align:center;padding:80px 20px;color:#666}.empty-state-icon{font-size:64px;margin-bottom:20px}.empty-state-title{font-size:24px;margin-bottom:10px;color:#888}.empty-state-text{font-size:16px;line-height:1.6}</style></head><body><div class="header"><h1>🐛 Debug Screenshots</h1><div class="subtitle">Visualização de screenshots de automação do Workfront</div></div><div class="controls"><button onclick="loadScreenshots()">🔄 Recarregar</button><button class="btn-download" onclick="downloadAllImages()">📥 Baixar Todas</button><button class="btn-clear" onclick="clearAllScreenshots()">🗑️ Limpar Tudo</button><div class="stats"><div class="stat-item"><span>Total:</span><span class="stat-value"id="totalCount">0</span></div><div class="stat-item"><span>Última atualização:</span><span class="stat-value"id="lastUpdate">-</span></div></div></div><div id="gallery"class="gallery"></div><div class="lightbox"id="lightbox"onclick="closeLightbox()"><div class="lightbox-close">×</div><img class="lightbox-img"id="lightboxImg"onclick="event.stopPropagation()"></div><script>let currentScreenshots=[];async function loadScreenshots(){const gallery=document.getElementById('gallery');gallery.innerHTML='<div class="loading"><div class="spinner"></div>Carregando screenshots...</div>';try{const response=await fetch('/api/debug/screenshots');const data=await response.json();currentScreenshots=data.screenshots||[];document.getElementById('totalCount').textContent=data.total||0;document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('pt-BR');if(!currentScreenshots||currentScreenshots.length===0){gallery.innerHTML=\`<div class="empty-state"><div class="empty-state-icon">📸</div><div class="empty-state-title">Nenhum screenshot encontrado</div><div class="empty-state-text">Execute o endpoint <code>/api/debug-share-modal</code> para gerar screenshots de debug.</div></div>\`;return}gallery.innerHTML=currentScreenshots.map(s=>\`<div class="screenshot-card"><img class="screenshot-img"src="\${s.url}"alt="\${s.context}"onclick="openLightbox('\${s.url}')"loading="lazy"><div class="screenshot-info"><span class="screenshot-sequence">#\${s.sequence}</span><div class="screenshot-context">\${s.context}</div><div class="screenshot-timestamp">⏰ \${s.timestamp}</div><div class="screenshot-size">📦 \${formatBytes(s.size)}</div></div></div>\`).join('')}catch(error){gallery.innerHTML=\`<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Erro ao carregar screenshots</div><div class="empty-state-text">\${error.message}</div></div>\`}}async function downloadAllImages(){if(!currentScreenshots||currentScreenshots.length===0){alert('Nenhum screenshot para baixar!');return}const btn=event.target;btn.disabled=true;btn.textContent='⏳ Baixando...';try{for(let i=0;i<currentScreenshots.length;i++){const s=currentScreenshots[i];btn.textContent=\`⏳ Baixando \${i+1}/\${currentScreenshots.length}...\`;const response=await fetch(s.url);const blob=await response.blob();const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=s.filename;document.body.appendChild(link);link.click();document.body.removeChild(link);URL.revokeObjectURL(link.href);await new Promise(r=>setTimeout(r,100))}btn.textContent='✅ Download Concluído!';setTimeout(()=>{btn.disabled=false;btn.textContent='📥 Baixar Todas'},2000)}catch(error){alert('Erro ao baixar: '+error.message);btn.disabled=false;btn.textContent='📥 Baixar Todas'}}async function clearAllScreenshots(){if(!confirm('Tem certeza que deseja limpar todos os screenshots?\\n\\nEsta ação não pode ser desfeita.')){return}const btn=event.target;btn.disabled=true;btn.textContent='⏳ Limpando...';try{const response=await fetch('/api/debug/screenshots',{method:'DELETE'});const data=await response.json();if(data.success){btn.textContent=\`✅ \${data.deleted} removido(s)!\`;setTimeout(()=>{btn.disabled=false;btn.textContent='🗑️ Limpar Tudo';loadScreenshots()},2000)}else{throw new Error(data.message)}}catch(error){alert('Erro ao limpar: '+error.message);btn.disabled=false;btn.textContent='🗑️ Limpar Tudo'}}function formatBytes(bytes){if(bytes===0)return'0 Bytes';const k=1024;const sizes=['Bytes','KB','MB'];const i=Math.floor(Math.log(bytes)/Math.log(k));return Math.round(bytes/Math.pow(k,i)*100)/100+' '+sizes[i]}function openLightbox(url){document.getElementById('lightboxImg').src=url;document.getElementById('lightbox').classList.add('active')}function closeLightbox(){document.getElementById('lightbox').classList.remove('active')}setInterval(loadScreenshots,30000);loadScreenshots();document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox()})</script></body></html>`;
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  }
+
   @Post('share-and-comment')
   @ApiOperation({ summary: 'Executar fluxo combinado: compartilhar e comentar arquivos selecionados' })
   async shareAndComment(@Body() body: any) {
