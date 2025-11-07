@@ -14,7 +14,11 @@ import { MastersModule } from './modules/masters/masters.module';
     // Configuration module
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: [
+        join(__dirname, '..', '..', '..', '.env'), // Root project .env
+        join(__dirname, '..', '..', '.env'),       // Backend .env (fallback)
+        '.env',                                     // Current dir (fallback)
+      ],
     }),
 
     // Serve static files (frontend)

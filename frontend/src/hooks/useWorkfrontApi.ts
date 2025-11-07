@@ -15,13 +15,30 @@ import type {
 export const useWorkfrontApi = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const getToken = useCallback((): string => {
-    try { return localStorage.getItem('wf_access_token') || ''; } catch { return ''; }
-  }, []);
-  const authHeaders = useCallback((): Record<string, string> => {
+  
+  // Não usar useCallback aqui - precisa ler localStorage fresh em cada chamada
+  const getToken = (): string => {
+    try { 
+      const appToken = localStorage.getItem('app_jwt_token');
+      const wfToken = localStorage.getItem('wf_access_token');
+      const token = appToken || wfToken || '';
+      
+      if (!token) {
+        console.warn('⚠️ Nenhum token encontrado no localStorage');
+      } else {
+        console.log('✅ Token encontrado:', token.substring(0, 20) + '...');
+      }
+      
+      return token;
+    } catch { 
+      return ''; 
+    }
+  };
+  
+  const authHeaders = (): Record<string, string> => {
     const t = getToken();
     return t ? { Authorization: `Bearer ${t}` } : {};
-  }, [getToken]);
+  };
 
   const checkLoginStatus = useCallback(async (): Promise<LoginStatusResponse> => {
     try {

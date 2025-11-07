@@ -19,7 +19,6 @@ import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import MastersGallery from './MastersGallery';
 import { useAppAuth } from '@/hooks/useAppAuth';
 import CommentsGenerator from './CommentsGenerator';
-import { KanbanBoard } from './KanbanBoard';
 
 interface MainApplicationProps {
   onLogout: () => void;
@@ -33,7 +32,7 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
     try { return localStorage.getItem('wf_projectUrl') || ''; } catch { return ''; }
   });
   const [selectedUser, setSelectedUser] = useState<'carol' | 'giovana' | 'test'>(() => {
-    try { 
+    try {
       const saved = localStorage.getItem('wf_selectedUser');
       return (saved === 'carol' || saved === 'giovana' || saved === 'test') ? saved : 'carol';
     } catch { return 'carol'; }
@@ -64,9 +63,9 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
   }, [selectedUser]);
 
   useEffect(() => {
-    try { 
+    try {
       if (currentProject) {
-        localStorage.setItem('wf_currentProject', JSON.stringify(currentProject)); 
+        localStorage.setItem('wf_currentProject', JSON.stringify(currentProject));
       } else {
         localStorage.removeItem('wf_currentProject');
       }
@@ -267,16 +266,6 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
                 <MessageSquare className="h-5 w-5" />
                 <span className="font-medium">Comentários Workfront</span>
               </button>
-              <button
-                onClick={() => setActiveSection('kanban')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'kanban'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-              >
-                <LayoutDashboard className="h-5 w-5" />
-                <span className="font-medium">Kanban Board</span>
-              </button>
             </nav>
           </div>
 
@@ -318,10 +307,6 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
               <CommentsGenerator />
             )}
 
-            {/* Kanban Board Section */}
-            {activeSection === 'kanban' && (
-              <KanbanBoard />
-            )}
           </div>
         </div>
       </div>

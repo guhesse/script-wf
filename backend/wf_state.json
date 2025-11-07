@@ -435,30 +435,6 @@
   ],
   "uploadJobs": [
     {
-      "id": "a8c7313f-1e7b-4d1b-9192-4d775582bf6b",
-      "userId": "cmhntoo280000lz10o6rr2j5b",
-      "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/6900b47f0028a53be9196975f224282e/documents",
-      "staged": {
-        "assetZip": "temp\\staging\\2025-11-06\\9c5c2b4a\\2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX.zip",
-        "finalMaterials": [
-          "temp\\staging\\2025-11-06\\3b87ca79\\2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_1x1_1.mp4",
-          "temp\\staging\\2025-11-06\\366a48ea\\2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_4x5_1.mp4",
-          "temp\\staging\\2025-11-06\\9fee7f8d\\2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_9x16_1.mp4",
-          "temp\\staging\\2025-11-06\\38ee5e6a\\2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_R2.pdf"
-        ]
-      },
-      "status": "staged",
-      "createdAt": 1762457589082,
-      "updatedAt": 1762457589082,
-      "fileNames": [
-        "2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX.zip",
-        "2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_1x1_1.mp4",
-        "2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_4x5_1.mp4",
-        "2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_9x16_1.mp4",
-        "2601G0105_0076_6149770_br_csg_con_fy26q4w1_smv_jscon_wtn-txl_Black-Friday-Wave-1_XXXxXXX_R2.pdf"
-      ]
-    },
-    {
       "id": "08c9d2ec-9b01-402e-8182-5a3f561f2af3",
       "userId": "cmhntoo280000lz10o6rr2j5b",
       "projectUrl": "https://experience.adobe.com/#/@dell/so:dell-Production/workfront/project/6900b47f0028a53be9196975f224282e/documents",
