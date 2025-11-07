@@ -84,15 +84,15 @@ const assetTypeMapping: Record<string, AssetType> = {
 };
 
 const frenteMapping: Record<string, WorkfrontFrente> = {
-  'OOH': WorkfrontFrente.OTHER,
-  'Social': WorkfrontFrente.SOCIAL,
-  'Email': WorkfrontFrente.EMAIL,
-  'E-mail': WorkfrontFrente.EMAIL,
-  'Banner': WorkfrontFrente.DISPLAY,
-  'Display': WorkfrontFrente.DISPLAY,
-  'Landing Page': WorkfrontFrente.LANDING_PAGE,
-  'Print': WorkfrontFrente.PRINT,
-};const fyMapping: Record<string, FiscalYear> = {
+    'OOH': WorkfrontFrente.OTHER,
+    'Social': WorkfrontFrente.SOCIAL,
+    'Email': WorkfrontFrente.EMAIL,
+    'E-mail': WorkfrontFrente.EMAIL,
+    'Banner': WorkfrontFrente.DISPLAY,
+    'Display': WorkfrontFrente.DISPLAY,
+    'Landing Page': WorkfrontFrente.LANDING_PAGE,
+    'Print': WorkfrontFrente.PRINT,
+}; const fyMapping: Record<string, FiscalYear> = {
     'FY25': FiscalYear.FY25,
     'FY26': FiscalYear.FY26,
     'FY27': FiscalYear.FY27,

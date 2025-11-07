@@ -45,7 +45,53 @@ else
     exit 1
 fi
 
-echo "🛑 Parando containers atuais..."
+echo "� Verificando arquivo .env.production..."
+if [ ! -f .env.production ]; then
+    echo "❌ Erro: Arquivo .env.production não encontrado!"
+    exit 1
+fi
+
+if grep -q "db:5432" .env.production; then
+    echo "✅ DATABASE_URL configurada corretamente (db:5432)"
+else
+    echo "⚠️  Aviso: DATABASE_URL pode não estar configurada corretamente"
+fi
+
+echo "🔧 Verificando/criando rede Docker..."
+if ! docker network ls | grep -q "script-wf_default"; then
+    docker network create script-wf_default
+    echo "✅ Rede script-wf_default criada"
+else
+    echo "✅ Rede script-wf_default já existe"
+fi
+
+echo "🗄️  Verificando banco de dados..."
+if $DC -f docker-compose.multi-db.yml ps | grep -q "db.*Up"; then
+    echo "✅ Banco de dados está rodando"
+else
+    echo "🚀 Iniciando banco de dados..."
+    $DC -f docker-compose.multi-db.yml up -d
+    echo "⏳ Aguardando banco inicializar (15s)..."
+    sleep 15
+fi
+
+echo "🔍 Verificando banco de produção..."
+DB_CONTAINER=$($DC -f docker-compose.multi-db.yml ps -q db)
+PROD_DB_EXISTS=$(docker exec "$DB_CONTAINER" psql -U scriptwfdev -tAc "SELECT 1 FROM pg_database WHERE datname='scriptwf_prod'" 2>/dev/null || echo "0")
+
+if [ "$PROD_DB_EXISTS" != "1" ]; then
+    echo "📦 Criando banco de produção..."
+    docker exec -i "$DB_CONTAINER" psql -U scriptwfdev -d scriptwf_dev <<-EOSQL
+        CREATE USER scriptwf_prod WITH PASSWORD 'Prod2024ScriptWF9x7K';
+        CREATE DATABASE scriptwf_prod OWNER scriptwf_prod;
+        GRANT ALL PRIVILEGES ON DATABASE scriptwf_prod TO scriptwf_prod;
+EOSQL
+    echo "✅ Banco de produção criado"
+else
+    echo "✅ Banco de produção já existe"
+fi
+
+echo "�🛑 Parando containers atuais..."
 $DC -f docker-compose.prod.yml down || true
 
 echo "🔨 Fazendo rebuild das imagens (no-cache)..."
