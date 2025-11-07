@@ -10,16 +10,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env.production
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      # Produção usa database separado no mesmo container DB
-      DATABASE_URL: ${DATABASE_URL}
-      JWT_SECRET: ${JWT_SECRET}
-      BUNNY_API_KEY: ${BUNNY_API_KEY}
-      BUNNY_STORAGE_ZONE: ${BUNNY_STORAGE_ZONE}
-      BUNNY_CDN_BASE_URL: ${BUNNY_CDN_BASE_URL}
-      BUNNY_STORAGE_HOST: ${BUNNY_STORAGE_HOST}
     expose:
       - "3000"
 
