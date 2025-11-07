@@ -8,7 +8,6 @@ import { WorkfrontModule } from './modules/workfront/workfront.module';
 import { BriefingModule } from './modules/briefing/briefing.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { MastersModule } from './modules/masters/masters.module';
-import { KanbanModule } from './modules/kanban/kanban.module';
 
 @Module({
   imports: [
@@ -35,7 +34,6 @@ import { KanbanModule } from './modules/kanban/kanban.module';
     BriefingModule,
     PdfModule,
     MastersModule,
-    KanbanModule,
   ],
   controllers: [],
   providers: [],

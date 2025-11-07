@@ -174,65 +174,6 @@ model TempUpload {
   @@map("temp_uploads")
 }
 
-/// Cards do quadro Kanban baseado no CSV de jobs
-model KanbanCard {
-  id                String          @id @default(cuid())
-  bi                Boolean         @default(true)
-  anotacoes         String?
-  start             DateTime?
-  realDeliv         DateTime?
-  prevDeliv         DateTime?
-  dsid              String?
-  atividade         String
-  status            KanbanStatus    @default(BACKLOG)
-  studio            String?
-  vf                VFType?         @default(NO_VF)
-  tipoAsset         AssetType       @default(OTHER)
-  numeroAssets      Int             @default(1)
-  cliente           String?
-  brand             String?
-  week              String?
-  quarter           String?
-  frente            WorkfrontFrente @default(SOCIAL)
-  fy                FiscalYear?
-  entregaR1VML      DateTime?
-  feedbackR1Dell    DateTime?
-  entregaR2VML      DateTime?
-  feedbackR2Dell    DateTime?
-  entregaR3VML      DateTime?
-  feedbackR3Dell    DateTime?
-  entregaR4VML      DateTime?
-  feedbackR4Dell    DateTime?
-  diasStartR1VML    Int?
-  diasR1VMLR1Dell   Int?
-  diasR1DellR2VML   Int?
-  diasR2VMLR2Dell   Int?
-  diasR2DellR3VML   Int?
-  diasR3VMLR3Dell   Int?
-  diasR3DellR4VML   Int?
-  diasR4VMLR4Dell   Int?
-  diasNaVMLPercent  Float?
-  diasNaDellPercent Float?
-  position          Int             @default(0)
-  columnId          String?
-  createdBy         String?
-  updatedBy         String?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  round             Int?
-
-  @@index([status])
-  @@index([week])
-  @@index([quarter])
-  @@index([fy])
-  @@index([cliente])
-  @@index([brand])
-  @@index([frente])
-  @@index([columnId])
-  @@index([createdAt])
-  @@map("kanban_cards")
-}
-
 /// Perfis / papéis de acesso do sistema
 enum Role {
   ADMIN
@@ -284,53 +225,4 @@ enum MasterEditableType {
   TEMPLATE
   DOCUMENT
   OTHER
-}
-
-/// Status do card no Kanban
-enum KanbanStatus {
-  BACKLOG
-  FILES_TO_STUDIO
-  REVISAO_TEXTO
-  REVIEW_DELL
-  FINAL_MATERIAL
-  ASSET_RELEASE
-  COMPLETED
-}
-
-/// Tipo de Visual Framework
-enum VFType {
-  NO_VF
-  MICROSOFT_JMA_CS
-  OTHER
-}
-
-/// Tipo de Asset
-enum AssetType {
-  ESTATICO
-  VIDEO
-  WIREFRAME
-  GIF
-  STORY
-  MOLDURA
-  AW_STORY
-  HTML
-  OTHER
-}
-
-/// Frente de trabalho
-enum WorkfrontFrente {
-  SOCIAL
-  DISPLAY
-  EMAIL
-  LANDING_PAGE
-  PRINT
-  OTHER
-}
-
-/// Ano fiscal
-enum FiscalYear {
-  FY25
-  FY26
-  FY27
-  FY28
 }
