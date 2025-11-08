@@ -9,7 +9,7 @@ import {
   FileText,
   GalleryHorizontal,
   MessageSquare,
-  LayoutDashboard
+  FileSearch
 } from 'lucide-react';
 import { ProjectHistory } from './ProjectHistory';
 import UploadSection from './UploadSection';
@@ -19,6 +19,7 @@ import { useWorkfrontApi } from '@/hooks/useWorkfrontApi';
 import MastersGallery from './MastersGallery';
 import { useAppAuth } from '@/hooks/useAppAuth';
 import CommentsGenerator from './CommentsGenerator';
+import OverviewExtractor from './OverviewExtractor';
 
 interface MainApplicationProps {
   onLogout: () => void;
@@ -43,10 +44,10 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }
   });
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters' | 'comments' | 'kanban'>(() => {
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters' | 'comments' | 'overview' | 'kanban'>(() => {
     try {
       const saved = localStorage.getItem('wf_activeSection');
-      return (saved === 'upload' || saved === 'extract' || saved === 'bulk-download' || saved === 'briefing-content' || saved === 'history' || saved === 'masters' || saved === 'comments' || saved === 'kanban') ? saved : 'upload';
+      return (saved === 'upload' || saved === 'extract' || saved === 'bulk-download' || saved === 'briefing-content' || saved === 'history' || saved === 'masters' || saved === 'comments' || saved === 'overview' || saved === 'kanban') ? saved : 'upload';
     } catch { return 'upload'; }
   });
 
@@ -266,6 +267,16 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
                 <MessageSquare className="h-5 w-5" />
                 <span className="font-medium">Comentários Workfront</span>
               </button>
+              <button
+                onClick={() => setActiveSection('overview')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'overview'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+              >
+                <FileSearch className="h-5 w-5" />
+                <span className="font-medium">Extrator de Overview</span>
+              </button>
             </nav>
           </div>
 
@@ -305,6 +316,11 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
             {/* Comments Generator Section */}
             {activeSection === 'comments' && (
               <CommentsGenerator />
+            )}
+
+            {/* Overview Extractor Section */}
+            {activeSection === 'overview' && (
+              <OverviewExtractor />
             )}
 
           </div>
