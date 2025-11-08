@@ -172,7 +172,30 @@ const OverviewExtractor: React.FC = () => {
         if (batchResults && batchResults.results) {
             const rows = batchResults.results
                 .filter(r => r.success && r.data?.forSpreadsheet)
-                .map(r => Object.values(r.data!.forSpreadsheet!).join('\t'));
+                .map(r => {
+                    const data = r.data!.forSpreadsheet!;
+                    const values = Object.values(data);
+                    
+                    // Converte URL de /overview para /documents para o link
+                    const documentsUrl = r.url.replace('/overview', '/documents');
+                    
+                    // Cria array de valores, adicionando hyperlinks no DSID e ATIVIDADE
+                    return Object.keys(data).map((key, index) => {
+                        const value = values[index] as string;
+                        
+                        // Adiciona hyperlink no DSID
+                        if (key === 'DSID' && value) {
+                            return `=HYPERLINK("${documentsUrl}", "${value}")`;
+                        }
+                        
+                        // Adiciona hyperlink na ATIVIDADE
+                        if (key === 'ATIVIDADE' && value) {
+                            return `=HYPERLINK("${documentsUrl}", "${value}")`;
+                        }
+                        
+                        return value;
+                    }).join('\t');
+                });
 
             navigator.clipboard.writeText(rows.join('\n'));
             setCopied(true);
@@ -185,9 +208,33 @@ const OverviewExtractor: React.FC = () => {
             const firstSuccess = batchResults.results.find(r => r.success && r.data?.forSpreadsheet);
             if (firstSuccess && firstSuccess.data?.forSpreadsheet) {
                 const labels = Object.keys(firstSuccess.data.forSpreadsheet).join('\t');
+                
                 const rows = batchResults.results
                     .filter(r => r.success && r.data?.forSpreadsheet)
-                    .map(r => Object.values(r.data!.forSpreadsheet!).join('\t'));
+                    .map(r => {
+                        const data = r.data!.forSpreadsheet!;
+                        const values = Object.values(data);
+                        
+                        // Converte URL de /overview para /documents para o link
+                        const documentsUrl = r.url.replace('/overview', '/documents');
+                        
+                        // Cria array de valores, adicionando hyperlinks no DSID e ATIVIDADE
+                        return Object.keys(data).map((key, index) => {
+                            const value = values[index] as string;
+                            
+                            // Adiciona hyperlink no DSID
+                            if (key === 'DSID' && value) {
+                                return `=HYPERLINK("${documentsUrl}", "${value}")`;
+                            }
+                            
+                            // Adiciona hyperlink na ATIVIDADE
+                            if (key === 'ATIVIDADE' && value) {
+                                return `=HYPERLINK("${documentsUrl}", "${value}")`;
+                            }
+                            
+                            return value;
+                        }).join('\t');
+                    });
 
                 navigator.clipboard.writeText(`${labels}\n${rows.join('\n')}`);
                 setCopied(true);
