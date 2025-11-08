@@ -148,7 +148,10 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     };
 
     const removeFinal = (idx: number) => setFinalMaterials(f => f.filter((_, i) => i !== idx));
+    
     const clearAll = async () => {
+        if (!confirm('Limpar TODOS os dados? (arquivos, checkboxes, progresso, URL opcional)')) return;
+        
         try {
             // Limpar arquivos preparados no backend
             const result = await clearPreparedFiles();
@@ -166,16 +169,23 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
         setExecutedPlan([]);
         setResults(null);
         setExecuting(false);
+        setJobId(null);
         progress.reset(); // Limpa o progresso do workflow
         
         // Limpar localStorage completamente
         try { 
             localStorage.removeItem('wf_activeUploadJob');
             localStorage.removeItem('wf_uploadSection_state');
+            localStorage.removeItem('wf_timeline_steps'); // Limpar checkboxes da Timeline
         } catch { /* ignore */ }
         
         // Limpar arquivos do IndexedDB
         fileCache.clearFiles().catch(console.warn);
+        
+        // Opcionalmente limpar URL do projeto (descomente se necessário)
+        // setProjectUrl('');
+        
+        console.log('🧹 Tudo limpo! Estado resetado ao padrão.');
     };
 
     // Salvar estado no localStorage E File objects no IndexedDB
@@ -345,6 +355,7 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
 
         try {
             // Preparar dados no formato esperado pelo backend (lista única de files)
+            // IMPORTANTE: NÃO enviar selectedUser aqui - será capturado na execução
             const allFiles = [
                 { name: assetZip.name, size: assetZip.size, type: assetZip.type, isZip: true },
                 ...finalMaterials.map(f => ({ name: f.name, size: f.size, type: f.type, isZip: false }))
@@ -352,8 +363,8 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
 
             const requestBody = {
                 files: allFiles,
-                projectUrl,
-                selectedUser
+                projectUrl
+                // selectedUser removido - será usado apenas na execução
             };
 
             console.log('🐛 Enviando para /api/upload/prepare:', requestBody);
@@ -467,12 +478,51 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
     // (Execução direta de upload removida; usar TimelineSection para acionar workflow)
 
     const handleCancel = async () => {
-        if (!jobId) return;
-        // Ajustado: cancelUploadJob aceita apenas jobId
-        const ok = await cancelUploadJob(jobId);
-        if (ok) {
-            clearAll();
-            setJobId(null);
+        if (!executing && !jobId) {
+            console.warn('Nada para cancelar');
+            return;
+        }
+        
+        if (!confirm('Cancelar operação em andamento?')) return;
+        
+        // Se estiver executando e tiver jobId, cancelar workflow no backend
+        if (executing && jobId) {
+            try {
+                console.log(`🛑 Cancelando workflow ${jobId}...`);
+                const response = await fetch(`/api/workflow/cancel/${jobId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('✅ Workflow cancelado no backend');
+                    setExecuting(false);
+                    setResults({ success: false, message: 'Workflow cancelado pelo usuário' });
+                } else {
+                    console.error('❌ Erro ao cancelar workflow:', result.message);
+                }
+            } catch (err) {
+                console.error('❌ Erro de conexão ao cancelar workflow:', err);
+            }
+        } else if (executing) {
+            // Cancelamento local se não houver jobId
+            console.log('⚠️ Cancelamento local (sem jobId)');
+            setExecuting(false);
+            setResults({ success: false, message: 'Execução cancelada pelo usuário' });
+        }
+        
+        // Limpar job se existir (independente de estar executando)
+        if (jobId) {
+            const ok = await cancelUploadJob(jobId);
+            if (ok) {
+                console.log('✅ Job cancelado');
+                setJobId(null);
+                setStagedPaths(null);
+            }
         }
     };
 
@@ -857,9 +907,13 @@ export default function UploadSection({ projectUrl, setProjectUrl, selectedUser,
                     >
                         <Upload className="w-4 h-4 mr-2" /> {stagedPaths ? 'Arquivos Preparados ✓' : 'Preparar Arquivos'}
                     </Button>
-                    <Button variant="outline" onClick={clearAll} disabled={submitting}>Limpar</Button>
-                    {jobId && (
-                        <Button variant="destructive" onClick={handleCancel} disabled={submitting}>Cancelar</Button>
+                    <Button variant="outline" onClick={clearAll} disabled={submitting || executing}>Limpar</Button>
+                    
+                    {/* Cancelar: aparece durante execução ou se houver jobId */}
+                    {(executing || jobId) && (
+                        <Button variant="destructive" onClick={handleCancel} disabled={submitting}>
+                            Cancelar {executing ? 'Execução' : 'Job'}
+                        </Button>
                     )}
                     <Button onClick={handleExecute} disabled={executing || workflowStats.readyCount === 0}>
                         <PlayCircle className="w-4 h-4 mr-2" />
