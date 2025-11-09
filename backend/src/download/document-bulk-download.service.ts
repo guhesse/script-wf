@@ -192,6 +192,8 @@ export class DocumentBulkDownloadService {
                     this.progress.emit(operationId, { type: 'project-start', data: ev.data }); break;
                 case 'stage':
                     this.progress.emit(operationId, { type: 'stage', data: ev.data }); break;
+                case 'project-success':
+                    this.progress.emit(operationId, { type: 'project-success', data: ev.data }); break;
                 case 'project-fail':
                     this.progress.emit(operationId, { type: 'project-fail', data: ev.data }); break;
                 case 'project-meta':
@@ -210,46 +212,42 @@ export class DocumentBulkDownloadService {
             headless, continueOnError, keepFiles, concurrency, progress: progressHook, operationId,
             isCanceled: (projectNumber: number) => this.progress.isCanceled(operationId, projectNumber),
             generatePpt: options.generatePpt,
-            // pptTestMode removido
+            downloadPath, organizeByDSID, mode, // passar opções de organização
+            onProjectComplete: async (projectResult: any, processedProject: any) => {
+                // Organizar arquivos imediatamente após cada projeto completar
+                if (keepFiles && projectResult.pdfProcessing?.results?.length) {
+                    const dsid = processedProject.dsid || null;
+                    const projectFolder = await this.folders.ensureProjectFolder(downloadPath, projectResult.projectName, dsid, { organizeByDSID, keepFiles, mode });
+                    
+                    for (const pdf of projectResult.pdfProcessing.results) {
+                        if (!pdf.filePath) continue;
+                        await this.folders.moveIntoProject(projectFolder, pdf.filePath, { organizeByDSID, keepFiles, mode });
+                    }
+                    
+                    // Mover PPT se existir
+                    if (projectResult.ppt?.path) {
+                        try {
+                            const pptFolder = path.join(projectFolder, 'ppt');
+                            await fs.mkdir(pptFolder, { recursive: true });
+                            const dest = path.join(pptFolder, path.basename(projectResult.ppt.path));
+                            await fs.rename(projectResult.ppt.path, dest).catch(async () => {
+                                await fs.copyFile(projectResult.ppt.path, dest);
+                                await fs.unlink(projectResult.ppt.path).catch(() => void 0);
+                            });
+                            projectResult.ppt.path = dest;
+                        } catch (e: any) {
+                            this.logger.error(`Erro ao mover PPT: ${e.message}`);
+                        }
+                    }
+                    
+                    return projectFolder;
+                }
+            }
         });
 
-        // Emit organização e término por projeto
-        let pptCount = 0;
-        for (const success of pipeline.downloadResults?.successful || []) {
-            const dsid = (this.extraction as any)['extractDSIDFromProjectName']?.call(this.extraction, success.projectName) || null;
-            let projectFolder: string | undefined;
-            if (keepFiles && success.pdfProcessing?.results?.length) {
-                this.progress.emit(operationId, { type: 'stage', data: { projectNumber: success.projectNumber, stage: 'organizing-files' } });
-                projectFolder = await this.folders.ensureProjectFolder(downloadPath, success.projectName, dsid, { organizeByDSID, keepFiles, mode });
-                for (const pdf of success.pdfProcessing.results) {
-                    if (!pdf.filePath) continue;
-                    await this.folders.moveIntoProject(projectFolder, pdf.filePath, { organizeByDSID, keepFiles, mode });
-                }
-            }
-            if (success.ppt) {
-                pptCount++;
-                // Se não for testMode e houver path, mover para subpasta /ppt
-                if (success.ppt.path && projectFolder) {
-                    try {
-                        const pptFolder = path.join(projectFolder, 'ppt');
-                        await fs.mkdir(pptFolder, { recursive: true });
-                        const dest = path.join(pptFolder, path.basename(success.ppt.path));
-                        await fs.rename(success.ppt.path, dest).catch(async () => {
-                            // fallback copiar e remover
-                            await fs.copyFile(success.ppt.path, dest);
-                            await fs.unlink(success.ppt.path).catch(() => void 0);
-                        });
-                        success.ppt.path = dest;
-                        (this.progress as any).emit(operationId, { type: 'ppt', data: { projectNumber: success.projectNumber, fileName: success.ppt.fileName, folder: dest, testMode: success.ppt.testMode } });
-                    } catch (e: any) {
-                        this.progress.emit(operationId, { type: 'ppt-error', data: { projectNumber: success.projectNumber, error: 'move-failed: ' + e.message } });
-                    }
-                } else {
-                    (this.progress as any).emit(operationId, { type: 'ppt', data: { projectNumber: success.projectNumber, fileName: success.ppt.fileName } });
-                }
-            }
-            this.progress.emit(operationId, { type: 'project-success', data: { projectNumber: success.projectNumber, folder: projectFolder } });
-        }
+        // Pipeline já processou tudo, incluindo organização de arquivos e PPTs
+        // Apenas contar PPTs gerados para o evento final
+        const pptCount = (pipeline.downloadResults?.successful || []).filter((s: any) => s.ppt?.fileName).length;
 
         this.progress.emit(operationId, { type: 'completed', data: { successful: pipeline.successful, failed: pipeline.failed, pptGenerated: pptCount } });
         this.progress.complete(operationId);
