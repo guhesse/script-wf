@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as path from 'path';
 import { promises as fs } from 'fs';
+import * as archiver from 'archiver';
+import { Readable } from 'stream';
 import { BriefingExtractionService } from '../modules/briefing/briefing-extraction.service';
 import { FolderOrganizationService } from './folder-organization.service';
 import { BulkProgressService } from '../modules/pdf/bulk-progress.service';
@@ -57,16 +59,23 @@ export interface BulkDownloadResult {
             totalCharactersExtracted: number;
         };
     };
+    zipBuffer?: Buffer; // ZIP criado em memória
+    zipFileName?: string; // Nome do arquivo ZIP
 }
 
 @Injectable()
 export class DocumentBulkDownloadService {
     private readonly logger = new Logger(DocumentBulkDownloadService.name);
+    private zipStorage = new Map<string, { buffer: Buffer; fileName: string; createdAt: Date }>();
+    
     constructor(
         private readonly extraction: BriefingExtractionService,
         private readonly folders: FolderOrganizationService,
         private readonly progress: BulkProgressService,
-    ) { }
+    ) { 
+        // Limpar ZIPs antigos a cada 1 hora
+        setInterval(() => this.cleanupOldZips(), 60 * 60 * 1000);
+    }
 
     /**
      * Download em massa de briefings usando o serviço legado
@@ -212,44 +221,49 @@ export class DocumentBulkDownloadService {
             headless, continueOnError, keepFiles, concurrency, progress: progressHook, operationId,
             isCanceled: (projectNumber: number) => this.progress.isCanceled(operationId, projectNumber),
             generatePpt: options.generatePpt,
-            downloadPath, organizeByDSID, mode, // passar opções de organização
-            onProjectComplete: async (projectResult: any, processedProject: any) => {
-                // Organizar arquivos imediatamente após cada projeto completar
-                if (keepFiles && projectResult.pdfProcessing?.results?.length) {
-                    const dsid = processedProject.dsid || null;
-                    const projectFolder = await this.folders.ensureProjectFolder(downloadPath, projectResult.projectName, dsid, { organizeByDSID, keepFiles, mode });
-                    
-                    for (const pdf of projectResult.pdfProcessing.results) {
-                        if (!pdf.filePath) continue;
-                        await this.folders.moveIntoProject(projectFolder, pdf.filePath, { organizeByDSID, keepFiles, mode });
-                    }
-                    
-                    // Mover PPT se existir
-                    if (projectResult.ppt?.path) {
-                        try {
-                            const pptFolder = path.join(projectFolder, 'ppt');
-                            await fs.mkdir(pptFolder, { recursive: true });
-                            const dest = path.join(pptFolder, path.basename(projectResult.ppt.path));
-                            await fs.rename(projectResult.ppt.path, dest).catch(async () => {
-                                await fs.copyFile(projectResult.ppt.path, dest);
-                                await fs.unlink(projectResult.ppt.path).catch(() => void 0);
-                            });
-                            projectResult.ppt.path = dest;
-                        } catch (e: any) {
-                            this.logger.error(`Erro ao mover PPT: ${e.message}`);
-                        }
-                    }
-                    
-                    return projectFolder;
-                }
-            }
+            downloadPath, organizeByDSID, mode,
+            // Não precisamos mais organizar arquivos em pastas físicas
+            // Os arquivos temporários serão adicionados diretamente ao ZIP
+            onProjectComplete: undefined
         });
 
         // Pipeline já processou tudo, incluindo organização de arquivos e PPTs
         // Apenas contar PPTs gerados para o evento final
         const pptCount = (pipeline.downloadResults?.successful || []).filter((s: any) => s.ppt?.fileName).length;
 
-        this.progress.emit(operationId, { type: 'completed', data: { successful: pipeline.successful, failed: pipeline.failed, pptGenerated: pptCount } });
+        // Criar ZIP com todos os arquivos em memória
+        this.logger.log('📦 Iniciando criação do ZIP em memória...');
+        this.progress.emit(operationId, { type: 'creating-zip', data: { status: 'starting' } });
+        
+        try {
+            const zipResult = await this.createZipInMemory(
+                pipeline.downloadResults?.successful || [],
+                mode,
+                operationId
+            );
+
+            this.progress.emit(operationId, { 
+                type: 'completed', 
+                data: { 
+                    successful: pipeline.successful, 
+                    failed: pipeline.failed, 
+                    pptGenerated: pptCount,
+                    zipFileName: zipResult.fileName,
+                    zipSize: zipResult.buffer.length
+                } 
+            });
+
+            // Armazenar ZIP temporariamente para download
+            await this.storeZipTemporarily(operationId, zipResult.buffer, zipResult.fileName);
+            
+            // Limpar arquivos temporários usados no ZIP
+            await this.cleanupTemporaryFiles(pipeline.downloadResults?.successful || []);
+            
+        } catch (error) {
+            this.logger.error(`❌ Erro ao criar ZIP: ${error.message}`);
+            this.progress.emit(operationId, { type: 'error', data: { message: 'Erro ao criar ZIP', error: error.message } });
+        }
+
         this.progress.complete(operationId);
     }
 
@@ -277,5 +291,191 @@ export class DocumentBulkDownloadService {
     async validateSession() {
         this.logger.warn('⚠️ validateSession stub retornando true.');
         return { valid: true };
+    }
+
+    /**
+     * Criar ZIP em memória com todos os arquivos dos projetos
+     */
+    private async createZipInMemory(
+        successfulProjects: Array<{
+            projectName: string;
+            pdfProcessing?: { results: Array<{ fileName: string; filePath: string }> };
+            ppt?: { fileName: string; path?: string };
+        }>,
+        mode: 'pm' | 'studio',
+        operationId?: string
+    ): Promise<{ buffer: Buffer; fileName: string }> {
+        return new Promise((resolve, reject) => {
+            const archive = archiver('zip', { zlib: { level: 9 } });
+            const chunks: Buffer[] = [];
+
+            archive.on('data', (chunk) => chunks.push(chunk));
+            archive.on('end', () => {
+                const buffer = Buffer.concat(chunks);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const fileName = `bulk-download-${timestamp}.zip`;
+                resolve({ buffer, fileName });
+            });
+            archive.on('error', reject);
+
+            // Adicionar arquivos de cada projeto ao ZIP
+            let totalFiles = 0;
+            for (const project of successfulProjects) {
+                const projectFolderName = this.sanitizeFolderName(project.projectName);
+
+                // Estrutura de pastas baseada no modo
+                if (mode === 'pm') {
+                    // === MODO PM ===
+                    // Adicionar PDFs na pasta 'brief'
+                    if (project.pdfProcessing?.results) {
+                        for (const pdf of project.pdfProcessing.results) {
+                            if (pdf.filePath) {
+                                try {
+                                    archive.file(pdf.filePath, { 
+                                        name: `${projectFolderName}/brief/${pdf.fileName}` 
+                                    });
+                                    totalFiles++;
+                                } catch (err) {
+                                    this.logger.warn(`Erro ao adicionar ${pdf.fileName} ao ZIP: ${err.message}`);
+                                }
+                            }
+                        }
+                    }
+
+                    // Adicionar PPT na pasta 'ppt'
+                    if (project.ppt?.path) {
+                        try {
+                            archive.file(project.ppt.path, { 
+                                name: `${projectFolderName}/ppt/${project.ppt.fileName}` 
+                            });
+                            totalFiles++;
+                        } catch (err) {
+                            this.logger.warn(`Erro ao adicionar PPT ao ZIP: ${err.message}`);
+                        }
+                    }
+
+                    // Criar pasta 'creatives' vazia
+                    archive.append('', { name: `${projectFolderName}/creatives/` });
+
+                } else {
+                    // === MODO STUDIO ===
+                    // Adicionar PDFs na pasta 'brief'
+                    if (project.pdfProcessing?.results) {
+                        for (const pdf of project.pdfProcessing.results) {
+                            if (pdf.filePath) {
+                                try {
+                                    archive.file(pdf.filePath, { 
+                                        name: `${projectFolderName}/brief/${pdf.fileName}` 
+                                    });
+                                    totalFiles++;
+                                } catch (err) {
+                                    this.logger.warn(`Erro ao adicionar ${pdf.fileName} ao ZIP: ${err.message}`);
+                                }
+                            }
+                        }
+                    }
+
+
+
+                    // Criar estrutura de pastas vazias para Studio
+                    archive.append('', { name: `${projectFolderName}/assets/master/` });
+                    archive.append('', { name: `${projectFolderName}/assets/products/` });
+                    archive.append('', { name: `${projectFolderName}/assets/lifestyles/` });
+                    archive.append('', { name: `${projectFolderName}/assets/screenfill/` });
+                    archive.append('', { name: `${projectFolderName}/deliverables/` });
+                    archive.append('', { name: `${projectFolderName}/sb/` });
+                }
+            }
+
+            if (operationId) {
+                this.progress.emit(operationId, { 
+                    type: 'creating-zip', 
+                    data: { totalFiles, totalProjects: successfulProjects.length } 
+                });
+            }
+
+            this.logger.log(`📦 Finalizando ZIP com ${totalFiles} arquivos de ${successfulProjects.length} projetos`);
+            archive.finalize();
+        });
+    }
+
+    /**
+     * Sanitizar nome de pasta para uso em ZIP
+     */
+    private sanitizeFolderName(name: string): string {
+        return name
+            .replace(/[<>:"|?*]/g, '_')
+            .replace(/\//g, '-')
+            .replace(/\\/g, '-')
+            .trim();
+    }
+
+    /**
+     * Armazenar ZIP temporariamente em memória
+     */
+    private async storeZipTemporarily(operationId: string, buffer: Buffer, fileName: string) {
+        this.zipStorage.set(operationId, {
+            buffer,
+            fileName,
+            createdAt: new Date()
+        });
+        this.logger.log(`💾 ZIP armazenado temporariamente: ${fileName} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+    }
+
+    /**
+     * Recuperar ZIP armazenado
+     */
+    getStoredZip(operationId: string): { buffer: Buffer; fileName: string } | null {
+        const stored = this.zipStorage.get(operationId);
+        if (!stored) return null;
+        return { buffer: stored.buffer, fileName: stored.fileName };
+    }
+
+    /**
+     * Limpar ZIPs antigos (mais de 2 horas)
+     */
+    private cleanupOldZips() {
+        const now = new Date();
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        
+        for (const [operationId, data] of this.zipStorage.entries()) {
+            if (data.createdAt < twoHoursAgo) {
+                this.zipStorage.delete(operationId);
+                this.logger.log(`🗑️ ZIP removido da memória: ${data.fileName}`);
+            }
+        }
+    }
+
+    /**
+     * Limpar arquivos temporários após criação do ZIP
+     */
+    private async cleanupTemporaryFiles(
+        successfulProjects: Array<{
+            pdfProcessing?: { results: Array<{ filePath: string }> };
+            ppt?: { path?: string };
+            downloadDir?: string;
+        }>
+    ) {
+        for (const project of successfulProjects) {
+            // Limpar PDFs temporários
+            if (project.pdfProcessing?.results) {
+                for (const pdf of project.pdfProcessing.results) {
+                    if (pdf.filePath) {
+                        await fs.unlink(pdf.filePath).catch(() => void 0);
+                    }
+                }
+            }
+
+            // Limpar PPT temporário
+            if (project.ppt?.path) {
+                await fs.unlink(project.ppt.path).catch(() => void 0);
+            }
+
+            // Limpar diretório temporário se existir
+            if (project.downloadDir) {
+                await fs.rm(project.downloadDir, { recursive: true, force: true }).catch(() => void 0);
+            }
+        }
+        this.logger.log('🗑️ Arquivos temporários limpos após criação do ZIP');
     }
 }

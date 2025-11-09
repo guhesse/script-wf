@@ -875,6 +875,30 @@ export class WorkfrontController {
     return { success: true };
   }
 
+  @Get('bulk-download/zip/:operationId')
+  @ApiOperation({ summary: 'Baixar ZIP com todos os arquivos do bulk download' })
+  @ApiParam({ name: 'operationId', description: 'ID da operação de bulk download' })
+  @ApiResponse({ status: 200, description: 'ZIP com todos os arquivos' })
+  @ApiResponse({ status: 404, description: 'ZIP não encontrado ou expirado' })
+  async downloadBulkZip(
+    @Param('operationId') operationId: string,
+    @Res() res: Response,
+  ) {
+    const zipData = this.bulkService.getStoredZip(operationId);
+    
+    if (!zipData) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'ZIP não encontrado ou já expirado' 
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipData.fileName}"`);
+    res.setHeader('Content-Length', zipData.buffer.length);
+    res.send(zipData.buffer);
+  }
+
   // ===== ROTAS DE EXTRAÇÃO DE DOCUMENTOS =====
 
   @Post('extract-documents')

@@ -35,10 +35,10 @@ const HEAVY_TYPES = new Set(['image', 'media', 'font']);
 
 export async function ensureBrowser(headless: boolean = true, launchOpts: LaunchOptions = {}): Promise<Browser> {
     const args = headless ? [] : ['--start-maximized', '--disable-blink-features=AutomationControlled'];
-    return chromium.launch({ 
-        headless, 
+    return chromium.launch({
+        headless,
         args,
-        ...launchOpts 
+        ...launchOpts
     });
 }
 
@@ -82,23 +82,23 @@ export async function createOptimizedContext(opts: OptimizedContextOptions = {})
     }
 
     const context = await browser.newContext(contextOptions);
-    
+
     // Adiciona scripts anti-detecção de headless/automation
     await context.addInitScript(() => {
         // Remove propriedades que indicam automação
         Object.defineProperty(navigator, 'webdriver', {
             get: () => false,
         });
-        
+
         // Mascara headless
         Object.defineProperty(navigator, 'plugins', {
             get: () => [1, 2, 3, 4, 5],
         });
-        
+
         Object.defineProperty(navigator, 'languages', {
             get: () => ['pt-BR', 'pt', 'en-US', 'en'],
         });
-        
+
         // Chrome runtime
         (window as any).chrome = {
             runtime: {},
@@ -121,12 +121,12 @@ export async function createOptimizedContext(opts: OptimizedContextOptions = {})
                 if (blockHeavy && HEAVY_TYPES.has(type)) {
                     return route.abort();
                 }
-                
+
                 const blockDomains = [...DEFAULT_BLOCK_DOMAINS, ...extraBlockDomains];
                 if (blockDomains.length > 0 && blockDomains.some(d => url.includes(d))) {
                     return route.abort();
                 }
-                
+
                 return route.continue();
             } catch {
                 return route.continue();
