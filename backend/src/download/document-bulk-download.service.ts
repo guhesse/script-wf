@@ -313,7 +313,7 @@ export class DocumentBulkDownloadService {
             archive.on('end', () => {
                 const buffer = Buffer.concat(chunks);
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                const fileName = `bulk-download-${timestamp}.zip`;
+                const fileName = `download-${timestamp}.zip`;
                 resolve({ buffer, fileName });
             });
             archive.on('error', reject);

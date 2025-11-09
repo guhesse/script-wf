@@ -551,13 +551,36 @@ export class BriefingExtractionService {
         }
         // Salvar cada download
         const finalFiles: any[] = [];
-        for (const d of downloaded) {
+        for (let i = 0; i < downloaded.length; i++) {
             try {
+                const d = downloaded[i];
                 const suggested = d.suggestedFilename();
-                const finalName = this.sanitizeFileName(suggested);
+                
+                this.logger.log(`📥 Download ${i + 1}: suggestedFilename="${suggested}", esperado="${pdfFiles[i]?.fileName}"`);
+                
+                // Se o nome sugerido é genérico como "download" ou não tem extensão, usar o nome do arquivo da lista
+                let finalName = suggested;
+                if (!suggested || suggested === 'download' || !suggested.includes('.')) {
+                    // Usar o nome do arquivo correspondente da lista pdfFiles
+                    const correspondingFile = pdfFiles[i];
+                    if (correspondingFile && correspondingFile.fileName) {
+                        finalName = correspondingFile.fileName;
+                        this.logger.log(`⚠️ Nome genérico detectado ("${suggested}"), usando: ${finalName}`);
+                    }
+                }
+                
+                // Garantir que tem extensão .pdf
+                if (!finalName.toLowerCase().endsWith('.pdf')) {
+                    finalName = `${finalName}.pdf`;
+                }
+                
+                finalName = this.sanitizeFileName(finalName);
                 const target = path.join(tempDir, finalName);
                 await d.saveAs(target);
                 const stat = await fs.stat(target);
+                
+                this.logger.log(`💾 Arquivo salvo: ${finalName} (${(stat.size / 1024).toFixed(2)} KB)`);
+                
                 finalFiles.push({ fileName: finalName, filePath: target, size: stat.size });
             } catch (e) {
                 this.logger.error('❌ Falha ao salvar download: ' + e.message);
@@ -1078,19 +1101,20 @@ export class BriefingExtractionService {
     private extractFileName(text: string): string | null {
         if (!text) return null;
 
-        this.logger.log(`🔍 Analisando texto do elemento: "${text.substring(0, 200)}..."`);
+        this.logger.log(`🔍 [VERSAO_NOVA_2025-11-09] Analisando texto do elemento COMPLETO (${text.length} chars): "${text}"`);
 
         // Limpar texto
         const cleanText = text.replace(/\s+/g, ' ').trim();
+        this.logger.log(`🧹 Texto limpo: "${cleanText}"`);
 
         // Padrões mais específicos para arquivos PDF
         const patterns = [
-            // Padrão específico do Workfront com DSID: 5372048_briefing.pdf
-            /(\d{7}_[a-zA-Z_]+\.pdf)/i,
-            // Nome de arquivo simples: filename.pdf
-            /([a-zA-Z0-9_-]{3,}\.pdf)/i,
-            // Qualquer sequência seguida de .pdf
+            // Padrão completo: captura qualquer coisa antes de .pdf exceto espaços, barras e quebras de linha
+            /([^\s\n\r\/\\]+\.pdf)/i,
+            // Nome com qualquer caractere não-espaço antes do .pdf (fallback)
             /([^\s\n\r\/\\]{3,}\.pdf)/i,
+            // Nome de arquivo simples com underscores e hífens
+            /([a-zA-Z0-9_-]{3,}\.pdf)/i,
             // Nome com espaços e .pdf
             /([^\/\\]{3,}\.pdf)/i
         ];
@@ -1187,7 +1211,20 @@ export class BriefingExtractionService {
             ]);
 
             const suggested = download.suggestedFilename();
-            const finalName = this.sanitizeFileName(suggested || pdfInfo.fileName);
+            
+            // Se o nome sugerido é genérico como "download" ou não tem extensão, usar o nome do pdfInfo
+            let finalName = suggested;
+            if (!suggested || suggested === 'download' || !suggested.includes('.')) {
+                finalName = pdfInfo.fileName;
+                this.logger.log(`⚠️ Nome genérico detectado ("${suggested}"), usando: ${finalName}`);
+            }
+            
+            // Garantir que tem extensão .pdf
+            if (!finalName.toLowerCase().endsWith('.pdf')) {
+                finalName = `${finalName}.pdf`;
+            }
+            
+            finalName = this.sanitizeFileName(finalName);
             const targetPath = path.join(tempDir, finalName);
             await download.saveAs(targetPath);
             const stat = await fs.stat(targetPath);
