@@ -12,6 +12,18 @@ services:
       - .env.production
     expose:
       - "3000"
+    networks:
+      - app-network
+
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - app-network
 
   frontend:
     build:
@@ -22,14 +34,25 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+      - certbot
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx-ssl.conf:/etc/nginx/conf.d/default.conf
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    networks:
+      - app-network
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
 
 # Produção compartilha o mesmo container DB mas usa database separado
 # Development: scriptwf_dev (scriptwfdev user)  
 # Production: scriptwf_prod (scriptwf_prod user)
 
 networks:
+  app-network:
+    driver: bridge
   default:
     name: script-wf_default
     external: true

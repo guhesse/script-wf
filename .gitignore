@@ -25,3 +25,6 @@ logs/
 temp/
 backend/temp/
 backend/Downloads/
+
+# SSL/TLS Certificates (NEVER commit these!)
+certbot/
