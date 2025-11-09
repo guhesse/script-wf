@@ -62,12 +62,13 @@ type AllowedStatus = typeof ALLOWED_STATUS[number];
 
 export default function TimelineSection({ projectUrl, selectedUser, stagedPaths, onPlanChange, onExecuteReady }: TimelineSectionProps) {
     // Passos base sempre presentes (params podem ser preenchidos depois)
+    // IMPORTANTE: selectedUser NÃO é incluído nos params - será injetado na execução
     const baseSteps: WorkflowStep[] = [
-        { action: 'upload_asset', enabled: false, params: { kind: 'upload_asset', assetZipPath: '', selectedUser }, description: 'Upload do ZIP para Asset Release', folder: 'Asset Release', group: 'asset' },
-        { action: 'share_asset', enabled: false, params: { kind: 'share_asset', selections: [], selectedUser }, description: 'Compartilhar ZIP', folder: 'Asset Release', group: 'asset' },
-        { action: 'comment_asset', enabled: false, params: { kind: 'comment_asset', folder: 'Asset Release', fileName: '', commentType: 'assetRelease', selectedUser }, description: 'Comentário Asset Release', folder: 'Asset Release', group: 'asset' },
-        { action: 'upload_finals', enabled: false, params: { kind: 'upload_finals', finalMaterialPaths: [], selectedUser }, description: 'Upload de finais', folder: 'Final Materials', group: 'finals' },
-        { action: 'comment_finals', enabled: false, params: { kind: 'comment_finals', folder: 'Final Materials', fileName: '', commentType: 'finalMaterials', selectedUser }, description: 'Comentário PDF Final', folder: 'Final Materials', group: 'finals' },
+        { action: 'upload_asset', enabled: false, params: { kind: 'upload_asset', assetZipPath: '' }, description: 'Upload do ZIP para Asset Release', folder: 'Asset Release', group: 'asset' },
+        { action: 'share_asset', enabled: false, params: { kind: 'share_asset', selections: [] }, description: 'Compartilhar ZIP', folder: 'Asset Release', group: 'asset' },
+        { action: 'comment_asset', enabled: false, params: { kind: 'comment_asset', folder: 'Asset Release', fileName: '', commentType: 'assetRelease' }, description: 'Comentário Asset Release', folder: 'Asset Release', group: 'asset' },
+        { action: 'upload_finals', enabled: false, params: { kind: 'upload_finals', finalMaterialPaths: [] }, description: 'Upload de finais', folder: 'Final Materials', group: 'finals' },
+        { action: 'comment_finals', enabled: false, params: { kind: 'comment_finals', folder: 'Final Materials', fileName: '', commentType: 'finalMaterials' }, description: 'Comentário PDF Final', folder: 'Final Materials', group: 'finals' },
         { action: 'status', enabled: false, params: { kind: 'status', deliverableStatus: 'Round 1 Review' }, description: 'Atualizar status', group: 'extra' },
         { action: 'hours', enabled: false, params: { kind: 'hours', hours: 0.8, note: '', taskName: '' }, description: 'Lançar horas', group: 'extra' },
     ];
@@ -115,64 +116,106 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
     const lastStatsRef = useRef<{ readyCount: number; totalCount: number; hasInvalid: boolean } | null>(null);
 
     // Preenche params quando staging disponível E habilita steps principais automaticamente
+    // IMPORTANTE: selectedUser NÃO é salvo nos params - será injetado dinamicamente na execução
     useEffect(() => {
-        if (!stagedPaths) return;
+        console.log('🔄 Timeline reagindo a mudança em stagedPaths:', stagedPaths);
+
         setSteps(prev => prev.map(s => {
             // Upload Asset: preencher + habilitar se tiver assetZip
-            if (s.action === 'upload_asset' && stagedPaths.assetZip) {
-                return { 
-                    ...s, 
-                    enabled: true, // Auto-habilitar
-                    params: { ...(s.params as UploadAssetParams), assetZipPath: stagedPaths.assetZip } 
-                };
+            if (s.action === 'upload_asset') {
+                if (stagedPaths?.assetZip) {
+                    return {
+                        ...s,
+                        enabled: true, // Auto-habilitar
+                        params: { kind: 'upload_asset', assetZipPath: stagedPaths.assetZip }
+                        // selectedUser NÃO incluído - será injetado na execução
+                    };
+                } else {
+                    // Sem arquivos preparados: desabilitar e limpar
+                    return { ...s, enabled: false, params: { kind: 'upload_asset', assetZipPath: '' } };
+                }
             }
+
             // Share Asset: preencher (deixar desabilitado por padrão)
-            if (s.action === 'share_asset' && stagedPaths.assetZip) {
-                const zipName = stagedPaths.assetZip.split(/[/\\]/).pop() || '';
-                return { ...s, params: { ...(s.params as ShareAssetParams), selections: [{ folder: 'Asset Release', fileName: zipName }], selectedUser } };
+            if (s.action === 'share_asset') {
+                if (stagedPaths?.assetZip) {
+                    const zipName = stagedPaths.assetZip.split(/[/\\]/).pop() || '';
+                    return { 
+                        ...s, 
+                        enabled: true, 
+                        params: { kind: 'share_asset', selections: [{ folder: 'Asset Release', fileName: zipName }] }
+                        // selectedUser NÃO incluído
+                    };
+                } else {
+                    return { ...s, enabled: false, params: { kind: 'share_asset', selections: [] } };
+                }
             }
+
             // Comment Asset: preencher + habilitar se tiver assetZip
-            if (s.action === 'comment_asset' && stagedPaths.assetZip) {
-                const zipName = stagedPaths.assetZip.split(/[/\\]/).pop() || '';
-                return { 
-                    ...s,
-                    enabled: true, // Auto-habilitar
-                    params: { ...(s.params as CommentParams), fileName: zipName, folder: 'Asset Release', commentType: 'assetRelease', selectedUser } 
-                };
+            if (s.action === 'comment_asset') {
+                if (stagedPaths?.assetZip) {
+                    const zipName = stagedPaths.assetZip.split(/[/\\]/).pop() || '';
+                    return {
+                        ...s,
+                        enabled: true, // Auto-habilitar
+                        params: { kind: 'comment_asset', fileName: zipName, folder: 'Asset Release', commentType: 'assetRelease' }
+                        // selectedUser NÃO incluído
+                    };
+                } else {
+                    return { ...s, enabled: false, params: { kind: 'comment_asset', folder: 'Asset Release', fileName: '', commentType: 'assetRelease' } };
+                }
             }
+
             // Upload Finals: preencher + habilitar se tiver finalMaterials
-            if (s.action === 'upload_finals' && stagedPaths.finalMaterials) {
-                return { 
-                    ...s,
-                    enabled: true, // Auto-habilitar
-                    params: { ...(s.params as UploadFinalsParams), finalMaterialPaths: stagedPaths.finalMaterials, selectedUser } 
-                };
+            if (s.action === 'upload_finals') {
+                if (stagedPaths?.finalMaterials) {
+                    return {
+                        ...s,
+                        enabled: true, // Auto-habilitar
+                        params: { kind: 'upload_finals', finalMaterialPaths: stagedPaths.finalMaterials }
+                        // selectedUser NÃO incluído
+                    };
+                } else {
+                    return { ...s, enabled: false, params: { kind: 'upload_finals', finalMaterialPaths: [] } };
+                }
             }
+
             // Comment Finals: preencher + habilitar se tiver PDF
-            if (s.action === 'comment_finals' && stagedPaths.finalMaterials) {
-                const pdf = stagedPaths.finalMaterials.find(f => f.toLowerCase().endsWith('.pdf'));
-                const pdfName = pdf ? pdf.split(/[/\\]/).pop() || 'arquivo.pdf' : '';
-                return { 
-                    ...s,
-                    enabled: true, // Auto-habilitar
-                    params: { ...(s.params as CommentParams), fileName: pdfName, folder: 'Final Materials', commentType: 'finalMaterials', selectedUser } 
-                };
+            if (s.action === 'comment_finals') {
+                if (stagedPaths?.finalMaterials) {
+                    const pdf = stagedPaths.finalMaterials.find(f => f.toLowerCase().endsWith('.pdf'));
+                    const pdfName = pdf ? pdf.split(/[/\\]/).pop() || 'arquivo.pdf' : '';
+                    return {
+                        ...s,
+                        enabled: true, // Auto-habilitar
+                        params: { kind: 'comment_finals', fileName: pdfName, folder: 'Final Materials', commentType: 'finalMaterials' }
+                        // selectedUser NÃO incluído
+                    };
+                } else {
+                    return { ...s, enabled: false, params: { kind: 'comment_finals', folder: 'Final Materials', fileName: '', commentType: 'finalMaterials' } };
+                }
             }
-            // Status: preencher + habilitar automaticamente
+
+            // Status e Hours: SEMPRE disponíveis (independente de arquivos preparados)
             if (s.action === 'status') {
-                return { 
+                return {
                     ...s,
-                    enabled: true, // Auto-habilitar
-                    params: { ...(s.params as StatusParams) } 
+                    // Não forçar enabled - deixar usuário decidir
+                    params: { ...(s.params as StatusParams) }
                 };
             }
-            // Hours: apenas preencher (deixar desabilitado por padrão)
+
             if (s.action === 'hours') {
-                return { ...s, params: { ...(s.params as HoursParams) } };
+                return {
+                    ...s,
+                    // Não forçar enabled - deixar usuário decidir
+                    params: { ...(s.params as HoursParams) }
+                };
             }
+
             return s;
         }));
-    }, [stagedPaths, selectedUser]);
+    }, [stagedPaths]); // Removido selectedUser da dependência - não deve re-executar ao mudar equipe
 
     // Sanitiza status
     useEffect(() => {
@@ -263,11 +306,25 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
             if (statsChanged) {
                 lastStatsRef.current = newStats;
                 const execute = async () => {
-                    const frontendSteps = ready.map(s => ({
-                        action: s.action,
-                        enabled: s.enabled,
-                        params: s.params ? { ...(s.params as Record<string, unknown>) } : undefined
-                    }));
+                    // CRÍTICO: Injetar selectedUser ATUAL nos params antes de enviar
+                    const frontendSteps = ready.map(s => {
+                        const params = s.params ? { ...(s.params as Record<string, unknown>) } : {};
+                        
+                        // Injetar selectedUser dinamicamente para actions que precisam
+                        if (['upload_asset', 'share_asset', 'comment_asset', 'upload_finals', 'comment_finals'].includes(s.action)) {
+                            params.selectedUser = selectedUser; // Usa valor ATUAL do prop
+                        }
+                        
+                        return {
+                            action: s.action,
+                            enabled: s.enabled,
+                            params
+                        };
+                    });
+                    
+                    console.log('🚀 Executando workflow com selectedUser:', selectedUser);
+                    console.log('📋 Steps preparados:', frontendSteps);
+                    
                     return executeWorkflowRef.current({
                         projectUrl,
                         steps: frontendSteps,
@@ -278,7 +335,7 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
                 onExecuteReady(execute, newStats);
             }
         }
-    }, [steps, onPlanChange, onExecuteReady, projectUrl]);
+    }, [steps, onPlanChange, onExecuteReady, projectUrl, selectedUser]); // Adicionado selectedUser
 
     // Presets
     const presetReleaseFinal = () =>
@@ -326,14 +383,22 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
                                 const Icon = WORKFLOW_ICONS[step.action];
                                 const idx = steps.indexOf(step);
                                 const ready = isParamReady(step);
+                                const requiresFiles = true; // Asset group sempre requer arquivos
+                                const disabled = requiresFiles && !stagedPaths;
+
                                 return (
-                                    <div key={idx} className={`p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'}`}>
-                                        <div className="flex items-center gap-3 ">
-                                            <Checkbox className="cursor-pointer" checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
+                                    <div key={idx} className={`p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'} ${disabled ? 'opacity-40' : ''}`}>
+                                        <div className="flex items-center gap-3">
+                                            <Checkbox
+                                                className={disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+                                                checked={step.enabled}
+                                                onCheckedChange={disabled ? undefined : () => toggleStep(idx)}
+                                                disabled={disabled}
+                                            />
                                             <Icon className="w-4 h-4 text-primary" />
-                                            <div className="flex-1 text-sm ">
+                                            <div className="flex-1 text-sm">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-medium ">
+                                                    <span className="font-medium">
                                                         {step.action === 'upload_asset' && 'Upload Zip'}
                                                         {step.action === 'share_asset' && 'Compartilhar'}
                                                         {step.action === 'comment_asset' && 'Comentar PDF'}
@@ -341,9 +406,9 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
                                                     <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
                                                         <FolderOpen className="w-3 h-3" />Asset Release
                                                     </Badge>
-                                                    {!ready && <Badge variant="secondary" className="text-[10px] h-5 px-1.5">pendente preparo</Badge>}
+                                                    {disabled && <Badge variant="destructive" className="text-[10px] h-5 px-1.5">requer arquivos</Badge>}
+                                                    {!disabled && !ready && <Badge variant="secondary" className="text-[10px] h-5 px-1.5">pendente preparo</Badge>}
                                                 </div>
-
                                             </div>
                                         </div>
                                     </div>
@@ -357,10 +422,18 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
                                 const Icon = WORKFLOW_ICONS[step.action];
                                 const idx = steps.indexOf(step);
                                 const ready = isParamReady(step);
+                                const requiresFiles = true; // Finals group sempre requer arquivos
+                                const disabled = requiresFiles && !stagedPaths;
+
                                 return (
-                                    <div key={idx} className={`p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'}`}>
+                                    <div key={idx} className={`p-3 border rounded-lg transition-opacity ${step.enabled ? 'bg-card' : 'bg-muted'} ${ready ? 'opacity-100' : 'opacity-50'} ${disabled ? 'opacity-40' : ''}`}>
                                         <div className="flex items-center gap-3">
-                                            <Checkbox className="cursor-pointer" checked={step.enabled} onCheckedChange={() => toggleStep(idx)} />
+                                            <Checkbox
+                                                className={disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+                                                checked={step.enabled}
+                                                onCheckedChange={disabled ? undefined : () => toggleStep(idx)}
+                                                disabled={disabled}
+                                            />
                                             <Icon className="w-4 h-4 text-primary" />
                                             <div className="flex-1 text-sm">
                                                 <div className="flex items-center gap-2 mb-1">
@@ -371,9 +444,9 @@ export default function TimelineSection({ projectUrl, selectedUser, stagedPaths,
                                                     <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
                                                         <FolderOpen className="w-3 h-3" />Final Materials
                                                     </Badge>
-                                                    {!ready && <Badge variant="secondary" className="text-[10px] h-5 px-1.5">pendente preparo</Badge>}
+                                                    {disabled && <Badge variant="destructive" className="text-[10px] h-5 px-1.5">requer arquivos</Badge>}
+                                                    {!disabled && !ready && <Badge variant="secondary" className="text-[10px] h-5 px-1.5">pendente preparo</Badge>}
                                                 </div>
-
                                             </div>
                                         </div>
                                     </div>

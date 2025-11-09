@@ -15,13 +15,30 @@ import type {
 export const useWorkfrontApi = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const getToken = useCallback((): string => {
-    try { return localStorage.getItem('wf_access_token') || ''; } catch { return ''; }
-  }, []);
-  const authHeaders = useCallback((): Record<string, string> => {
+  
+  // Não usar useCallback aqui - precisa ler localStorage fresh em cada chamada
+  const getToken = (): string => {
+    try { 
+      const appToken = localStorage.getItem('app_jwt_token');
+      const wfToken = localStorage.getItem('wf_access_token');
+      const token = appToken || wfToken || '';
+      
+      if (!token) {
+        console.warn('⚠️ Nenhum token encontrado no localStorage');
+      } else {
+        console.log('✅ Token encontrado:', token.substring(0, 20) + '...');
+      }
+      
+      return token;
+    } catch { 
+      return ''; 
+    }
+  };
+  
+  const authHeaders = (): Record<string, string> => {
     const t = getToken();
     return t ? { Authorization: `Bearer ${t}` } : {};
-  }, [getToken]);
+  };
 
   const checkLoginStatus = useCallback(async (): Promise<LoginStatusResponse> => {
     try {
@@ -591,6 +608,82 @@ export const useWorkfrontApi = () => {
     }
   }, [authHeaders]);
 
+  const extractOverview = useCallback(async (projectUrl: string): Promise<{ success: boolean; data?: unknown; message?: string }> => {
+    if (!projectUrl) {
+      toast.warning('Por favor, adicione a URL do projeto');
+      throw new Error('URL do projeto é obrigatória');
+    }
+
+    setIsLoading(true);
+    setLoadingMessage('Extraindo informações da aba Overview...');
+
+    try {
+      const response = await fetch('/api/extract-overview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders()
+        },
+        body: JSON.stringify({ url: projectUrl })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Overview extraído com sucesso!');
+        return data;
+      } else {
+        toast.error(data.message || 'Erro ao extrair overview');
+        throw new Error(data.message || 'Erro ao extrair overview');
+      }
+    } catch (error) {
+      console.error('Erro ao extrair overview:', error);
+      toast.error('Erro de conexão ao extrair overview');
+      throw error;
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, [authHeaders]);
+
+  const extractOverviewBatch = useCallback(async (urls: string[]): Promise<any> => {
+    if (!urls || urls.length === 0) {
+      toast.warning('Por favor, adicione URLs dos projetos');
+      throw new Error('Lista de URLs é obrigatória');
+    }
+
+    setIsLoading(true);
+    setLoadingMessage(`Processando ${urls.length} projetos em lote (3 simultâneos)...`);
+
+    try {
+      const response = await fetch('/api/extract-overview-batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders()
+        },
+        body: JSON.stringify({ urls })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Processamento concluído! ${data.successful} sucessos, ${data.failed} erros`);
+        return data;
+      } else {
+        toast.error(data.message || 'Erro ao processar lote');
+        throw new Error(data.message || 'Erro ao processar lote');
+      }
+    } catch (error) {
+      console.error('Erro ao processar lote:', error);
+      toast.error('Erro de conexão ao processar lote');
+      throw error;
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, [authHeaders]);
+
   return {
     isLoading,
     loadingMessage,
@@ -612,5 +705,7 @@ export const useWorkfrontApi = () => {
     getActiveUploadJob,
     getUploadJob,
     cancelUploadJob,
+    extractOverview,
+    extractOverviewBatch,
   };
 };

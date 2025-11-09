@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Download, FolderDown, FolderOpen, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, Download, FolderDown, Plus, Trash2, FileText, Check, X, Clock, Circle, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Alert } from './ui/alert';
@@ -40,7 +40,6 @@ interface BulkDownloadResult {
 
 const BulkDownload: React.FC = () => {
   const [projectUrls, setProjectUrls] = useState<string[]>(['']);
-  const [downloadPath, setDownloadPath] = useState('');
   const [headless] = useState(true);
   // Novos estados para PPT
   const [generatePpt, setGeneratePpt] = useState(false);
@@ -59,6 +58,9 @@ const BulkDownload: React.FC = () => {
     pptTestMode?: boolean;
   }
   const [progressList, setProgressList] = useState<ProgressItem[]>([]);
+  const [isCreatingZip, setIsCreatingZip] = useState(false);
+  const [zipReady, setZipReady] = useState(false);
+  const [zipFileName, setZipFileName] = useState<string | null>(null);
   // helper removido; usaremos placeholders pendentes e atualizaremos conforme eventos
   const [error, setError] = useState<string>('');
   const [preview, setPreview] = useState<BulkDownloadPreview | null>(null);
@@ -66,6 +68,136 @@ const BulkDownload: React.FC = () => {
   const [operationId, setOperationId] = useState<string | null>(null);
   const [mode, setMode] = useState<'pm' | 'studio'>('pm');
 
+  // ===== PERSISTÊNCIA COM INDEXEDDB =====
+  const DB_NAME = 'BulkDownloadDB';
+  const STORE_NAME = 'currentDownload';
+  const DB_VERSION = 1;
+
+  // Inicializar IndexedDB
+  const initDB = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+      };
+    });
+  };
+
+  // Salvar estado no IndexedDB
+  const saveState = useCallback(async () => {
+    try {
+      const db = await initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+
+      const state = {
+        id: 'current',
+        progressList,
+        isCreatingZip,
+        zipReady,
+        zipFileName,
+        operationId,
+        sseActive,
+        timestamp: Date.now()
+      };
+
+      store.put(state);
+
+      return new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (error) {
+      console.error('Erro ao salvar estado:', error);
+    }
+  }, [progressList, isCreatingZip, zipReady, zipFileName, operationId, sseActive]);
+
+  // Restaurar estado do IndexedDB
+  const loadState = useCallback(async () => {
+    try {
+      const db = await initDB();
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.get('current');
+
+      return new Promise<{
+        progressList: ProgressItem[];
+        isCreatingZip: boolean;
+        zipReady: boolean;
+        zipFileName: string | null;
+        operationId: string | null;
+      } | null>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Erro ao carregar estado:', error);
+      return null;
+    }
+  }, []);
+
+  // Limpar estado do IndexedDB
+  const clearState = async () => {
+    try {
+      const db = await initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete('current');
+
+      return new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (error) {
+      console.error('Erro ao limpar estado:', error);
+    }
+  };
+
+  // Restaurar estado ao montar o componente
+  useEffect(() => {
+    const restore = async () => {
+      const savedState = await loadState();
+      if (savedState) {
+        setProgressList(savedState.progressList || []);
+        setIsCreatingZip(savedState.isCreatingZip || false);
+        setZipReady(savedState.zipReady || false);
+        setZipFileName(savedState.zipFileName || null);
+        setOperationId(savedState.operationId || null);
+        // NÃO restaurar sseActive - sempre começa false
+      }
+    };
+    restore();
+  }, [loadState]);
+
+  // Salvar estado sempre que mudar
+  useEffect(() => {
+    if (progressList.length > 0 || operationId) {
+      saveState();
+    }
+  }, [progressList, isCreatingZip, zipReady, zipFileName, operationId, sseActive, saveState]);
+
+  // Função para limpar tudo e começar novo download
+  const handleClearAndReset = async () => {
+    await clearState();
+    setProgressList([]);
+    setIsCreatingZip(false);
+    setZipReady(false);
+    setZipFileName(null);
+    setOperationId(null);
+    setSseActive(false);
+    setError('');
+    setResult(null);
+    setPreview(null);
+  };
+
+  // ===== FIM DA PERSISTÊNCIA =====
 
   const addUrlFieldAfter = (index: number) => {
     const newUrls = [...projectUrls];
@@ -122,20 +254,6 @@ const BulkDownload: React.FC = () => {
     return projectUrls.filter(url => url.trim() !== '');
   };
 
-
-  const handleOpenFolderDialog = async () => {
-    try {
-      const q = downloadPath ? `?initial=${encodeURIComponent(downloadPath)}` : '';
-      const resp = await fetch(`/api/select-folder${q}`);
-      const data = await resp.json();
-      if (data && data.success && !data.canceled && data.path) {
-        setDownloadPath(data.path);
-      }
-    } catch {
-      setError('Não foi possível abrir o seletor de pastas.');
-    }
-  };
-
   // Fluxo com SSE de progresso (inline por projeto)
   const handleDownloadWithProgress = async () => {
     const validUrls = getValidUrls();
@@ -164,7 +282,6 @@ const BulkDownload: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectUrls: validUrls,
-          downloadPath: downloadPath || undefined,
           headless,
           continueOnError: true,
           keepFiles: true,
@@ -283,14 +400,21 @@ const BulkDownload: React.FC = () => {
               const updated = { ...base, pptFile: data.fileName as string, pptTestMode: !!data.testMode };
               return [...prev.slice(0, idx), updated, ...prev.slice(idx + 1)];
             });
+          } else if (type === 'creating-zip') {
+            setIsCreatingZip(true);
+            setZipReady(false);
           } else if (type === 'completed') {
             es.close();
             setSseActive(false);
-            setOperationId(null);
+            setIsCreatingZip(false);
+            setZipReady(true);
+            setZipFileName(data.zipFileName || null);
+            // Manter operationId para o download do ZIP
           } else if (type === 'error') {
             es.close();
             setSseActive(false);
-            setOperationId(null);
+            setIsCreatingZip(false);
+            // NÃO zerar operationId - pode ter ZIP disponível mesmo com erro
             setError(data.message || 'Erro na operação');
           }
         } catch {
@@ -301,8 +425,8 @@ const BulkDownload: React.FC = () => {
       es.onerror = () => {
         es.close();
         setSseActive(false);
-        setOperationId(null);
-        setError('Conexão de progresso encerrada');
+        // NÃO zerar operationId - mantém disponível para possível download
+        setError('Conexão de progresso encerrada - verifique se o ZIP está disponível');
       };
 
     } catch {
@@ -377,22 +501,6 @@ const BulkDownload: React.FC = () => {
 
         {/* Configurações */}
         <div className="grid grid-cols-1 gap-4 mt-6">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Caminho de Download (opcional)
-            </label>
-            <div className="flex gap-2">
-              <Input
-                value={downloadPath}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDownloadPath(e.target.value)}
-                placeholder="Ex: C:/Downloads/Briefings"
-              />
-              <Button type="button" variant="outline" onClick={handleOpenFolderDialog} title="Abrir seletor de pasta">
-                <FolderOpen className="w-4 h-4 mr-1" />
-                Abrir pasta
-              </Button>
-            </div>
-          </div>
           <div className="space-y-3">
             <div>
               <div className="flex items-center gap-3">
@@ -434,9 +542,6 @@ const BulkDownload: React.FC = () => {
                   <input type="checkbox" checked={generatePpt} onChange={e => { setGeneratePpt(e.target.checked); if (!e.target.checked) setPptTestMode(false); }} />
                   <span>Gerar PPT</span>
                 </label>
-                <label className={`flex items-center gap-2 text-sm ${!generatePpt ? 'opacity-50 cursor-not-allowed' : ''}`}>                <input type="checkbox" disabled={!generatePpt} checked={pptTestMode} onChange={e => setPptTestMode(e.target.checked)} />
-                  <span>Modo Teste (Base64)</span>
-                </label>
                 {generatePpt && (
                   <span className="text-xs text-muted-foreground">{pptTestMode ? 'Será retornado como base64 via evento.' : 'Arquivo será salvo na pasta do projeto.'}</span>
                 )}
@@ -459,6 +564,20 @@ const BulkDownload: React.FC = () => {
             <Download className="w-4 h-4" />
             {sseActive ? 'Em Progresso...' : 'Fazer Download'}
           </Button>
+
+          {/* Botão para limpar e iniciar novo */}
+          {(progressList.length > 0 || operationId) && (
+            <Button
+              onClick={handleClearAndReset}
+              variant="outline"
+              disabled={sseActive}
+              className="flex items-center gap-2"
+              title="Limpar downloads atuais e começar novo"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Limpar tudo
+            </Button>
+          )}
         </div>
 
         {/* Erros */}
@@ -508,89 +627,172 @@ const BulkDownload: React.FC = () => {
         </div>
       )}
 
-      {/* Progresso inline por projeto */}
-      {sseActive && progressList.length > 0 && (
+      {/* Progresso inline por projeto - SEMPRE VISÍVEL quando há progresso */}
+      {progressList.length > 0 && (
         <div className="bg-card p-6 border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-card-foreground">Progresso</h3>
+            <h3 className="text-lg font-semibold text-card-foreground">
+              {sseActive ? 'Progresso' : 'Último Download'}
+            </h3>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!operationId || progressList.every(p => p.status !== 'running')}
-                onClick={async () => {
-                  if (!operationId) return;
-                  // dispara cancel para todos os que estiverem em execução
-                  const running = progressList.filter(p => p.status === 'running' && p.projectNumber);
-                  for (const r of running) {
-                    try { await fetch(`/api/bulk-download/cancel/${operationId}/${r.projectNumber}`, { method: 'POST' }); } catch (e) { console.error('Erro ao cancelar', r.projectNumber, e); }
-                  }
-                }}
-                title="Cancelar todos"
-              >
-                Cancelar todos
-              </Button>
+              {sseActive && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!operationId || progressList.every(p => p.status !== 'running')}
+                  onClick={async () => {
+                    if (!operationId) return;
+                    // dispara cancel para todos os que estiverem em execução
+                    const running = progressList.filter(p => p.status === 'running' && p.projectNumber);
+                    for (const r of running) {
+                      try { await fetch(`/api/bulk-download/cancel/${operationId}/${r.projectNumber}`, { method: 'POST' }); } catch (e) { console.error('Erro ao cancelar', r.projectNumber, e); }
+                    }
+                  }}
+                  title="Cancelar todos"
+                >
+                  Cancelar todos
+                </Button>
+              )}
             </div>
           </div>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {progressList.map((p) => (
               <div
                 key={p.projectNumber || p.queueIndex}
-                className={`p-3 border border-border ${p.status === 'success' ? 'bg-green-900 text-white' : 'bg-muted'}`}
+                className={`p-3 border rounded-lg transition-all relative ${p.status === 'success'
+                  ? 'bg-green-950/50 border-green-700'
+                  : p.status === 'fail'
+                    ? 'bg-destructive/10 border-destructive'
+                    : p.status === 'canceled'
+                      ? 'bg-muted/50 border-muted-foreground'
+                      : 'bg-muted border-border'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium">
-                    {p.dsid ? (
-                      <>DSID {p.dsid}{p.projectNumber ? <span className="text-muted-foreground ml-2">(Projeto {p.projectNumber})</span> : null}</>
-                    ) : p.projectNumber ? (
-                      <>Projeto {p.projectNumber}</>
-                    ) : (
-                      <>Aguardando...</>
+                  <div className="text-xs font-bold truncate" title={p.dsid ? `DSID ${p.dsid}` : p.projectNumber ? `Projeto ${p.projectNumber}` : 'Aguardando'}>
+                    {p.dsid ? `DSID ${p.dsid}` : p.projectNumber ? `#${p.projectNumber}` : '...'}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge
+                      variant={
+                        p.status === 'success' ? 'default' :
+                          p.status === 'fail' ? 'destructive' :
+                            p.status === 'canceled' ? 'secondary' :
+                              'outline'
+                      }
+                      className={`text-[10px] h-5 px-1.5 flex items-center gap-0.5 ${p.status === 'success' ? 'bg-green-600 hover:bg-green-700 text-white' : ''
+                        }`}
+                    >
+                      {p.status === 'success' ? <Check className="w-3 h-3" /> :
+                        p.status === 'fail' ? <X className="w-3 h-3" /> :
+                          p.status === 'canceled' ? <X className="w-3 h-3" /> :
+                            p.status === 'running' ? <Clock className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
+                    </Badge>
+                    {p.status === 'running' && (
+                      <button
+                        className="text-xs p-0.5 rounded hover:bg-background/50"
+                        onClick={async () => {
+                          if (!operationId) return;
+                          try {
+                            await fetch(`/api/bulk-download/cancel/${operationId}/${p.projectNumber}`, { method: 'POST' });
+                          } catch (err) {
+                            console.error('Erro ao cancelar projeto', err);
+                          }
+                        }}
+                        title="Cancelar este projeto"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     )}
                   </div>
-                  <button
-                    className="text-xs p-1 rounded hover:bg-background"
-                    onClick={async () => {
-                      if (!operationId) return;
-                      try {
-                        await fetch(`/api/bulk-download/cancel/${operationId}/${p.projectNumber}`, { method: 'POST' });
-                      } catch (err) {
-                        console.error('Erro ao cancelar projeto', err);
-                      }
-                    }}
-                    disabled={p.status !== 'running'}
-                    title="Cancelar este projeto"
-                  >
-                    <Trash2 className={`w-4 h-4 ${p.status !== 'running' ? 'opacity-50' : ''}`} />
-                  </button>
                 </div>
-                <div className={`h-2 ${p.status === 'success' ? 'bg-green-950' : 'bg-background'} border border-border`}>
-                  <div className={`h-2 ${p.status === 'fail' ? 'bg-destructive' : p.status === 'success' ? 'bg-green-600' : 'bg-primary'}`} style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}></div>
+                <div className={`h-1.5 rounded-full overflow-hidden ${p.status === 'success' ? 'bg-green-950' : 'bg-background'
+                  } border border-border`}>
+                  <div
+                    className={`h-full transition-all duration-300 ${p.status === 'fail' ? 'bg-destructive' :
+                      p.status === 'success' ? 'bg-green-600' :
+                        p.status === 'canceled' ? 'bg-muted-foreground' :
+                          'bg-primary'
+                      }`}
+                    style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}
+                  ></div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">{p.stage || (p.status === 'success' ? 'Concluído' : p.status === 'fail' ? 'Falha' : p.status === 'canceled' ? 'Cancelado' : 'Processando')}</div>
+                <div className="mt-2 text-[10px] text-muted-foreground truncate" title={p.stage}>
+                  {p.stage || (
+                    p.status === 'success' ? 'Concluído' :
+                      p.status === 'fail' ? 'Falha' :
+                        p.status === 'canceled' ? 'Cancelado' :
+                          'Processando'
+                  )}
+                </div>
                 {p.pptFile && (
-                  <div className="mt-2 text-xs font-mono">
-                    PPT: {p.pptFile} {p.pptTestMode && <Badge variant="outline" className="ml-2">test</Badge>}
+                  <div className="mt-2 text-[9px] font-mono truncate flex items-center gap-1" title={`PPT: ${p.pptFile}`}>
+                    <FileText className="w-2.5 h-2.5" />
+                    {p.pptFile.split(/[/\\]/).pop()}
+                    {p.pptTestMode && <span className="ml-1 text-amber-500">test</span>}
                   </div>
                 )}
               </div>
             ))}
           </div>
-          {/* Histórico simples: itens concluídos */}
-          {progressList.some(p => p.status === 'success' || p.status === 'fail' || p.status === 'canceled') && (
-            <div className="mt-6">
-              <h4 className="text-sm font-medium mb-2">Concluído</h4>
-              <div className="space-y-2">
-                {progressList
-                  .filter(p => p.status === 'success' || p.status === 'fail' || p.status === 'canceled')
-                  .map(p => (
-                    <div key={`hist-${p.projectNumber || p.queueIndex}`} className="text-xs text-muted-foreground">
-                      {p.dsid ? `DSID ${p.dsid}` : p.projectNumber ? `Projeto ${p.projectNumber}` : 'Projeto'} — {p.status === 'success' ? 'Concluído' : p.status === 'fail' ? 'Falha' : 'Cancelado'}
-                    </div>
-                  ))}
+
+          {/* Mensagem de aguardo e botão de download do ZIP */}
+          {sseActive && !isCreatingZip && progressList.length > 0 && (
+            <div className="mt-6 p-4 bg-blue-950/30 border border-blue-700 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-400 animate-pulse" />
+                <div>
+                  <div className="font-medium text-blue-400">Aguarde o processamento</div>
+                  <div className="text-sm text-blue-300">
+                    Seu download acontecerá depois que todos os arquivos forem processados.
+                  </div>
+                </div>
               </div>
             </div>
           )}
+
+          {/* Estado de criação do ZIP */}
+          {isCreatingZip && (
+            <div className="mt-6 p-4 bg-purple-950/30 border border-purple-700 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Download className="w-5 h-5 text-purple-400 animate-bounce" />
+                <div>
+                  <div className="font-medium text-purple-400">Criando arquivo ZIP...</div>
+                  <div className="text-sm text-purple-300">
+                    Empacotando todos os arquivos em um único arquivo para download.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Botão de download do ZIP - FORA do bloco SSE para permanecer visível */}
+      {zipReady && operationId && (
+        <div className="bg-card p-6 border border-border">
+          <div className="p-4 bg-green-950/30 border border-green-700 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-green-400" />
+                <div>
+                  <div className="font-medium text-green-400">✅ ZIP pronto para download!</div>
+                  <div className="text-sm text-green-300">
+                    {zipFileName || 'bulk-download.zip'}
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  window.location.href = `/api/bulk-download/zip/${operationId}`;
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Baixar ZIP
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -87,9 +87,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       body: JSON.stringify(data),
     });
     const json = await res.json().catch(() => ({}));
+    
+    console.log('🔐 Login response:', { status: res.status, ok: res.ok, json });
+    
     if (!res.ok) {
       throw new Error(json.message || 'Falha ao logar');
     }
+    
+    if (!json.accessToken) {
+      console.error('❌ Backend não retornou accessToken!', json);
+      throw new Error('Token não recebido do servidor');
+    }
+    
+    console.log('✅ Salvando sessão com token:', json.accessToken.substring(0, 20) + '...');
     saveSession(json.accessToken, json.user);
     return json.user as AppUser;
   }, []);

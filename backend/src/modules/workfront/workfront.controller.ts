@@ -875,6 +875,30 @@ export class WorkfrontController {
     return { success: true };
   }
 
+  @Get('bulk-download/zip/:operationId')
+  @ApiOperation({ summary: 'Baixar ZIP com todos os arquivos do bulk download' })
+  @ApiParam({ name: 'operationId', description: 'ID da operação de bulk download' })
+  @ApiResponse({ status: 200, description: 'ZIP com todos os arquivos' })
+  @ApiResponse({ status: 404, description: 'ZIP não encontrado ou expirado' })
+  async downloadBulkZip(
+    @Param('operationId') operationId: string,
+    @Res() res: Response,
+  ) {
+    const zipData = this.bulkService.getStoredZip(operationId);
+    
+    if (!zipData) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'ZIP não encontrado ou já expirado' 
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipData.fileName}"`);
+    res.setHeader('Content-Length', zipData.buffer.length);
+    res.send(zipData.buffer);
+  }
+
   // ===== ROTAS DE EXTRAÇÃO DE DOCUMENTOS =====
 
   @Post('extract-documents')
@@ -948,6 +972,151 @@ export class WorkfrontController {
     }
   }
 
+  @Post('extract-overview')
+  @ApiOperation({ summary: 'Extrair informações da aba Overview do projeto' })
+  @ApiResponse({
+    status: 200,
+    description: 'Informações da aba Overview extraídas com sucesso',
+  })
+  async extractOverview(@Body() body: { url: string; process?: boolean }): Promise<any> {
+    try {
+      if (!body.url) {
+        throw new HttpException('URL do projeto é obrigatória', HttpStatus.BAD_REQUEST);
+      }
+
+      // Normalizar URL para /overview
+      const overviewUrl = body.url.replace(/\/(documents|updates|details|tasks|timeline|billing).*$/, '/overview');
+      
+      this.logger.log(`Extraindo overview de: ${overviewUrl}`);
+
+      const rawResult = await this.extractionService.extractOverview(overviewUrl);
+
+      // Se process=true, processar e limpar os dados
+      const result = body.process !== false 
+        ? await this.extractionService.processOverviewData(rawResult)
+        : rawResult;
+
+      return {
+        success: true,
+        message: 'Overview extraído com sucesso',
+        data: result,
+        url: overviewUrl,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logger.error('Erro ao extrair overview:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Erro ao extrair informações do Overview',
+          timestamp: new Date().toISOString(),
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('extract-overview-batch')
+  @ApiOperation({ summary: 'Extrair informações de múltiplos projetos em lote (3 simultâneos)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Informações extraídas com sucesso e ordenadas por DSID',
+  })
+  async extractOverviewBatch(@Body() body: { urls: string[] }): Promise<any> {
+    try {
+      if (!body.urls || !Array.isArray(body.urls) || body.urls.length === 0) {
+        throw new HttpException('Lista de URLs é obrigatória', HttpStatus.BAD_REQUEST);
+      }
+
+      this.logger.log(`📦 Iniciando extração em lote de ${body.urls.length} projetos...`);
+
+      const results = [];
+      const errors = [];
+      const batchSize = 3; // Processar 3 por vez
+
+      // Processar em lotes de 3
+      for (let i = 0; i < body.urls.length; i += batchSize) {
+        const batch = body.urls.slice(i, i + batchSize);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(body.urls.length / batchSize);
+        
+        this.logger.log(`📊 Processando lote ${batchNumber}/${totalBatches} (${batch.length} URLs)...`);
+
+        // Processar 3 URLs simultaneamente
+        const batchPromises = batch.map(async (url, index) => {
+          try {
+            const overviewUrl = url.replace(/\/(documents|updates|details|tasks|timeline|billing).*$/, '/overview');
+            this.logger.log(`  ⏳ [${i + index + 1}/${body.urls.length}] Extraindo: ${overviewUrl}`);
+            
+            const rawResult = await this.extractionService.extractOverview(overviewUrl);
+            const processedResult = await this.extractionService.processOverviewData(rawResult);
+            
+            this.logger.log(`  ✅ [${i + index + 1}/${body.urls.length}] Concluído`);
+            
+            return {
+              url: overviewUrl,
+              success: true,
+              data: processedResult,
+            };
+          } catch (error) {
+            this.logger.error(`  ❌ [${i + index + 1}/${body.urls.length}] Erro: ${error.message}`);
+            return {
+              url,
+              success: false,
+              error: error.message,
+            };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Separar sucessos e erros
+        batchResults.forEach(result => {
+          if (result.success) {
+            results.push(result);
+          } else {
+            errors.push(result);
+          }
+        });
+      }
+
+      // Ordenar resultados por DSID (crescente)
+      results.sort((a, b) => {
+        const dsidA = a.data?.forSpreadsheet?.DSID || '';
+        const dsidB = b.data?.forSpreadsheet?.DSID || '';
+        
+        // Extrair números do DSID para ordenação numérica
+        const numA = parseInt(dsidA.replace(/\D/g, '')) || 0;
+        const numB = parseInt(dsidB.replace(/\D/g, '')) || 0;
+        
+        return numA - numB;
+      });
+
+      this.logger.log(`✅ Extração em lote concluída: ${results.length} sucessos, ${errors.length} erros`);
+
+      return {
+        success: true,
+        message: `Extração em lote concluída`,
+        total: body.urls.length,
+        successful: results.length,
+        failed: errors.length,
+        results,
+        errors: errors.length > 0 ? errors : undefined,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logger.error('Erro ao extrair overview em lote:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Erro ao extrair informações em lote',
+          timestamp: new Date().toISOString(),
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // ===== ROTAS DE COMENTÁRIOS =====
 
   @Post('add-comment')
@@ -1004,7 +1173,7 @@ export class WorkfrontController {
     @Body() body: {
       files: Array<{ name: string; size: number; type?: string }>;
       projectUrl: string;
-      selectedUser: 'carol' | 'giovana' | 'test';
+      // selectedUser removido - será passado apenas na execução
       jobId?: string;
     },
     @CurrentUser() user?: AuthUser

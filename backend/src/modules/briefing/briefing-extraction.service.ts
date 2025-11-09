@@ -101,53 +101,115 @@ export class BriefingExtractionService {
 
             await this.ensureTempDirectory();
 
-            // Concorrência controlada
+            // Concorrência controlada com pipeline em lote
+            // Estratégia: processa lotes completos (download + PPT) antes de passar ao próximo lote
             const concurrency = Math.max(1, Math.min(Number(options.concurrency) || 2, 5));
-            let inFlight = 0;
-            let index = 0;
-            const runNext = async (): Promise<void> => {
-                if (index >= projectUrls.length) return;
-                const currentIndex = index++;
-                const url = projectUrls[currentIndex];
-                inFlight++;
-                this.logger.log(`\n🔄 Projeto ${currentIndex + 1}/${projectUrls.length} (conc=${inFlight}/${concurrency}): ${url}`);
-                try {
-                    const projectResult = await this.processProjectBriefing(url, currentIndex + 1, options);
-                    if (projectResult.success) {
-                        results.successful++;
-                        results.downloadResults.successful.push(projectResult);
-                        const processedProject = await this.processSingleProjectResult(projectResult);
-                        results.results.processedProjects.push(processedProject);
-                        results.summary.totalFiles += projectResult.filesDownloaded || 0;
-                        results.summary.totalExtractions += processedProject.pdfExtractions || 0;
-                        if (processedProject.ppt?.fileName) {
-                            (results as any).summary.pptCount = ((results as any).summary.pptCount || 0) + 1;
+            
+            progress?.({ type: 'start', data: { total: projectUrls.length, concurrency } });
+            
+            // Processar em lotes de tamanho = concurrency
+            for (let batchStart = 0; batchStart < projectUrls.length; batchStart += concurrency) {
+                const batchEnd = Math.min(batchStart + concurrency, projectUrls.length);
+                const batchUrls = projectUrls.slice(batchStart, batchEnd);
+                
+                this.logger.log(`\n📦 Lote ${Math.floor(batchStart / concurrency) + 1}: processando ${batchUrls.length} projetos em paralelo (${batchStart + 1}-${batchEnd} de ${projectUrls.length})`);
+                
+                // CRÍTICO: Processar projetos do lote EM PARALELO usando Promise.allSettled
+                // Cada projeto completa download + organização + PPT de forma independente
+                const batchPromises = batchUrls.map(async (url, batchIndex) => {
+                    const projectIndex = batchStart + batchIndex;
+                    const projectNumber = projectIndex + 1;
+                    
+                    this.logger.log(`\n🔄 Projeto ${projectNumber}/${projectUrls.length}: ${url}`);
+                    
+                    try {
+                        // processProjectBriefing já inclui download + PPT (se generatePpt=true)
+                        const projectResult = await this.processProjectBriefing(url, projectNumber, options);
+                        
+                        if (projectResult.success) {
+                            const processedProject = await this.processSingleProjectResult(projectResult);
+                            
+                            // Callback para organização de arquivos (se fornecido)
+                            if (options.onProjectComplete) {
+                                await options.onProjectComplete(projectResult, processedProject);
+                            }
+                            
+                            // Emitir sucesso APÓS salvar no banco e organizar arquivos
+                            progress?.({ type: 'project-success', data: { projectNumber, projectName: projectResult.projectName, dsid: processedProject.dsid } });
+                            this.logger.log(`✅ Projeto ${projectNumber} concluído com sucesso (salvo no banco + organizado)`);
+                            
+                            return {
+                                success: true,
+                                url,
+                                projectNumber,
+                                projectResult,
+                                processedProject
+                            };
+                        } else {
+                            return {
+                                success: false,
+                                url,
+                                projectNumber,
+                                error: projectResult.error || 'Erro desconhecido'
+                            };
                         }
-                        if (projectResult.pdfProcessing) {
-                            results.summary.pdfProcessing.totalPdfs += projectResult.pdfProcessing.processed || 0;
-                            results.summary.pdfProcessing.successfulExtractions += (projectResult.pdfProcessing.results || []).filter(p => p.hasContent).length;
-                            results.summary.pdfProcessing.totalCharactersExtracted += (projectResult.pdfProcessing.results || []).reduce((s, p) => s + (p.textLength || 0), 0);
+                    } catch (err) {
+                        this.logger.error(`❌ Erro no projeto ${projectNumber}: ${err.message}`);
+                        return {
+                            success: false,
+                            url,
+                            projectNumber,
+                            error: err.message
+                        };
+                    }
+                });
+                
+                // Aguardar todos os projetos do lote completarem
+                const batchResults = await Promise.allSettled(batchPromises);
+                
+                // Processar resultados do lote
+                for (const result of batchResults) {
+                    if (result.status === 'fulfilled') {
+                        const data = result.value;
+                        
+                        if (data.success) {
+                            results.successful++;
+                            results.downloadResults.successful.push(data.projectResult);
+                            results.results.processedProjects.push(data.processedProject);
+                            results.summary.totalFiles += data.projectResult.filesDownloaded || 0;
+                            results.summary.totalExtractions += data.processedProject.pdfExtractions || 0;
+                            
+                            if (data.processedProject.ppt?.fileName) {
+                                (results as any).summary.pptCount = ((results as any).summary.pptCount || 0) + 1;
+                            }
+                            
+                            if (data.projectResult.pdfProcessing) {
+                                results.summary.pdfProcessing.totalPdfs += data.projectResult.pdfProcessing.processed || 0;
+                                results.summary.pdfProcessing.successfulExtractions += (data.projectResult.pdfProcessing.results || []).filter(p => p.hasContent).length;
+                                results.summary.pdfProcessing.totalCharactersExtracted += (data.projectResult.pdfProcessing.results || []).reduce((s, p) => s + (p.textLength || 0), 0);
+                            }
+                        } else {
+                            results.failed++;
+                            results.downloadResults.failed.push({ 
+                                url: data.url, 
+                                projectNumber: data.projectNumber, 
+                                error: data.error 
+                            });
                         }
                     } else {
+                        // Promise rejeitada
                         results.failed++;
-                        results.downloadResults.failed.push({ url, projectNumber: currentIndex + 1, error: projectResult.error || 'Erro desconhecido' });
-                    }
-                } catch (err) {
-                    results.failed++;
-                    results.downloadResults.failed.push({ url, projectNumber: currentIndex + 1, error: err.message });
-                    this.logger.error(`❌ Erro no projeto ${currentIndex + 1}: ${err.message}`);
-                    if (!options.continueOnError) {
-                        inFlight--;
-                        return; // sai cedo; as promessas já lançadas continuam
+                        this.logger.error(`❌ Promise rejeitada no lote: ${result.reason}`);
                     }
                 }
-                inFlight--;
-                await runNext();
-            };
-
-            progress?.({ type: 'start', data: { total: projectUrls.length, concurrency } });
-            const starters = Array.from({ length: Math.min(concurrency, projectUrls.length) }, () => runNext());
-            await Promise.all(starters);
+                
+                // Se continueOnError = false e houve erro, parar tudo
+                if (!options.continueOnError && results.failed > 0) {
+                    break;
+                }
+                
+                this.logger.log(`\n📊 Lote ${Math.floor(batchStart / concurrency) + 1} concluído: ${results.successful} sucessos, ${results.failed} falhas até agora`);
+            }
 
             this.logger.log(`✅ Processamento concluído: ${results.successful} sucessos, ${results.failed} falhas`);
             progress?.({ type: 'completed', data: { successful: results.successful, failed: results.failed } });

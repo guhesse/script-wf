@@ -3,8 +3,8 @@ import { Subject, Observable } from 'rxjs';
 
 export interface BulkProgressEvent {
     operationId: string;
-    // Adicionados tipos relacionados a PPT
-    type: 'start' | 'project-start' | 'stage' | 'project-success' | 'project-fail' | 'project-meta' | 'ppt-generated' | 'ppt-error' | 'ppt' | 'completed' | 'error';
+    // Adicionados tipos relacionados a PPT e ZIP
+    type: 'start' | 'project-start' | 'stage' | 'project-success' | 'project-fail' | 'project-meta' | 'ppt-generated' | 'ppt-error' | 'ppt' | 'creating-zip' | 'completed' | 'error';
     timestamp: string;
     data?: any;
 }
