@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Download, FolderDown, FolderOpen, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Download, FolderDown, FolderOpen, Plus, Trash2, Eye, FileText, Check, X, Clock, Circle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Alert } from './ui/alert';
@@ -434,7 +434,8 @@ const BulkDownload: React.FC = () => {
                   <input type="checkbox" checked={generatePpt} onChange={e => { setGeneratePpt(e.target.checked); if (!e.target.checked) setPptTestMode(false); }} />
                   <span>Gerar PPT</span>
                 </label>
-                <label className={`flex items-center gap-2 text-sm ${!generatePpt ? 'opacity-50 cursor-not-allowed' : ''}`}>                <input type="checkbox" disabled={!generatePpt} checked={pptTestMode} onChange={e => setPptTestMode(e.target.checked)} />
+                <label className={`flex items-center gap-2 text-sm ${!generatePpt ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <input type="checkbox" disabled={!generatePpt} checked={pptTestMode} onChange={e => setPptTestMode(e.target.checked)} />
                   <span>Modo Teste (Base64)</span>
                 </label>
                 {generatePpt && (
@@ -459,6 +460,7 @@ const BulkDownload: React.FC = () => {
             <Download className="w-4 h-4" />
             {sseActive ? 'Em Progresso...' : 'Fazer Download'}
           </Button>
+
         </div>
 
         {/* Erros */}
@@ -532,45 +534,80 @@ const BulkDownload: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {progressList.map((p) => (
               <div
                 key={p.projectNumber || p.queueIndex}
-                className={`p-3 border border-border ${p.status === 'success' ? 'bg-green-900 text-white' : 'bg-muted'}`}
+                className={`p-3 border rounded-lg transition-all relative ${p.status === 'success'
+                  ? 'bg-green-950/50 border-green-700'
+                  : p.status === 'fail'
+                    ? 'bg-destructive/10 border-destructive'
+                    : p.status === 'canceled'
+                      ? 'bg-muted/50 border-muted-foreground'
+                      : 'bg-muted border-border'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium">
-                    {p.dsid ? (
-                      <>DSID {p.dsid}{p.projectNumber ? <span className="text-muted-foreground ml-2">(Projeto {p.projectNumber})</span> : null}</>
-                    ) : p.projectNumber ? (
-                      <>Projeto {p.projectNumber}</>
-                    ) : (
-                      <>Aguardando...</>
+                  <div className="text-xs font-bold truncate" title={p.dsid ? `DSID ${p.dsid}` : p.projectNumber ? `Projeto ${p.projectNumber}` : 'Aguardando'}>
+                    {p.dsid ? `DSID ${p.dsid}` : p.projectNumber ? `#${p.projectNumber}` : '...'}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge
+                      variant={
+                        p.status === 'success' ? 'success' :
+                          p.status === 'fail' ? 'destructive' :
+                            p.status === 'canceled' ? 'secondary' :
+                              'outline'
+                      }
+                      className="text-[10px] h-5 px-1.5 flex items-center gap-0.5"
+                    >
+                      {p.status === 'success' ? <Check className="w-3 h-3" /> :
+                        p.status === 'fail' ? <X className="w-3 h-3" /> :
+                          p.status === 'canceled' ? <X className="w-3 h-3" /> :
+                            p.status === 'running' ? <Clock className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
+                    </Badge>
+                    {p.status === 'running' && (
+                      <button
+                        className="text-xs p-0.5 rounded hover:bg-background/50"
+                        onClick={async () => {
+                          if (!operationId) return;
+                          try {
+                            await fetch(`/api/bulk-download/cancel/${operationId}/${p.projectNumber}`, { method: 'POST' });
+                          } catch (err) {
+                            console.error('Erro ao cancelar projeto', err);
+                          }
+                        }}
+                        title="Cancelar este projeto"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     )}
                   </div>
-                  <button
-                    className="text-xs p-1 rounded hover:bg-background"
-                    onClick={async () => {
-                      if (!operationId) return;
-                      try {
-                        await fetch(`/api/bulk-download/cancel/${operationId}/${p.projectNumber}`, { method: 'POST' });
-                      } catch (err) {
-                        console.error('Erro ao cancelar projeto', err);
-                      }
-                    }}
-                    disabled={p.status !== 'running'}
-                    title="Cancelar este projeto"
-                  >
-                    <Trash2 className={`w-4 h-4 ${p.status !== 'running' ? 'opacity-50' : ''}`} />
-                  </button>
                 </div>
-                <div className={`h-2 ${p.status === 'success' ? 'bg-green-950' : 'bg-background'} border border-border`}>
-                  <div className={`h-2 ${p.status === 'fail' ? 'bg-destructive' : p.status === 'success' ? 'bg-green-600' : 'bg-primary'}`} style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}></div>
+                <div className={`h-1.5 rounded-full overflow-hidden ${p.status === 'success' ? 'bg-green-950' : 'bg-background'
+                  } border border-border`}>
+                  <div
+                    className={`h-full transition-all duration-300 ${p.status === 'fail' ? 'bg-destructive' :
+                      p.status === 'success' ? 'bg-green-600' :
+                        p.status === 'canceled' ? 'bg-muted-foreground' :
+                          'bg-primary'
+                      }`}
+                    style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}
+                  ></div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">{p.stage || (p.status === 'success' ? 'Concluído' : p.status === 'fail' ? 'Falha' : p.status === 'canceled' ? 'Cancelado' : 'Processando')}</div>
+                <div className="mt-2 text-[10px] text-muted-foreground truncate" title={p.stage}>
+                  {p.stage || (
+                    p.status === 'success' ? 'Concluído' :
+                      p.status === 'fail' ? 'Falha' :
+                        p.status === 'canceled' ? 'Cancelado' :
+                          'Processando'
+                  )}
+                </div>
                 {p.pptFile && (
-                  <div className="mt-2 text-xs font-mono">
-                    PPT: {p.pptFile} {p.pptTestMode && <Badge variant="outline" className="ml-2">test</Badge>}
+                  <div className="mt-2 text-[9px] font-mono truncate flex items-center gap-1" title={`PPT: ${p.pptFile}`}>
+                    <FileText className="w-2.5 h-2.5" />
+                    {p.pptFile.split(/[/\\]/).pop()}
+                    {p.pptTestMode && <span className="ml-1 text-amber-500">test</span>}
                   </div>
                 )}
               </div>
@@ -579,15 +616,32 @@ const BulkDownload: React.FC = () => {
           {/* Histórico simples: itens concluídos */}
           {progressList.some(p => p.status === 'success' || p.status === 'fail' || p.status === 'canceled') && (
             <div className="mt-6">
-              <h4 className="text-sm font-medium mb-2">Concluído</h4>
-              <div className="space-y-2">
-                {progressList
-                  .filter(p => p.status === 'success' || p.status === 'fail' || p.status === 'canceled')
-                  .map(p => (
-                    <div key={`hist-${p.projectNumber || p.queueIndex}`} className="text-xs text-muted-foreground">
-                      {p.dsid ? `DSID ${p.dsid}` : p.projectNumber ? `Projeto ${p.projectNumber}` : 'Projeto'} — {p.status === 'success' ? 'Concluído' : p.status === 'fail' ? 'Falha' : 'Cancelado'}
-                    </div>
-                  ))}
+              <h4 className="text-sm font-medium mb-2">Resumo</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div className="text-center p-3 bg-green-950/30 border border-green-700 rounded">
+                  <div className="text-xl font-bold text-green-400">
+                    {progressList.filter(p => p.status === 'success').length}
+                  </div>
+                  <div className="text-xs text-green-400">Concluídos</div>
+                </div>
+                <div className="text-center p-3 bg-destructive/10 border border-destructive rounded">
+                  <div className="text-xl font-bold text-destructive">
+                    {progressList.filter(p => p.status === 'fail').length}
+                  </div>
+                  <div className="text-xs text-destructive">Falhas</div>
+                </div>
+                <div className="text-center p-3 bg-muted border border-border rounded">
+                  <div className="text-xl font-bold text-foreground">
+                    {progressList.filter(p => p.status === 'canceled').length}
+                  </div>
+                  <div className="text-xs text-foreground">Cancelados</div>
+                </div>
+                <div className="text-center p-3 bg-muted border border-border rounded">
+                  <div className="text-xl font-bold text-foreground">
+                    {progressList.filter(p => p.status === 'running').length}
+                  </div>
+                  <div className="text-xs text-foreground">Em execução</div>
+                </div>
               </div>
             </div>
           )}
