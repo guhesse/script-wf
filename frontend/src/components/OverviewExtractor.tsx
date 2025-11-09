@@ -175,24 +175,24 @@ const OverviewExtractor: React.FC = () => {
                 .map(r => {
                     const data = r.data!.forSpreadsheet!;
                     const values = Object.values(data);
-                    
+
                     // Converte URL de /overview para /documents para o link
                     const documentsUrl = r.url.replace('/overview', '/documents');
-                    
+
                     // Cria array de valores, adicionando hyperlinks no DSID e ATIVIDADE
                     return Object.keys(data).map((key, index) => {
                         const value = values[index] as string;
-                        
+
                         // Adiciona hyperlink no DSID
                         if (key === 'DSID' && value) {
                             return `=HYPERLINK("${documentsUrl}", "${value}")`;
                         }
-                        
+
                         // Adiciona hyperlink na ATIVIDADE
                         if (key === 'ATIVIDADE' && value) {
                             return `=HYPERLINK("${documentsUrl}", "${value}")`;
                         }
-                        
+
                         return value;
                     }).join('\t');
                 });
@@ -208,30 +208,30 @@ const OverviewExtractor: React.FC = () => {
             const firstSuccess = batchResults.results.find(r => r.success && r.data?.forSpreadsheet);
             if (firstSuccess && firstSuccess.data?.forSpreadsheet) {
                 const labels = Object.keys(firstSuccess.data.forSpreadsheet).join('\t');
-                
+
                 const rows = batchResults.results
                     .filter(r => r.success && r.data?.forSpreadsheet)
                     .map(r => {
                         const data = r.data!.forSpreadsheet!;
                         const values = Object.values(data);
-                        
+
                         // Converte URL de /overview para /documents para o link
                         const documentsUrl = r.url.replace('/overview', '/documents');
-                        
+
                         // Cria array de valores, adicionando hyperlinks no DSID e ATIVIDADE
                         return Object.keys(data).map((key, index) => {
                             const value = values[index] as string;
-                            
+
                             // Adiciona hyperlink no DSID
                             if (key === 'DSID' && value) {
                                 return `=HYPERLINK("${documentsUrl}", "${value}")`;
                             }
-                            
+
                             // Adiciona hyperlink na ATIVIDADE
                             if (key === 'ATIVIDADE' && value) {
                                 return `=HYPERLINK("${documentsUrl}", "${value}")`;
                             }
-                            
+
                             return value;
                         }).join('\t');
                     });
@@ -328,25 +328,20 @@ const OverviewExtractor: React.FC = () => {
             {(loading || progressList.length > 0) && (
                 <div className="bg-card p-6 border border-border">
                     <h3 className="text-lg font-semibold text-card-foreground mb-4">Progresso</h3>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                         {progressList.map((p) => (
                             <div
                                 key={p.projectNumber}
-                                className={`p-3 border border-border ${p.status === 'success' ? 'bg-green-950 text-white' : 'bg-muted'
+                                className={`p-3 border rounded-lg transition-all ${p.status === 'success'
+                                        ? 'bg-green-950/50 border-green-700'
+                                        : p.status === 'fail'
+                                            ? 'bg-destructive/10 border-destructive'
+                                            : 'bg-muted border-border'
                                     }`}
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="text-sm font-medium">
-                                        {p.dsid ? (
-                                            <>
-                                                DSID {p.dsid}
-                                                <span className="text-muted-foreground ml-2">
-                                                    (Projeto {p.projectNumber})
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <>Projeto {p.projectNumber}</>
-                                        )}
+                                    <div className="text-xs font-bold truncate">
+                                        {p.dsid ? `DSID ${p.dsid}` : `#${p.projectNumber}`}
                                     </div>
                                     <Badge
                                         variant={
@@ -354,23 +349,24 @@ const OverviewExtractor: React.FC = () => {
                                                 p.status === 'fail' ? 'destructive' :
                                                     'outline'
                                         }
+                                        className="text-[10px] h-5 px-1.5"
                                     >
                                         {p.status === 'success' ? '✓' :
                                             p.status === 'fail' ? '✗' :
                                                 p.status === 'running' ? '⏳' : '○'}
                                     </Badge>
                                 </div>
-                                <div className={`h-2 ${p.status === 'success' ? 'bg-green-950' : 'bg-background'
+                                <div className={`h-1.5 rounded-full overflow-hidden ${p.status === 'success' ? 'bg-green-950' : 'bg-background'
                                     } border border-border`}>
                                     <div
-                                        className={`h-2 ${p.status === 'fail' ? 'bg-destructive' :
-                                                p.status === 'success' ? 'bg-green-700' :
+                                        className={`h-full transition-all duration-300 ${p.status === 'fail' ? 'bg-destructive' :
+                                                p.status === 'success' ? 'bg-green-600' :
                                                     'bg-primary'
                                             }`}
                                         style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}
                                     ></div>
                                 </div>
-                                <div className="mt-1 text-xs text-muted-foreground">
+                                <div className="mt-2 text-[10px] text-muted-foreground truncate" title={p.stage}>
                                     {p.stage || (
                                         p.status === 'success' ? 'Concluído' :
                                             p.status === 'fail' ? 'Falha' :
@@ -412,53 +408,51 @@ const OverviewExtractor: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Botões de Cópia - Estilo Tabs */}
-                    {batchResults.successful > 0 && (
-                        <div className="mb-6">
-                            <h4 className="font-medium text-primary mb-3">
-                                📊 Copiar para Google Sheets
-                            </h4>
-                            <div className="inline-flex rounded-md shadow-sm border border-border overflow-hidden">
-                                <Button
-                                    size="sm"
-                                    variant={copied ? "default" : "ghost"}
-                                    onClick={handleCopyBatchForSpreadsheet}
-                                    disabled={copied}
-                                    className="rounded-none border-r border-border flex-1"
-                                >
-                                    {copied ? (
-                                        <>
-                                            <Check className="mr-2 h-4 w-4" />
-                                            Copiado!
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy className="mr-2 h-4 w-4" />
-                                            Copiar Todos (Ordenado por DSID)
-                                        </>
-                                    )}
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant={copied ? "default" : "ghost"}
-                                    onClick={handleCopyBatchWithLabels}
-                                    disabled={copied}
-                                    className="rounded-none flex-1"
-                                >
-                                    <Copy className="mr-2 h-4 w-4" />
-                                    Com Cabeçalhos
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Tabela Unificada com Todos os Dados */}
                     {batchResults.successful > 0 && (
                         <div className="mb-6">
-                            <h4 className="font-medium text-primary mb-3 flex items-center gap-2">
-                                <FileJson className="w-4 h-4" />
-                                Dados Extraídos (Ordenados por DSID)
-                            </h4>
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-medium mb-3 flex items-center gap-2">
+                                    <FileJson className="w-4 h-4" />
+                                    Dados Extraídos
+                                </h4>
+                                {/* Botões de Cópia - Estilo Tabs */}
+                                {batchResults.successful > 0 && (
+                                    <div >
+                                        <div className="inline-flex rounded-md shadow-sm border border-border overflow-hidden">
+                                            <Button
+                                                size="sm"
+                                                variant={copied ? "default" : "outline"}
+                                                onClick={handleCopyBatchForSpreadsheet}
+                                                disabled={copied}
+                                                className="rounded-none border-r border-border flex-1"
+                                            >
+                                                {copied ? (
+                                                    <>
+                                                        <Check className="mr-2 h-4 w-4" />
+                                                        Copiado!
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Copy className="mr-2 h-4 w-4" />
+                                                        Copiar Todos
+                                                    </>
+                                                )}
+                                            </Button>
+                                            {/* <Button
+                                                size="sm"
+                                                variant={copied ? "default" : "outline"}
+                                                onClick={handleCopyBatchWithLabels}
+                                                disabled={copied}
+                                                className="rounded-none flex-1"
+                                            >
+                                                <Copy className="mr-2 h-4 w-4" />
+                                                Com Cabeçalhos
+                                            </Button> */}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <div className="border border-border rounded-lg overflow-hidden">
                                 <div className="overflow-x-auto max-h-[600px]">
                                     <Table>
@@ -471,7 +465,7 @@ const OverviewExtractor: React.FC = () => {
                                                     if (!firstSuccess?.data?.forSpreadsheet) return null;
                                                     return Object.keys(firstSuccess.data.forSpreadsheet).map(
                                                         (key) => (
-                                                            <TableHead key={key} className="font-bold whitespace-nowrap">
+                                                            <TableHead key={key} className="font-bold whitespace-nowrap text-[10px]">
                                                                 {key}
                                                             </TableHead>
                                                         )
@@ -482,26 +476,46 @@ const OverviewExtractor: React.FC = () => {
                                         <TableBody>
                                             {batchResults.results
                                                 .filter(r => r.success && r.data?.forSpreadsheet)
-                                                .map((project, index) => (
-                                                    <TableRow key={index} className="hover:bg-muted/50">
-                                                        {Object.values(project.data!.forSpreadsheet!).map(
-                                                            (value, cellIndex) => (
-                                                                <TableCell
-                                                                    key={cellIndex}
-                                                                    className="font-mono text-xs whitespace-nowrap"
-                                                                >
-                                                                    {value as string}
-                                                                </TableCell>
-                                                            )
-                                                        )}
-                                                    </TableRow>
-                                                ))}
+                                                .map((project, index) => {
+                                                    const firstSuccess = batchResults.results.find(
+                                                        r => r.success && r.data?.forSpreadsheet
+                                                    );
+                                                    const columnKeys = firstSuccess?.data?.forSpreadsheet
+                                                        ? Object.keys(firstSuccess.data.forSpreadsheet)
+                                                        : [];
+
+                                                    return (
+                                                        <TableRow key={index} className="hover:bg-muted/50">
+                                                            {Object.values(project.data!.forSpreadsheet!).map(
+                                                                (value, cellIndex) => {
+                                                                    const columnName = columnKeys[cellIndex];
+                                                                    const stringValue = value as string;
+
+                                                                    // Truncar ATIVIDADE em 50 caracteres
+                                                                    const displayValue = columnName === 'ATIVIDADE' && stringValue.length > 50
+                                                                        ? `${stringValue.substring(0, 50)}...`
+                                                                        : stringValue;
+
+                                                                    return (
+                                                                        <TableCell
+                                                                            key={cellIndex}
+                                                                            className="font-mono text-[10px] whitespace-nowrap"
+                                                                            title={columnName === 'ATIVIDADE' ? stringValue : undefined}
+                                                                        >
+                                                                            {displayValue}
+                                                                        </TableCell>
+                                                                    );
+                                                                }
+                                                            )}
+                                                        </TableRow>
+                                                    );
+                                                })}
                                         </TableBody>
                                     </Table>
                                 </div>
                             </div>
                             <div className="text-xs text-muted-foreground mt-2">
-                                💡 Role horizontalmente para ver todas as colunas. 
+                                💡 Role horizontalmente para ver todas as colunas.
                                 Use os botões acima para copiar para o Google Sheets.
                             </div>
                         </div>
