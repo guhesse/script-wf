@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Body, Sse, MessageEvent } from '@nestjs/common';
 import { BriefingPptService } from './briefing-ppt.service';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { BriefingService } from './briefing.service';
@@ -11,6 +11,7 @@ import {
   DeleteDownloadsRequestDto,
   DeleteDownloadsResponseDto,
 } from './dto/briefing-operations.dto';
+import { Observable } from 'rxjs';
 
 @ApiTags('Briefing')
 @Controller('api/briefing')
@@ -53,6 +54,13 @@ export class BriefingController {
     @Body() processRequest: ProcessProjectsRequestDto,
   ): Promise<ProcessProjectsResponseDto> {
     return this.briefingService.processProjects(processRequest);
+  }
+
+  @Sse('process/stream')
+  @ApiOperation({ summary: 'Processar briefings com SSE (Server-Sent Events)' })
+  processProjectsStream(@Query('urls') urls: string): Observable<MessageEvent> {
+    const projectUrls = urls.split(',').filter(url => url.trim());
+    return this.briefingService.processProjectsWithSSE(projectUrls);
   }
 
   @Delete('downloads')
@@ -114,9 +122,10 @@ export class BriefingController {
   @Post('links/compare')
   @ApiOperation({ summary: 'Comparar e retornar links únicos de briefings selecionados' })
   @ApiQuery({ name: 'downloadIds', required: true, type: [String], description: 'IDs dos downloads para comparar links' })
+  @ApiQuery({ name: 'processLinks', required: false, type: Boolean, description: 'Se true, processa links DAM (padrão: true)' })
   async compareLinks(
-    @Body() body: { downloadIds: string[] },
+    @Body() body: { downloadIds: string[]; processLinks?: boolean },
   ) {
-    return this.briefingService.compareLinks(body.downloadIds);
+    return this.briefingService.compareLinks(body.downloadIds, body.processLinks ?? true);
   }
 }
