@@ -49,64 +49,34 @@ export class BriefingService {
   async getProjects(search?: string, status?: string): Promise<BriefingProjectsResponseDto> {
     try {
       const where: any = {
-        AND: [
-          // Filtrar apenas projetos que têm briefingDownloads E que são realmente briefings
-          {
-            OR: [
-              // Projetos que têm briefingDownloads com status COMPLETED
-              {
-                briefingDownloads: {
-                  some: {
-                    status: 'COMPLETED',
-                  },
-                },
-              },
-              // Projetos que foram especificamente marcados como briefings
-              {
-                AND: [
-                  {
-                    briefingDownloads: {
-                      some: {},
-                    },
-                  },
-                  // Adicionar critérios específicos para briefings
-                  {
-                    OR: [
-                      { title: { contains: 'brief', mode: 'insensitive' } },
-                      { description: { contains: 'brief', mode: 'insensitive' } },
-                      { dsid: { not: null } }, // Projetos com DSID normalmente são briefings
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-
-        ],
+        // Filtrar apenas projetos que têm briefingDownloads
+        briefingDownloads: {
+          some: {},
+        },
       };
 
       // Filtro de pesquisa
       if (search) {
         // Se a pesquisa é uma URL completa, buscar por URL exata
         if (search.includes('workfront') || search.includes('experience.adobe.com')) {
-          where.AND.push({
-            url: { equals: search }
-          });
+          where.url = { equals: search };
         } else {
           // Senão, buscar por título, projectId ou DSID
-          where.AND.push({
-            OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              { projectId: { contains: search, mode: 'insensitive' } },
-              { dsid: { contains: search, mode: 'insensitive' } },
-            ],
-          });
+          where.OR = [
+            { title: { contains: search, mode: 'insensitive' } },
+            { projectId: { contains: search, mode: 'insensitive' } },
+            { dsid: { contains: search, mode: 'insensitive' } },
+          ];
         }
       }
 
-      // Filtro de status
+      // Filtro de status nos downloads
       if (status) {
-        where.AND.push({ status });
+        where.briefingDownloads = {
+          some: {
+            status: status,
+          },
+        };
       }
 
       const projects = await this.prisma.workfrontProject.findMany({

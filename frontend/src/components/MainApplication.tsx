@@ -4,14 +4,12 @@ import {
   LogOut,
   UserCheck,
   FolderOpen,
-  History,
   FolderDown,
   FileText,
   GalleryHorizontal,
   MessageSquare,
   FileSearch
 } from 'lucide-react';
-import { ProjectHistory } from './ProjectHistory';
 import UploadSection from './UploadSection';
 import BulkDownload from './BulkDownload';
 import BriefingContentViewer from './BriefingContentViewer';
@@ -44,15 +42,12 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }
   });
-  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'history' | 'masters' | 'comments' | 'overview' | 'kanban'>(() => {
+  const [activeSection, setActiveSection] = useState<'upload' | 'extract' | 'bulk-download' | 'briefing-content' | 'masters' | 'comments' | 'overview' | 'kanban'>(() => {
     try {
       const saved = localStorage.getItem('wf_activeSection');
-      return (saved === 'upload' || saved === 'extract' || saved === 'bulk-download' || saved === 'briefing-content' || saved === 'history' || saved === 'masters' || saved === 'comments' || saved === 'overview' || saved === 'kanban') ? saved : 'upload';
+      return (saved === 'upload' || saved === 'extract' || saved === 'bulk-download' || saved === 'briefing-content' || saved === 'masters' || saved === 'comments' || saved === 'overview' || saved === 'kanban') ? saved : 'upload';
     } catch { return 'upload'; }
   });
-
-  // Estado simples de carregamento
-  const [showProgress, setShowProgress] = useState(false);
 
   // Persistir estados no localStorage quando mudarem
   useEffect(() => {
@@ -77,7 +72,7 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
     try { localStorage.setItem('wf_activeSection', activeSection); } catch { /* ignore */ }
   }, [activeSection]);
 
-  const { extractDocuments, clearCache, getProjectByUrl } = useWorkfrontApi();
+  const { clearCache } = useWorkfrontApi();
   const { logout: logoutApp, user } = useAppAuth();
 
   const handleLogoutWithCacheClearing = async () => {
@@ -88,56 +83,6 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
       console.error('Erro ao limpar cache:', error);
       // Mesmo se der erro na limpeza do cache, fazemos logout
       onLogout();
-    }
-  };
-
-  const extractDSID = (title: string): string | null => {
-    // Extrair DSID do formato: 2601G0179_0057_5297982 (Esses números são o DSID)
-    const match = title.match(/(\d{7})/);
-    return match ? match[1] : null;
-  };
-
-  const handleLoadProjectFromHistory = async (projectUrl: string) => {
-    setProjectUrl(projectUrl);
-
-    // Buscar informações do projeto no backend
-    try {
-      const project = await getProjectByUrl(projectUrl);
-      if (project) {
-        console.log('Projeto carregado do histórico:', project);
-        setCurrentProject({
-          title: project.title || 'Projeto Workfront',
-          dsid: project.dsid || extractDSID(project.title || '') || undefined
-        });
-        // Extrair automaticamente os documentos
-        await handleExtractDocuments(projectUrl);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar projeto do histórico:', error);
-      // Mesmo com erro, tentamos extrair
-      await handleExtractDocuments(projectUrl);
-    }
-  };
-
-  const isValidUrl = (url: string) => {
-    return url && url.includes('workfront');
-  };
-
-  const handleExtractDocuments = async (urlToUse?: string) => {
-    const urlToExtract = urlToUse || projectUrl;
-
-    if (!isValidUrl(urlToExtract)) {
-      return;
-    }
-
-    try {
-      setShowProgress(true);
-      await extractDocuments(urlToExtract);
-      setShowProgress(false);
-
-    } catch (error) {
-      console.error('Erro na extração:', error);
-      setShowProgress(false);
     }
   };
 
@@ -192,15 +137,6 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
       </nav>
 
       <div className="relative">
-        {/* Indicador simples de progresso */}
-        {showProgress && (
-          <div className="absolute inset-x-0 top-0 z-10">
-            <div className="mx-auto my-2 w-fit rounded bg-muted px-3 py-1 text-sm text-muted-foreground border border-border">
-              Processando extração do Workfront...
-            </div>
-          </div>
-        )}
-
         {/* Main Content with Fixed Sidebar Layout */}
         <div className="flex h-[calc(100vh-73px)]">
           {/* Fixed Sidebar */}
@@ -235,17 +171,7 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
                   }`}
               >
                 <FileText className="h-5 w-5" />
-                <span className="font-medium">Conteúdo de Briefings</span>
-              </button>
-              <button
-                onClick={() => setActiveSection('history')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-all duration-150 ${activeSection === 'history'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-              >
-                <History className="h-5 w-5" />
-                <span className="font-medium">Histórico</span>
+                <span className="font-medium">Conteúdo DSID</span>
               </button>
               <button
                 onClick={() => setActiveSection('masters')}
@@ -303,12 +229,6 @@ export const MainApplication = ({ onLogout, wfReady, onWfReconnect }: MainApplic
               <BriefingContentViewer />
             )}
 
-            {/* History Section */}
-            {activeSection === 'history' && (
-              <ProjectHistory
-                onLoadProject={handleLoadProjectFromHistory}
-              />
-            )}
             {activeSection === 'masters' && (
               <MastersGallery />
             )}

@@ -180,6 +180,7 @@ const OverviewExtractor: React.FC = () => {
                     const documentsUrl = r.url.replace('/overview', '/documents');
 
                     // Cria array de valores, adicionando hyperlinks no DSID e ATIVIDADE
+                    // SEM TRUNCAR - copia os valores completos
                     return Object.keys(data).map((key, index) => {
                         const value = values[index] as string;
 
@@ -188,11 +189,12 @@ const OverviewExtractor: React.FC = () => {
                             return `=HYPERLINK("${documentsUrl}", "${value}")`;
                         }
 
-                        // Adiciona hyperlink na ATIVIDADE
+                        // Adiciona hyperlink na ATIVIDADE (valor completo, sem truncar)
                         if (key === 'ATIVIDADE' && value) {
                             return `=HYPERLINK("${documentsUrl}", "${value}")`;
                         }
 
+                        // Retorna valor completo sem truncar
                         return value;
                     }).join('\t');
                 });

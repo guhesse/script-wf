@@ -7,7 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
  *   * VML fixo
  *   * Sufixo (R1) fixo
  *   * Parte variável (ex: FY26Q3W10 CSG CON 5479874) construída a partir de dados ou fallback
- * - Corpo: texto em Calibri 14 com labels em bold e duas primeiras linhas em azul (ênfase 1)
+ * - Corpo: texto em Calibri 12 com labels em bold e duas primeiras linhas em azul (ênfase 1)
  * (Removido base64/testMode: agora sempre salva arquivo físico)
  */
 export interface BriefingPptData {
@@ -245,7 +245,7 @@ export class BriefingPptService {
         lines.forEach((segments, idx) => {
             segments.forEach((seg, sIdx) => {
                 const opts: any = {
-                    fontFace: 'Calibri', fontSize: 14, color: seg.color || '000000', lineSpacingMultiple: 1.5,
+                    fontFace: 'Calibri', fontSize: 12, color: seg.color || '000000', lineSpacingMultiple: 1.5,
                     breakLine: false,
                 };
                 if (seg.boldLabel) opts.bold = true;

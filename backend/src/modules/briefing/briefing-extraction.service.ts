@@ -615,17 +615,47 @@ export class BriefingExtractionService {
                 });
             }
 
-            // Criar registro de briefing download
-            const briefingDownload = await this.prisma.briefingDownload.create({
-                data: {
+            // Verificar se já existe um briefing download para este projeto e DSID
+            let briefingDownload = await this.prisma.briefingDownload.findFirst({
+                where: {
                     projectId: project.id,
-                    projectName: projectResult.projectName,
                     dsid: dsid,
-                    totalFiles: projectResult.filesDownloaded || 0,
-                    totalSize: BigInt(projectResult.totalSize || 0),
-                    status: 'COMPLETED',
-                },
+                }
             });
+
+            if (briefingDownload) {
+                // Atualizar registro existente
+                this.logger.log(`Atualizando briefing download existente para DSID ${dsid}`);
+                
+                // Deletar PDFs antigos antes de atualizar
+                await this.prisma.pdfFile.deleteMany({
+                    where: { downloadId: briefingDownload.id }
+                });
+
+                briefingDownload = await this.prisma.briefingDownload.update({
+                    where: { id: briefingDownload.id },
+                    data: {
+                        projectName: projectResult.projectName,
+                        totalFiles: projectResult.filesDownloaded || 0,
+                        totalSize: BigInt(projectResult.totalSize || 0),
+                        status: 'COMPLETED',
+                        updatedAt: new Date(),
+                    },
+                });
+            } else {
+                // Criar novo registro
+                this.logger.log(`Criando novo briefing download para DSID ${dsid}`);
+                briefingDownload = await this.prisma.briefingDownload.create({
+                    data: {
+                        projectId: project.id,
+                        projectName: projectResult.projectName,
+                        dsid: dsid,
+                        totalFiles: projectResult.filesDownloaded || 0,
+                        totalSize: BigInt(projectResult.totalSize || 0),
+                        status: 'COMPLETED',
+                    },
+                });
+            }
 
             // Processar PDFs extraídos
             const pdfExtractions = await this.processPdfExtractions(projectResult, briefingDownload.id);

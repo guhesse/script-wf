@@ -280,8 +280,8 @@ export class ExtractionService {
         this.logger.log(`📋 Extraindo overview de: ${overviewUrl}`);
 
         const browser = await chromium.launch({
-            headless: false,
-            args: ['--start-maximized']
+            headless: true,
+            args: ['--no-sandbox', '--disable-dev-shm-usage']
         });
 
         try {
@@ -400,11 +400,19 @@ export class ExtractionService {
                 });
 
                 // Extrair todos os campos de texto visíveis como fallback
-                const allTextElements = body.querySelectorAll('div, span, p, td');
+                const allTextElements = body.querySelectorAll('div, span, p, td, a, button, input');
                 const rawFields: string[] = [];
                 allTextElements.forEach((el) => {
-                    const text = el.textContent?.trim();
-                    if (text && text.length > 0 && text.length < 200) {
+                    // Primeiro tenta pegar de atributos que podem conter texto completo
+                    const titleAttr = el.getAttribute('title');
+                    const ariaLabel = el.getAttribute('aria-label');
+                    const value = (el as HTMLInputElement).value;
+                    
+                    // Prioriza title/aria-label que geralmente têm texto completo
+                    const text = titleAttr || ariaLabel || value || el.textContent?.trim();
+                    
+                    // Aumentado para 500 caracteres para capturar nomes de projeto completos
+                    if (text && text.length > 0 && text.length < 500) {
                         rawFields.push(text);
                     }
                 });
@@ -437,8 +445,9 @@ export class ExtractionService {
 
         // Campos-chave que queremos extrair (regex patterns)
         const fieldPatterns = {
-            // Capturar nome do projeto: linha que começa com "Project" seguida do código
-            projectName: /Project\s+(260\d[A-Z]\d+_\d+_\d+[^\s]+)/i,
+            // Capturar nome do projeto: começa com 260X e tem underscores
+            // Mais flexível para capturar variações, mas para antes de "Portfolio" ou próximo campo
+            projectName: /Project\s+(260\d[A-Z]\d+_[^\n]+?)(?:\s+Portfolio|\s+Project Owner|\s+Status|$)/i,
             projectOwner: /Project Owner\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
             status: /Status\s*(Current|Approved|Planning|Complete|Approved - Final)/i,
             plannedCompletionDate: /Planned Completion Date\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4})/i,
