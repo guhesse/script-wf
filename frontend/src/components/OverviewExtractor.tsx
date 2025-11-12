@@ -296,10 +296,10 @@ const OverviewExtractor: React.FC = () => {
                             <div
                                 key={p.projectNumber}
                                 className={`p-3 border rounded-lg transition-all ${p.status === 'success'
-                                        ? 'bg-green-950/50 border-green-700'
-                                        : p.status === 'fail'
-                                            ? 'bg-destructive/10 border-destructive'
-                                            : 'bg-muted border-border'
+                                    ? 'bg-green-950/50 border-green-700'
+                                    : p.status === 'fail'
+                                        ? 'bg-destructive/10 border-destructive'
+                                        : 'bg-muted border-border'
                                     }`}
                             >
                                 <div className="flex items-center justify-between mb-2">
@@ -323,8 +323,8 @@ const OverviewExtractor: React.FC = () => {
                                     } border border-border`}>
                                     <div
                                         className={`h-full transition-all duration-300 ${p.status === 'fail' ? 'bg-destructive' :
-                                                p.status === 'success' ? 'bg-green-600' :
-                                                    'bg-primary'
+                                            p.status === 'success' ? 'bg-green-600' :
+                                                'bg-primary'
                                             }`}
                                         style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}
                                     ></div>

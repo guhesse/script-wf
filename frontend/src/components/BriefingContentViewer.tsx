@@ -7,9 +7,6 @@ import {
     Eye,
     FileText,
     Loader2,
-    CheckCircle2,
-    XCircle,
-    Clock,
     Plus,
     RefreshCw,
     Check,
@@ -94,6 +91,28 @@ interface ProcessBriefingRequest {
     };
 }
 
+interface LinkComparison {
+    success: boolean;
+    summary?: {
+        totalLinks: number;
+        uniqueLinks: number;
+        duplicates: number;
+        downloadsAnalyzed: number;
+    };
+    links?: Array<{
+        url: string;
+        processedUrl: string;
+        count: number;
+        isDuplicate: boolean;
+        occurrences: Array<{
+            dsid: string;
+            projectTitle: string;
+            fileName: string;
+        }>;
+    }>;
+    error?: string;
+}
+
 interface Stats {
     totals: {
         projects: number;
@@ -142,6 +161,14 @@ const BriefingContentViewer: React.FC = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [showPalette, setShowPalette] = useState(false);
+
+    // Estados para comparação de links
+    const [showLinkComparison, setShowLinkComparison] = useState(false);
+    const [linkComparison, setLinkComparison] = useState<LinkComparison | null>(null);
+    const [isComparingLinks, setIsComparingLinks] = useState(false);
+
+    // Debug: Log do estado de seleção
+    console.log('🎯 Estado atual - selectedDownloads.size:', selectedDownloads.size, 'Array:', Array.from(selectedDownloads));
 
     const loadProjects = async () => {
         try {
@@ -253,6 +280,82 @@ const BriefingContentViewer: React.FC = () => {
         setProcessUrls(newUrls);
     };
 
+    // Extrai múltiplas URLs de um texto colado (padronizado com BulkDownload e OverviewExtractor)
+    const parsePastedUrls = (text: string): string[] => {
+        if (!text) return [];
+        const rawParts = text.split(/\s+|,|;|\n|\r/g).map(s => s.trim()).filter(Boolean);
+        const urlRegex = /https?:\/\/[^\s]+/i;
+        const fromLines: string[] = [];
+        for (const part of rawParts) {
+            if (urlRegex.test(part)) fromLines.push(part);
+        }
+        return fromLines;
+    };
+
+    const handlePasteUrls = (e: React.ClipboardEvent<HTMLInputElement>, index: number) => {
+        const text = e.clipboardData.getData('text');
+        const urls = parsePastedUrls(text);
+        if (urls.length <= 1) return;
+        e.preventDefault();
+
+        const unique = new Set<string>();
+        const current = [...processUrls];
+        for (const u of current) unique.add(u);
+
+        const toInsert: string[] = [];
+        urls.forEach(u => {
+            if (!unique.has(u)) {
+                unique.add(u);
+                toInsert.push(u);
+            }
+        });
+
+        if (toInsert.length === 0) return;
+        current[index] = toInsert[0];
+        if (toInsert.length > 1) {
+            current.splice(index + 1, 0, ...toInsert.slice(1));
+        }
+        setProcessUrls(current.filter(x => x !== ''));
+    };
+
+    // Comparar links de briefings selecionados
+    const compareSelectedLinks = async () => {
+        if (selectedDownloads.size === 0) {
+            toast.error('Selecione pelo menos um briefing para comparar links');
+            return;
+        }
+
+        try {
+            setIsComparingLinks(true);
+            setError('');
+
+            const response = await fetch('/api/briefing/links/compare', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ downloadIds: Array.from(selectedDownloads) }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setLinkComparison(data);
+                setShowLinkComparison(true);
+                toast.success('Links comparados com sucesso!');
+            } else {
+                setError(data.error || 'Erro ao comparar links');
+                toast.error(data.error || 'Erro ao comparar links');
+            }
+        } catch (err) {
+            console.error('Erro ao comparar links:', err);
+            setError('Erro ao conectar com o servidor');
+            toast.error('Erro ao conectar com o servidor');
+        } finally {
+            setIsComparingLinks(false);
+        }
+    };
+
     const copyToClipboard = async (text: string, itemId?: string) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -342,6 +445,7 @@ const BriefingContentViewer: React.FC = () => {
             } else {
                 newSet.add(downloadId);
             }
+            console.log('📋 Downloads selecionados:', Array.from(newSet));
             return newSet;
         });
     };
@@ -400,34 +504,6 @@ const BriefingContentViewer: React.FC = () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
-    const formatDate = (dateString: string) => {
-        try {
-            return new Date(dateString).toLocaleString('pt-BR');
-        } catch (_e) {
-            void _e;
-            return dateString || 'Data inválida';
-        }
-    };
-
-    const getStatusBadge = (status: string) => {
-        const statusMap = {
-            PROCESSING: { variant: 'outline' as const, icon: Clock, color: 'text-yellow-600' },
-            COMPLETED: { variant: 'default' as const, icon: CheckCircle2, color: 'text-green-600' },
-            FAILED: { variant: 'destructive' as const, icon: XCircle, color: 'text-red-600' },
-            PARTIAL: { variant: 'secondary' as const, icon: AlertTriangle, color: 'text-orange-600' }
-        };
-
-        const config = statusMap[status as keyof typeof statusMap] || statusMap.FAILED;
-        const Icon = config.icon;
-
-        return (
-            <Badge variant={config.variant} className="flex items-center gap-1">
-                <Icon className="w-3 h-3" />
-                {status}
-            </Badge>
-        );
-    };
-
     return (
         <div className="space-y-6">
             {/* Header com Estatísticas */}
@@ -476,6 +552,7 @@ const BriefingContentViewer: React.FC = () => {
                             <Input
                                 value={url}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateUrl(index, e.target.value)}
+                                onPaste={(e: React.ClipboardEvent<HTMLInputElement>) => handlePasteUrls(e, index)}
                                 placeholder={`URL do projeto ${index + 1}`}
                                 className="flex-1"
                             />
@@ -544,6 +621,10 @@ const BriefingContentViewer: React.FC = () => {
                 <div className="flex items-center gap-3 mb-4">
                     <Search className="w-5 h-5 text-primary" />
                     <h2 className="font-semibold">Briefings Processados</h2>
+                    {/* DEBUG: Contador de selecionados */}
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {selectedDownloads.size} selecionado(s)
+                    </span>
                 </div>
 
                 <div className="flex gap-4 mb-4">
@@ -600,15 +681,31 @@ const BriefingContentViewer: React.FC = () => {
                     </div>
 
                     {selectedDownloads.size > 0 && (
-                        <Button
-                            onClick={() => setShowConfirmDialog(true)}
-                            variant="destructive"
-                            size="sm"
-                            className="flex items-center gap-2"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Excluir {selectedDownloads.size} item(s)
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={compareSelectedLinks}
+                                variant="default"
+                                size="sm"
+                                disabled={isComparingLinks}
+                                className="flex items-center gap-2"
+                            >
+                                {isComparingLinks ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <FileText className="w-4 h-4" />
+                                )}
+                                Comparar Links
+                            </Button>
+                            <Button
+                                onClick={() => setShowConfirmDialog(true)}
+                                variant="destructive"
+                                size="sm"
+                                className="flex items-center gap-2"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Excluir {selectedDownloads.size} item(s)
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -628,7 +725,10 @@ const BriefingContentViewer: React.FC = () => {
                                         <div className="flex items-center gap-3 flex-1">
                                             {/* Checkbox de Seleção */}
                                             <button
-                                                onClick={() => toggleDownloadSelection(download.id)}
+                                                onClick={() => {
+                                                    console.log('🔘 Clicou no checkbox do download:', download.id);
+                                                    toggleDownloadSelection(download.id);
+                                                }}
                                                 className="flex-shrink-0 hover:bg-gray-100 p-1 rounded"
                                             >
                                                 {selectedDownloads.has(download.id) ? (
@@ -1063,6 +1163,162 @@ const BriefingContentViewer: React.FC = () => {
                                     </>
                                 )}
                             </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {/* Modal de Comparação de Links */}
+            {showLinkComparison && linkComparison && (
+                <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-muted rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="p-6 border-b border-border">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="w-6 h-6 text-primary" />
+                                    <h3 className="text-lg font-semibold">Comparação de Links</h3>
+                                </div>
+                                <Button
+                                    onClick={() => setShowLinkComparison(false)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                >
+                                    <X className="w-4 h-4" />
+                                </Button>
+                            </div>
+
+                            {/* Estatísticas */}
+                            {linkComparison.summary && (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                                        <div className="text-2xl font-bold text-blue-700">{linkComparison.summary.totalLinks}</div>
+                                        <div className="text-xs text-blue-600">Total de Links</div>
+                                    </div>
+                                    <div className="bg-green-50 p-3 rounded border border-green-200">
+                                        <div className="text-2xl font-bold text-green-700">{linkComparison.summary.uniqueLinks}</div>
+                                        <div className="text-xs text-green-600">Links Únicos</div>
+                                    </div>
+                                    <div className="bg-orange-50 p-3 rounded border border-orange-200">
+                                        <div className="text-2xl font-bold text-orange-700">{linkComparison.summary.duplicates}</div>
+                                        <div className="text-xs text-orange-600">Duplicados</div>
+                                    </div>
+                                    <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                                        <div className="text-2xl font-bold text-purple-700">{linkComparison.summary.downloadsAnalyzed}</div>
+                                        <div className="text-xs text-purple-600">Briefings Analisados</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Botões de Ação */}
+                            <div className="flex gap-2 mt-4">
+                                <Button
+                                    onClick={() => {
+                                        const allLinks = linkComparison.links?.map(l => l.processedUrl).join('\n') || '';
+                                        copyToClipboard(allLinks, 'all-compared-links');
+                                    }}
+                                    variant="default"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                >
+                                    {copiedItems.has('all-compared-links') ? (
+                                        <Check className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                        <Copy className="w-4 h-4" />
+                                    )}
+                                    Copiar Todos os Links Únicos ({linkComparison.summary?.uniqueLinks || 0})
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        const duplicateLinks = linkComparison.links?.filter(l => l.isDuplicate).map(l => l.processedUrl).join('\n') || '';
+                                        copyToClipboard(duplicateLinks, 'duplicate-links');
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                >
+                                    {copiedItems.has('duplicate-links') ? (
+                                        <Check className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                        <Copy className="w-4 h-4" />
+                                    )}
+                                    Copiar Apenas Duplicados ({linkComparison.summary?.duplicates || 0})
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Lista de Links */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="space-y-3">
+                                {linkComparison.links?.map((link, index) => (
+                                    <div
+                                        key={index}
+                                        className={`p-4 rounded border ${link.isDuplicate
+                                            ? 'bg-orange-50 border-orange-200'
+                                            : 'bg-gray-50 border-gray-200'
+                                            }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="flex-1 min-w-0">
+                                                <a
+                                                    href={link.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-600 hover:underline break-all"
+                                                >
+                                                    {link.processedUrl}
+                                                </a>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <Badge
+                                                    variant={link.isDuplicate ? 'destructive' : 'default'}
+                                                    className="text-xs"
+                                                >
+                                                    {link.count}x
+                                                </Badge>
+                                                <Button
+                                                    onClick={() => copyToClipboard(link.processedUrl, `link-${index}`)}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 w-6 p-0"
+                                                >
+                                                    {copiedItems.has(`link-${index}`) ? (
+                                                        <Check className="w-3 h-3 text-green-600" />
+                                                    ) : (
+                                                        <Copy className="w-3 h-3" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        {/* Ocorrências */}
+                                        {link.isDuplicate && (
+                                            <div className="mt-2 pl-4 border-l-2 border-orange-300">
+                                                <div className="text-xs font-medium text-gray-600 mb-1">
+                                                    Encontrado em:
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {link.occurrences.map((occ, occIndex) => (
+                                                        <div key={occIndex} className="text-xs text-gray-600">
+                                                            <span className="font-mono font-medium">{occ.dsid}</span>
+                                                            {' - '}
+                                                            <span>{occ.fileName}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {(!linkComparison.links || linkComparison.links.length === 0) && (
+                                    <div className="text-center py-8 text-gray-500">
+                                        Nenhum link encontrado nos briefings selecionados
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

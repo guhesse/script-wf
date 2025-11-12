@@ -110,4 +110,13 @@ export class BriefingController {
     }, { outputDir: tmpDir });
     return { success: true, mock: true, ppt: { fileName: result.fileName, path: result.path, sizeBytes: result.sizeBytes } };
   }
+
+  @Post('links/compare')
+  @ApiOperation({ summary: 'Comparar e retornar links únicos de briefings selecionados' })
+  @ApiQuery({ name: 'downloadIds', required: true, type: [String], description: 'IDs dos downloads para comparar links' })
+  async compareLinks(
+    @Body() body: { downloadIds: string[] },
+  ) {
+    return this.briefingService.compareLinks(body.downloadIds);
+  }
 }

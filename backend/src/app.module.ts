@@ -8,6 +8,7 @@ import { WorkfrontModule } from './modules/workfront/workfront.module';
 import { BriefingModule } from './modules/briefing/briefing.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { MastersModule } from './modules/masters/masters.module';
+import { DamModule } from './modules/dam/dam.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { MastersModule } from './modules/masters/masters.module';
     BriefingModule,
     PdfModule,
     MastersModule,
+    DamModule,
   ],
   controllers: [],
   providers: [],

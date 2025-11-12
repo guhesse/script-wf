@@ -573,6 +573,146 @@ export class BriefingService {
     }
   }
 
+  /**
+   * Compara links de múltiplos downloads de briefing e retorna links únicos
+   */
+  async compareLinks(downloadIds: string[]) {
+    try {
+      this.logger.log(`📊 Comparando links de ${downloadIds.length} downloads`);
+
+      // Buscar downloads com seus PDFs e conteúdo extraído
+      const downloads = await this.prisma.briefingDownload.findMany({
+        where: {
+          id: { in: downloadIds }
+        },
+        include: {
+          project: {
+            select: {
+              dsid: true,
+              title: true
+            }
+          },
+          pdfFiles: {
+            include: {
+              extractedContent: true
+            }
+          }
+        }
+      });
+
+      if (downloads.length === 0) {
+        return {
+          success: false,
+          error: 'Nenhum download encontrado com os IDs fornecidos'
+        };
+      }
+
+      // Mapear todos os links com metadados
+      interface LinkInfo {
+        url: string;
+        dsid: string;
+        projectTitle: string;
+        fileName: string;
+        pdfFileId: string;
+        downloadId: string;
+      }
+
+      const allLinks: LinkInfo[] = [];
+      const linkOccurrences = new Map<string, LinkInfo[]>();
+
+      for (const download of downloads) {
+        for (const pdf of download.pdfFiles || []) {
+          if (!pdf.extractedContent?.links) continue;
+
+          let links: string[] = [];
+          const rawLinks = pdf.extractedContent.links;
+
+          // Parse links (pode ser string JSON ou array)
+          if (Array.isArray(rawLinks)) {
+            links = rawLinks;
+          } else if (typeof rawLinks === 'string') {
+            try {
+              const parsed = JSON.parse(rawLinks);
+              if (Array.isArray(parsed)) links = parsed;
+            } catch (e) {
+              this.logger.warn(`Erro ao fazer parse de links do PDF ${pdf.id}`);
+            }
+          }
+
+          // Adicionar cada link com seus metadados
+          for (const url of links) {
+            const linkInfo: LinkInfo = {
+              url,
+              dsid: download.dsid || download.project?.dsid || 'N/A',
+              projectTitle: download.project?.title || download.projectName || 'N/A',
+              fileName: pdf.originalFileName,
+              pdfFileId: pdf.id,
+              downloadId: download.id
+            };
+
+            allLinks.push(linkInfo);
+
+            // Rastrear ocorrências
+            if (!linkOccurrences.has(url)) {
+              linkOccurrences.set(url, []);
+            }
+            linkOccurrences.get(url)!.push(linkInfo);
+          }
+        }
+      }
+
+      // Processar links DAM (remover parte de login)
+      const processDAMLink = (url: string): string => {
+        if (!url.includes('dell-assetshare/login/assetshare/details.html')) {
+          return url;
+        }
+        const parts = url.split('/content/dell-assetshare/login/assetshare/details.html');
+        if (parts.length === 2) {
+          return parts[0] + parts[1];
+        }
+        return url;
+      };
+
+      // Criar lista de links únicos com informações de duplicatas
+      const uniqueLinks = Array.from(linkOccurrences.entries()).map(([url, occurrences]) => ({
+        url,
+        processedUrl: processDAMLink(url),
+        count: occurrences.length,
+        isDuplicate: occurrences.length > 1,
+        occurrences: occurrences.map(occ => ({
+          dsid: occ.dsid,
+          projectTitle: occ.projectTitle,
+          fileName: occ.fileName
+        }))
+      }));
+
+      // Ordenar: duplicados primeiro, depois por contagem decrescente
+      uniqueLinks.sort((a, b) => {
+        if (a.count !== b.count) return b.count - a.count;
+        return a.url.localeCompare(b.url);
+      });
+
+      this.logger.log(`✅ Encontrados ${allLinks.length} links totais, ${uniqueLinks.length} únicos`);
+
+      return {
+        success: true,
+        summary: {
+          totalLinks: allLinks.length,
+          uniqueLinks: uniqueLinks.length,
+          duplicates: uniqueLinks.filter(l => l.isDuplicate).length,
+          downloadsAnalyzed: downloads.length
+        },
+        links: uniqueLinks
+      };
+    } catch (error) {
+      this.logger.error('Erro ao comparar links:', error);
+      return {
+        success: false,
+        error: 'Erro interno ao comparar links'
+      };
+    }
+  }
+
   /** Heurística para selecionar briefing principal entre PDFs já persistidos */
   private selectPrimaryBriefingFromDb(pdfs: any[]) {
     if (!pdfs || !pdfs.length) return null;
