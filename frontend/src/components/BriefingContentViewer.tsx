@@ -153,6 +153,13 @@ const BriefingContentViewer: React.FC = () => {
     const [processUrls, setProcessUrls] = useState<string[]>(['']);
     const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
 
+    // Estados para processamento em lote com feedback visual
+    const [batchProcessing, setBatchProcessing] = useState(false);
+    const [currentProcessingUrl, setCurrentProcessingUrl] = useState<string>('');
+    const [processedUrls, setProcessedUrls] = useState<Set<string>>(new Set());
+    const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
+    const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+
     // Estado para feedback visual dos botões de copiar
     const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
 
@@ -166,6 +173,12 @@ const BriefingContentViewer: React.FC = () => {
     const [showLinkComparison, setShowLinkComparison] = useState(false);
     const [linkComparison, setLinkComparison] = useState<LinkComparison | null>(null);
     const [isComparingLinks, setIsComparingLinks] = useState(false);
+    const [useProcessedLinks, setUseProcessedLinks] = useState(true); // true = links reduzidos, false = links completos
+
+    // Estados para download DAM
+    const [isDownloadingFromDAM, setIsDownloadingFromDAM] = useState(false);
+    const [damDownloadProgress, setDamDownloadProgress] = useState({ current: 0, total: 0 });
+    const [selectedLinksToDownload, setSelectedLinksToDownload] = useState<Set<string>>(new Set());
 
     // Debug: Log do estado de seleção
     console.log('🎯 Estado atual - selectedDownloads.size:', selectedDownloads.size, 'Array:', Array.from(selectedDownloads));
@@ -224,44 +237,138 @@ const BriefingContentViewer: React.FC = () => {
         }
 
         try {
+            setBatchProcessing(true);
             setProcessing(true);
             setError('');
             setProcessResult(null);
+            setProcessedUrls(new Set());
+            setFailedUrls(new Set());
+            setBatchProgress({ current: 0, total: validUrls.length });
 
-            const request: ProcessBriefingRequest = {
-                projectUrls: validUrls,
-                options: {
-                    headless: true,
-                    continueOnError: true
+            console.log(`� Iniciando processamento SSE de ${validUrls.length} URLs...`);
+
+            // Conectar ao SSE endpoint
+            const urlsParam = encodeURIComponent(validUrls.join(','));
+            const eventSource = new EventSource(`/api/briefing/process/stream?urls=${urlsParam}`);
+
+            const results = {
+                successful: [] as ProcessResult['successful'],
+                failed: [] as ProcessResult['failed'],
+                totalFiles: 0
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('📨 SSE Event:', message);
+
+                    switch (message.type) {
+                        case 'start':
+                            console.log('🚀 Processamento iniciado:', message.data);
+                            toast.info(`Processando ${message.data.total} projeto(s)...`);
+                            break;
+
+                        case 'project-start':
+                            console.log(`🔄 Projeto ${message.data.projectNumber} iniciado`);
+                            setCurrentProcessingUrl(message.data.url); // Marcar URL atual
+                            setBatchProgress({
+                                current: message.data.current - 1,
+                                total: message.data.total
+                            });
+                            break;
+
+                        case 'project-success':
+                            console.log(`✅ Projeto ${message.data.projectNumber} concluído`);
+                            results.successful.push({
+                                projectNumber: message.data.projectNumber,
+                                projectId: message.data.dsid || 'unknown',
+                                url: message.data.url
+                            });
+                            results.totalFiles += message.data.filesProcessed || 0;
+                            setProcessedUrls(prev => new Set([...prev, message.data.url]));
+                            setCurrentProcessingUrl(''); // Limpar URL atual
+                            setBatchProgress({
+                                current: message.data.projectNumber,
+                                total: validUrls.length
+                            });
+                            toast.success(`✅ Projeto ${message.data.projectNumber} processado (DSID: ${message.data.dsid})`);
+                            break;
+
+                        case 'project-fail':
+                            console.log(`❌ Projeto ${message.data.projectNumber} falhou:`, message.data.error);
+                            results.failed.push({
+                                projectNumber: message.data.projectNumber,
+                                url: message.data.url,
+                                error: message.data.error
+                            });
+                            setFailedUrls(prev => new Set([...prev, message.data.url]));
+                            setCurrentProcessingUrl(''); // Limpar URL atual
+                            setBatchProgress({
+                                current: message.data.projectNumber,
+                                total: validUrls.length
+                            });
+                            toast.error(`❌ Projeto ${message.data.projectNumber} falhou`);
+                            break;
+
+                        case 'completed': {
+                            console.log('🎉 Processamento concluído:', message.data);
+                            setProcessResult({
+                                successful: message.data.successful,
+                                failed: message.data.failed,
+                                summary: message.data.summary
+                            });
+
+                            // Feedback final
+                            const successCount = message.data.successful.length;
+                            const failCount = message.data.failed.length;
+
+                            if (failCount === 0) {
+                                toast.success(`🎉 Todos os ${successCount} projetos processados com sucesso!`);
+                            } else if (successCount === 0) {
+                                toast.error('❌ Nenhum projeto foi processado com sucesso');
+                            } else {
+                                toast.warning(`⚠️ ${successCount} sucesso(s), ${failCount} falha(s)`);
+                            }
+
+                            // Recarregar dados
+                            loadProjects();
+                            loadStats();
+
+                            eventSource.close();
+                            setProcessing(false);
+                            setBatchProcessing(false);
+                            break;
+                        }
+
+                        case 'error':
+                            console.error('💥 Erro no SSE:', message.data.message);
+                            setError(message.data.message);
+                            toast.error(message.data.message);
+                            eventSource.close();
+                            setProcessing(false);
+                            setBatchProcessing(false);
+                            break;
+                    }
+                } catch (err) {
+                    console.error('Erro ao processar mensagem SSE:', err);
                 }
             };
 
-            const response = await fetch('/api/briefing/process', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(request),
-            });
+            eventSource.onerror = (error) => {
+                console.error('💥 Erro na conexão SSE:', error);
+                setError('Erro na conexão com o servidor');
+                toast.error('Conexão perdida com o servidor');
+                eventSource.close();
+                setProcessing(false);
+                setBatchProcessing(false);
+            };
 
-            const data = await response.json();
-            console.log('🔍 Response received:', data);
-
-            if (data.success) {
-                console.log('✅ Setting processResult:', data.data);
-                setProcessResult(data.data);
-                // Recarregar lista de projetos
-                await loadProjects();
-                await loadStats();
-            } else {
-                console.error('❌ Process failed:', data.error);
-                setError(data.error || 'Erro no processamento');
-            }
-        } catch (_err) {
-            void _err;
-            setError('Erro ao conectar com o servidor');
-        } finally {
+        } catch (err) {
+            console.error('💥 Erro ao iniciar processamento:', err);
+            setError('Erro ao iniciar processamento');
+            toast.error('Erro ao iniciar processamento');
             setProcessing(false);
+            setBatchProcessing(false);
         }
     };
 
@@ -334,7 +441,10 @@ const BriefingContentViewer: React.FC = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ downloadIds: Array.from(selectedDownloads) }),
+                body: JSON.stringify({
+                    downloadIds: Array.from(selectedDownloads),
+                    processLinks: useProcessedLinks  // Enviar preferência de processamento
+                }),
             });
 
             const data = await response.json();
@@ -354,6 +464,182 @@ const BriefingContentViewer: React.FC = () => {
         } finally {
             setIsComparingLinks(false);
         }
+    };
+
+    // Baixar links únicos ou duplicados do DAM
+    const downloadLinksFromDAM = async (linksType: 'all' | 'duplicates' | 'selected') => {
+        if (!linkComparison?.links) {
+            toast.error('Nenhum link disponível para download');
+            return;
+        }
+
+        try {
+            setIsDownloadingFromDAM(true);
+
+            let linksToDownload: string[] = [];
+
+            // Filtrar links baseado no tipo
+            if (linksType === 'selected') {
+                // Baixar apenas os selecionados
+                linksToDownload = Array.from(selectedLinksToDownload);
+
+                if (linksToDownload.length === 0) {
+                    toast.warning('Selecione pelo menos um link para baixar');
+                    setIsDownloadingFromDAM(false);
+                    return;
+                }
+            } else if (linksType === 'all') {
+                linksToDownload = linkComparison.links.map(l => l.processedUrl);
+            } else if (linksType === 'duplicates') {
+                linksToDownload = linkComparison.links.filter(l => l.isDuplicate).map(l => l.processedUrl);
+            }
+
+            if (linksToDownload.length === 0) {
+                toast.warning('Nenhum link para baixar');
+                setIsDownloadingFromDAM(false);
+                return;
+            }
+
+            setDamDownloadProgress({ current: 0, total: linksToDownload.length });
+
+            toast.info(`Iniciando download de ${linksToDownload.length} arquivo(s) do DAM...`);
+
+            const response = await fetch('/api/dam/download/batch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    urls: linksToDownload,
+                    options: {
+                        outputDir: 'temp/dam-downloads'
+                    }
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                toast.success(`Download concluído! ${data.successful}/${data.total} arquivos baixados com sucesso`);
+
+                if (data.failed > 0) {
+                    toast.warning(`${data.failed} arquivo(s) falharam no download`);
+                }
+            } else {
+                toast.error(data.error || 'Erro ao baixar arquivos do DAM');
+            }
+        } catch (err) {
+            console.error('Erro ao baixar do DAM:', err);
+            toast.error('Erro ao conectar com o servidor');
+        } finally {
+            setIsDownloadingFromDAM(false);
+            setDamDownloadProgress({ current: 0, total: 0 });
+        }
+    };
+
+    // Controlar seleção de links individuais
+    const toggleLinkSelection = (url: string) => {
+        setSelectedLinksToDownload(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(url)) {
+                newSet.delete(url);
+            } else {
+                newSet.add(url);
+            }
+            return newSet;
+        });
+    };
+
+    // Selecionar/Desselecionar todos os links
+    const toggleSelectAllLinks = () => {
+        if (!linkComparison?.links) return;
+
+        if (selectedLinksToDownload.size === linkComparison.links.length) {
+            // Se todos estão selecionados, desselecionar todos
+            setSelectedLinksToDownload(new Set());
+        } else {
+            // Selecionar todos
+            const allUrls = linkComparison.links.map(l => l.processedUrl);
+            setSelectedLinksToDownload(new Set(allUrls));
+        }
+    };
+
+    // Selecionar apenas duplicados
+    const selectOnlyDuplicates = () => {
+        if (!linkComparison?.links) return;
+        const duplicateUrls = linkComparison.links.filter(l => l.isDuplicate).map(l => l.processedUrl);
+        setSelectedLinksToDownload(new Set(duplicateUrls));
+    };
+
+    // Limpar seleção quando abrir/fechar modal
+    useEffect(() => {
+        if (showLinkComparison && linkComparison?.links) {
+            // Auto-selecionar todos os links quando abrir o modal
+            const allUrls = linkComparison.links.map(l => l.processedUrl);
+            setSelectedLinksToDownload(new Set(allUrls));
+        } else {
+            setSelectedLinksToDownload(new Set());
+        }
+    }, [showLinkComparison, linkComparison]);
+
+    // Formatar links agrupados por DSID
+    const formatLinksGroupedByDSID = (linksToFormat: LinkComparison['links']): string => {
+        if (!linksToFormat || linksToFormat.length === 0) return '';
+
+        // Agrupar links por DSID
+        const linksByDSID = new Map<string, Set<string>>();
+        const sharedLinks: string[] = [];
+
+        linksToFormat.forEach(link => {
+            // Usar sempre processedUrl (que é igual ao url original se processLinks=false)
+            const linkUrl = link.processedUrl;
+
+            if (link.isDuplicate) {
+                // Link compartilhado - adicionar à lista de compartilhados
+                if (!sharedLinks.includes(linkUrl)) {
+                    sharedLinks.push(linkUrl);
+                }
+            } else {
+                // Link único - adicionar ao DSID específico
+                const dsid = link.occurrences[0]?.dsid || 'Desconhecido';
+                if (!linksByDSID.has(dsid)) {
+                    linksByDSID.set(dsid, new Set());
+                }
+                linksByDSID.get(dsid)!.add(linkUrl);
+            }
+        });
+
+        let output = '';
+
+        // Links únicos por DSID
+        const sortedDSIDs = Array.from(linksByDSID.keys()).sort();
+        sortedDSIDs.forEach(dsid => {
+            const links = Array.from(linksByDSID.get(dsid)!);
+            output += `${dsid}:\n`;
+            links.forEach(link => {
+                output += `${link}\n`;
+            });
+            output += '\n';
+        });
+
+        // Links compartilhados
+        if (sharedLinks.length > 0) {
+            const sharedDSIDs = new Set<string>();
+            linksToFormat
+                .filter(l => l.isDuplicate)
+                .forEach(l => {
+                    l.occurrences.forEach(occ => sharedDSIDs.add(occ.dsid));
+                });
+
+            const sortedSharedDSIDs = Array.from(sharedDSIDs).sort();
+            output += `${sortedSharedDSIDs.join(', ')}:\n`;
+            output += `Links compartilhados\n`;
+            sharedLinks.forEach(link => {
+                output += `${link}\n`;
+            });
+        }
+
+        return output.trim();
     };
 
     const copyToClipboard = async (text: string, itemId?: string) => {
@@ -420,22 +706,6 @@ const BriefingContentViewer: React.FC = () => {
 
     //     return parsed;
     // };
-
-    // Função para processar links DAM removendo a parte de login para download direto
-    const processDAMLink = (url: string): string => {
-        if (!url.includes('dell-assetshare/login/assetshare/details.html')) {
-            return url;
-        }
-
-        // Remove a parte '/content/dell-assetshare/login/assetshare/details.html' 
-        // mantendo apenas a parte do download direto
-        const parts = url.split('/content/dell-assetshare/login/assetshare/details.html');
-        if (parts.length === 2) {
-            return parts[0] + parts[1];
-        }
-
-        return url;
-    };
 
     const toggleDownloadSelection = (downloadId: string) => {
         setSelectedDownloads(prev => {
@@ -595,15 +865,204 @@ const BriefingContentViewer: React.FC = () => {
                     </Button>
                 </div>
 
+                {/* Progresso do Processamento em Lote */}
+                {batchProcessing && batchProgress.total > 0 && (
+                    <div className="mt-6 p-4 bg-muted border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 className="font-medium mb-1 flex items-center gap-2">
+                                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                                    Processamento em Lote em Andamento
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                    O backend está processando {batchProgress.total} projeto(s) em paralelo...
+                                </p>
+                            </div>
+                            <Badge variant="outline" className="text-lg px-3 py-1">
+                                {batchProgress.total} projeto(s)
+                            </Badge>
+                        </div>
+
+                        {/* Grid de URLs sendo processadas */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
+                            {processUrls.filter(url => url.trim() !== '').map((url, index) => {
+                                const isProcessed = processedUrls.has(url);
+                                const isFailed = failedUrls.has(url);
+                                const isCurrent = currentProcessingUrl === url;
+
+                                return (
+                                    <div
+                                        key={index}
+                                        className={`p-3 border rounded-lg transition-all ${isProcessed
+                                                ? 'bg-green-900/30 border-green-700'
+                                                : isFailed
+                                                    ? 'bg-red-900/30 border-red-700'
+                                                    : isCurrent
+                                                        ? 'bg-blue-900/40 border-blue-600 shadow-lg ring-2 ring-blue-500/50 animate-pulse'
+                                                        : 'bg-muted/50 border-border'
+                                            }`}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-xs font-bold">
+                                                #{index + 1}
+                                            </div>
+                                            <Badge
+                                                variant={
+                                                    isProcessed ? 'default' :
+                                                        isFailed ? 'destructive' :
+                                                            isCurrent ? 'outline' :
+                                                                'secondary'
+                                                }
+                                                className={`text-[10px] h-5 px-1.5 flex items-center gap-1 ${isProcessed ? 'bg-green-600 hover:bg-green-700 text-white' :
+                                                        isCurrent ? 'bg-blue-500 text-white' : ''
+                                                    }`}
+                                            >
+                                                {isProcessed ? (
+                                                    <>
+                                                        <Check className="w-3 h-3" />
+                                                        <span>OK</span>
+                                                    </>
+                                                ) : isFailed ? (
+                                                    <>
+                                                        <X className="w-3 h-3" />
+                                                        <span>Falhou</span>
+                                                    </>
+                                                ) : isCurrent ? (
+                                                    <>
+                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                        <span>Processando</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span>Aguardando</span>
+                                                    </>
+                                                )}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground truncate" title={url}>
+                                            {url.split('/').slice(-2).join('/') || 'URL'}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Barra de progresso */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Progresso Geral</span>
+                                <span className="font-medium">
+                                    {Math.round((batchProgress.current / batchProgress.total) * 100)}%
+                                </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div
+                                    className="bg-blue-600 h-3 rounded-full transition-all duration-300 flex items-center justify-end pr-2"
+                                    style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                                >
+                                    {batchProgress.current > 0 && (
+                                        <span className="text-[10px] text-white font-bold">
+                                            {batchProgress.current}/{batchProgress.total}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Estatísticas em tempo real */}
+                            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border">
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-green-600">{processedUrls.size}</div>
+                                    <div className="text-[10px] text-muted-foreground">Sucessos</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-red-600">{failedUrls.size}</div>
+                                    <div className="text-[10px] text-muted-foreground">Falhas</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-gray-600">
+                                        {batchProgress.total - batchProgress.current}
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground">Restantes</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Resultado do Processamento */}
                 {processResult && (
-                    <div className="mt-6 p-4 bg-muted border border-border">
-                        <h4 className="font-medium mb-2">Resultado do Processamento</h4>
-                        <div className="text-sm space-y-1">
-                            <div>✅ Sucessos: {processResult.successful?.length || 0}</div>
-                            <div>❌ Falhas: {processResult.failed?.length || 0}</div>
-                            <div>📄 Total de arquivos: {processResult.summary?.totalFiles || 0}</div>
+                    <div className="mt-6 space-y-4">
+                        {/* Resumo */}
+                        <div className="p-4 bg-muted border border-border">
+                            <h4 className="font-medium mb-3">Resumo do Processamento</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-green-900/20 p-3 rounded border border-green-800">
+                                    <div className="text-2xl font-bold text-green-400">
+                                        {processResult.successful?.length || 0}
+                                    </div>
+                                    <div className="text-xs text-green-300">✅ Sucessos</div>
+                                </div>
+                                <div className="bg-red-900/20 p-3 rounded border border-red-800">
+                                    <div className="text-2xl font-bold text-red-400">
+                                        {processResult.failed?.length || 0}
+                                    </div>
+                                    <div className="text-xs text-red-300">❌ Falhas</div>
+                                </div>
+                                <div className="bg-blue-900/20 p-3 rounded border border-blue-800">
+                                    <div className="text-2xl font-bold text-blue-400">
+                                        {processResult.summary?.totalFiles || 0}
+                                    </div>
+                                    <div className="text-xs text-blue-300">📄 Total de PDFs</div>
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Detalhes dos Sucessos */}
+                        {processResult.successful && processResult.successful.length > 0 && (
+                            <div className="p-4 bg-green-900/20 border border-green-800">
+                                <h4 className="font-medium mb-3 text-green-400">Projetos Processados com Sucesso</h4>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {processResult.successful.map((item, index) => (
+                                        <div key={index} className="text-sm bg-muted/50 p-2 rounded border border-green-900/50">
+                                            <div className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                                <span className="font-medium">Projeto #{item.projectNumber}</span>
+                                                <span className="text-muted-foreground truncate" title={item.url}>
+                                                    {item.url}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Detalhes das Falhas */}
+                        {processResult.failed && processResult.failed.length > 0 && (
+                            <div className="p-4 bg-red-900/20 border border-red-800">
+                                <h4 className="font-medium mb-3 text-red-400">Projetos com Falhas</h4>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {processResult.failed.map((item, index) => (
+                                        <div key={index} className="text-sm bg-muted/50 p-2 rounded border border-red-900/50">
+                                            <div className="flex items-start gap-2">
+                                                <X className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="font-medium">Projeto #{item.projectNumber}</span>
+                                                        <span className="text-muted-foreground text-xs truncate" title={item.url}>
+                                                            {item.url}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-red-300 bg-red-950/50 p-1 rounded">
+                                                        {item.error}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -681,30 +1140,33 @@ const BriefingContentViewer: React.FC = () => {
                     </div>
 
                     {selectedDownloads.size > 0 && (
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={compareSelectedLinks}
-                                variant="default"
-                                size="sm"
-                                disabled={isComparingLinks}
-                                className="flex items-center gap-2"
-                            >
-                                {isComparingLinks ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <FileText className="w-4 h-4" />
-                                )}
-                                Comparar Links
-                            </Button>
-                            <Button
-                                onClick={() => setShowConfirmDialog(true)}
-                                variant="destructive"
-                                size="sm"
-                                className="flex items-center gap-2"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Excluir {selectedDownloads.size} item(s)
-                            </Button>
+                        <div className="flex flex-col gap-2">
+
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={compareSelectedLinks}
+                                    variant="default"
+                                    size="sm"
+                                    disabled={isComparingLinks}
+                                    className="flex items-center gap-2"
+                                >
+                                    {isComparingLinks ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <FileText className="w-4 h-4" />
+                                    )}
+                                    Comparar Links
+                                </Button>
+                                <Button
+                                    onClick={() => setShowConfirmDialog(true)}
+                                    variant="destructive"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Excluir {selectedDownloads.size} item(s)
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -1036,8 +1498,7 @@ const BriefingContentViewer: React.FC = () => {
                                                                         <h4 className="font-medium text-sm">Links Encontrados ({links.length})</h4>
                                                                         <Button
                                                                             onClick={() => {
-                                                                                const processedLinks = links.map(link => processDAMLink(link));
-                                                                                copyToClipboard(processedLinks.join('\n'), `all-links-${pdf.id}`);
+                                                                                copyToClipboard(links.join('\n'), `all-links-${pdf.id}`);
                                                                             }}
                                                                             variant="outline"
                                                                             size="sm"
@@ -1127,13 +1588,13 @@ const BriefingContentViewer: React.FC = () => {
 
             {/* Modal de Confirmação para Exclusão */}
             {showConfirmDialog && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-muted rounded-lg p-6 max-w-md w-full mx-4">
                         <div className="flex items-center gap-3 mb-4">
                             <Trash2 className="w-6 h-6 text-red-600" />
                             <h3 className="text-lg font-semibold">Confirmar Exclusão</h3>
                         </div>
-                        <p className="text-gray-600 mb-6">
+                        <p className=" mb-6">
                             Tem certeza que deseja excluir {selectedDownloads.size} briefing(s) selecionado(s)?
                             Esta ação não pode ser desfeita e removerá todos os dados relacionados.
                         </p>
@@ -1212,14 +1673,75 @@ const BriefingContentViewer: React.FC = () => {
                                 </div>
                             )}
 
+                            {/* Switch de Formato de Links */}
+                            <div className="flex items-center justify-between gap-3 mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-blue-900">
+                                        Formato dos Links:
+                                    </span>
+                                    <span className="text-xs text-blue-600">
+                                        {useProcessedLinks ? 'Reduzidos (sem /login)' : 'Completos (originais)'}
+                                    </span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={useProcessedLinks}
+                                        onChange={(e) => setUseProcessedLinks(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span className="ml-3 text-sm font-medium text-gray-700">
+                                        {useProcessedLinks ? 'Reduzidos' : 'Completos'}
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* Controles de Seleção */}
+                            <div className="flex items-center gap-2 mt-4 p-3 bg-gray-100 rounded border border-gray-300">
+                                <div className="flex items-center gap-2 flex-1">
+                                    <Button
+                                        onClick={toggleSelectAllLinks}
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex items-center gap-2"
+                                    >
+                                        {selectedLinksToDownload.size === linkComparison.links?.length ? (
+                                            <>
+                                                <CheckSquare className="w-4 h-4" />
+                                                Desselecionar Todos
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Square className="w-4 h-4" />
+                                                Selecionar Todos
+                                            </>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        onClick={selectOnlyDuplicates}
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={(linkComparison.summary?.duplicates || 0) === 0}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <CheckSquare className="w-4 h-4" />
+                                        Apenas Duplicados
+                                    </Button>
+                                    <div className="text-sm text-gray-600 ml-auto">
+                                        {selectedLinksToDownload.size} de {linkComparison.links?.length || 0} selecionados
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Botões de Ação */}
-                            <div className="flex gap-2 mt-4">
+                            <div className="flex flex-wrap gap-2 mt-4">
                                 <Button
                                     onClick={() => {
-                                        const allLinks = linkComparison.links?.map(l => l.processedUrl).join('\n') || '';
-                                        copyToClipboard(allLinks, 'all-compared-links');
+                                        const formattedLinks = formatLinksGroupedByDSID(linkComparison.links);
+                                        copyToClipboard(formattedLinks, 'all-compared-links');
                                     }}
-                                    variant="default"
+                                    variant="outline"
                                     size="sm"
                                     className="flex items-center gap-2"
                                 >
@@ -1228,12 +1750,13 @@ const BriefingContentViewer: React.FC = () => {
                                     ) : (
                                         <Copy className="w-4 h-4" />
                                     )}
-                                    Copiar Todos os Links Únicos ({linkComparison.summary?.uniqueLinks || 0})
+                                    Copiar Todos Agrupados ({linkComparison.summary?.uniqueLinks || 0})
                                 </Button>
                                 <Button
                                     onClick={() => {
-                                        const duplicateLinks = linkComparison.links?.filter(l => l.isDuplicate).map(l => l.processedUrl).join('\n') || '';
-                                        copyToClipboard(duplicateLinks, 'duplicate-links');
+                                        const duplicateLinks = linkComparison.links?.filter(l => l.isDuplicate) || [];
+                                        const formattedDuplicates = formatLinksGroupedByDSID(duplicateLinks);
+                                        copyToClipboard(formattedDuplicates, 'duplicate-links');
                                     }}
                                     variant="outline"
                                     size="sm"
@@ -1244,7 +1767,63 @@ const BriefingContentViewer: React.FC = () => {
                                     ) : (
                                         <Copy className="w-4 h-4" />
                                     )}
-                                    Copiar Apenas Duplicados ({linkComparison.summary?.duplicates || 0})
+                                    Copiar Duplicados Agrupados ({linkComparison.summary?.duplicates || 0})
+                                </Button>
+
+                                {/* Divisor */}
+                                <div className="w-px h-8 bg-border"></div>
+
+                                {/* Botões de Download DAM */}
+                                <Button
+                                    onClick={() => downloadLinksFromDAM('selected')}
+                                    disabled={isDownloadingFromDAM || selectedLinksToDownload.size === 0}
+                                    variant="default"
+                                    size="sm"
+                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                                >
+                                    {isDownloadingFromDAM ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Baixando {damDownloadProgress.current}/{damDownloadProgress.total}...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="w-4 h-4" />
+                                            Baixar Selecionados ({selectedLinksToDownload.size})
+                                        </>
+                                    )}
+                                </Button>
+                                <Button
+                                    onClick={() => downloadLinksFromDAM('all')}
+                                    disabled={isDownloadingFromDAM}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                >
+                                    {isDownloadingFromDAM ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Download className="w-4 h-4" />
+                                            Baixar Todos ({linkComparison.summary?.uniqueLinks || 0})
+                                        </>
+                                    )}
+                                </Button>
+                                <Button
+                                    onClick={() => downloadLinksFromDAM('duplicates')}
+                                    disabled={isDownloadingFromDAM || (linkComparison.summary?.duplicates || 0) === 0}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                >
+                                    {isDownloadingFromDAM ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Download className="w-4 h-4" />
+                                            Baixar Apenas Duplicados ({linkComparison.summary?.duplicates || 0})
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </div>
@@ -1260,7 +1839,17 @@ const BriefingContentViewer: React.FC = () => {
                                             : 'bg-gray-50 border-gray-200'
                                             }`}
                                     >
-                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                        <div className="flex items-start gap-3 mb-2">
+                                            {/* Checkbox de Seleção */}
+                                            <div className="flex items-center pt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedLinksToDownload.has(link.processedUrl)}
+                                                    onChange={() => toggleLinkSelection(link.processedUrl)}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                />
+                                            </div>
+
                                             <div className="flex-1 min-w-0">
                                                 <a
                                                     href={link.url}
