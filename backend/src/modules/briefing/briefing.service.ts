@@ -8,7 +8,10 @@ import {
   DeleteDownloadsResponseDto,
 } from './dto/briefing-operations.dto';
 import { BriefingExtractionService } from './briefing-extraction.service';
+import { processDAMLink } from '@/common/utils/dam-link-processor';
 import { BriefingCommentsAnalysisResponseDto } from './dto/briefing-comments-analysis.dto';
+import { Observable, Subject } from 'rxjs';
+import { MessageEvent } from '@nestjs/common';
 
 // Função auxiliar para converter BigInt para string recursivamente
 function serializeBigInt(obj: any): any {
@@ -310,6 +313,156 @@ export class BriefingService {
     }
   }
 
+  /**
+   * Processar projetos com Server-Sent Events para feedback em tempo real
+   */
+  processProjectsWithSSE(projectUrls: string[]): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      (async () => {
+        try {
+          this.logger.log(`📡 Iniciando processamento SSE de ${projectUrls.length} projeto(s)...`);
+
+          // Emitir evento de início
+          subscriber.next({
+            data: JSON.stringify({
+              type: 'start',
+              data: {
+                total: projectUrls.length,
+                urls: projectUrls
+              }
+            })
+          } as MessageEvent);
+
+          const results = {
+            successful: [],
+            failed: [],
+            totalFiles: 0
+          };
+
+          // Processar cada projeto e emitir eventos
+          for (let i = 0; i < projectUrls.length; i++) {
+            const url = projectUrls[i];
+            const projectNumber = i + 1;
+
+            try {
+              // Emitir evento de progresso
+              subscriber.next({
+                data: JSON.stringify({
+                  type: 'project-start',
+                  data: {
+                    projectNumber,
+                    url,
+                    current: i + 1,
+                    total: projectUrls.length
+                  }
+                })
+              } as MessageEvent);
+
+              // Processar o projeto
+              const result = await this.briefingExtractionService.processProjectsBriefings(
+                [url],
+                {
+                  headless: true,
+                  continueOnError: true
+                }
+              );
+
+              if (result.successful > 0 && result.results?.processedProjects?.[0]) {
+                const project = result.results.processedProjects[0];
+                results.successful.push({
+                  projectNumber,
+                  projectId: project.projectId,
+                  url,
+                  dsid: project.dsid
+                });
+                results.totalFiles += result.summary?.totalFiles || 0;
+
+                // Emitir evento de sucesso
+                subscriber.next({
+                  data: JSON.stringify({
+                    type: 'project-success',
+                    data: {
+                      projectNumber,
+                      url,
+                      dsid: project.dsid,
+                      filesProcessed: result.summary?.totalFiles || 0
+                    }
+                  })
+                } as MessageEvent);
+
+              } else {
+                const error = result.downloadResults?.failed?.[0]?.error || 'Erro desconhecido';
+                results.failed.push({
+                  projectNumber,
+                  url,
+                  error
+                });
+
+                // Emitir evento de falha
+                subscriber.next({
+                  data: JSON.stringify({
+                    type: 'project-fail',
+                    data: {
+                      projectNumber,
+                      url,
+                      error
+                    }
+                  })
+                } as MessageEvent);
+              }
+
+            } catch (error) {
+              this.logger.error(`Erro ao processar projeto ${projectNumber}:`, error);
+              results.failed.push({
+                projectNumber,
+                url,
+                error: error.message || 'Erro desconhecido'
+              });
+
+              subscriber.next({
+                data: JSON.stringify({
+                  type: 'project-fail',
+                  data: {
+                    projectNumber,
+                    url,
+                    error: error.message || 'Erro desconhecido'
+                  }
+                })
+              } as MessageEvent);
+            }
+          }
+
+          // Emitir evento de conclusão
+          subscriber.next({
+            data: JSON.stringify({
+              type: 'completed',
+              data: {
+                successful: results.successful,
+                failed: results.failed,
+                summary: {
+                  totalFiles: results.totalFiles,
+                  totalProjects: projectUrls.length
+                }
+              }
+            })
+          } as MessageEvent);
+
+          subscriber.complete();
+
+        } catch (error) {
+          this.logger.error('Erro no processamento SSE:', error);
+          subscriber.next({
+            data: JSON.stringify({
+              type: 'error',
+              data: { message: error.message || 'Erro no processamento' }
+            })
+          } as MessageEvent);
+          subscriber.error(error);
+        }
+      })();
+    });
+  }
+
   /** Normaliza comentários extraídos garantindo estrutura consistente e simplificada */
   private normalizeComments(raw: any): { normalized: any[]; plain: string[] } {
     let arr: any[] = [];
@@ -576,9 +729,9 @@ export class BriefingService {
   /**
    * Compara links de múltiplos downloads de briefing e retorna links únicos
    */
-  async compareLinks(downloadIds: string[]) {
+  async compareLinks(downloadIds: string[], processLinks: boolean = true) {
     try {
-      this.logger.log(`📊 Comparando links de ${downloadIds.length} downloads`);
+      this.logger.log(`📊 Comparando links de ${downloadIds.length} downloads (processLinks=${processLinks})`);
 
       // Buscar downloads com seus PDFs e conteúdo extraído
       const downloads = await this.prisma.briefingDownload.findMany({
@@ -661,30 +814,24 @@ export class BriefingService {
         }
       }
 
-      // Processar links DAM (remover parte de login)
-      const processDAMLink = (url: string): string => {
-        if (!url.includes('dell-assetshare/login/assetshare/details.html')) {
-          return url;
-        }
-        const parts = url.split('/content/dell-assetshare/login/assetshare/details.html');
-        if (parts.length === 2) {
-          return parts[0] + parts[1];
-        }
-        return url;
-      };
-
       // Criar lista de links únicos com informações de duplicatas
-      const uniqueLinks = Array.from(linkOccurrences.entries()).map(([url, occurrences]) => ({
-        url,
-        processedUrl: processDAMLink(url),
-        count: occurrences.length,
-        isDuplicate: occurrences.length > 1,
-        occurrences: occurrences.map(occ => ({
-          dsid: occ.dsid,
-          projectTitle: occ.projectTitle,
-          fileName: occ.fileName
-        }))
-      }));
+      // Usa a função utilitária processDAMLink do arquivo comum
+      const uniqueLinks = Array.from(linkOccurrences.entries()).map(([url, occurrences]) => {
+        // Processar URL apenas se processLinks=true
+        const processed = processLinks ? processDAMLink(url) : url;
+        
+        return {
+          url,
+          processedUrl: processed,
+          count: occurrences.length,
+          isDuplicate: occurrences.length > 1,
+          occurrences: occurrences.map(occ => ({
+            dsid: occ.dsid,
+            projectTitle: occ.projectTitle,
+            fileName: occ.fileName
+          }))
+        };
+      });
 
       // Ordenar: duplicados primeiro, depois por contagem decrescente
       uniqueLinks.sort((a, b) => {

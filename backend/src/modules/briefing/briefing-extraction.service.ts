@@ -4,6 +4,7 @@ import { BriefingPptService } from './briefing-ppt.service';
 import { canonicalizeColorName, getColorMeta } from '../../common/colors/dell-colors';
 import { PrismaService } from '../database/prisma.service';
 import { WorkfrontService } from '../workfront/workfront.service';
+import { processDAMLink } from '@/common/utils/dam-link-processor';
 import { chromium, Page } from 'playwright';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -1408,22 +1409,6 @@ export class BriefingExtractionService {
             // Comentários completos e links do texto total
             const textContent = parsed.text || '';
             const linkRegex = /https?:\/\/[^\s)"']+/g;
-            // Função para encurtar link conforme regra (remover segmento secured/assetshare/ ... até 'details.html')
-            const shortenLink = (full: string): string => {
-                try {
-                    // Regra: extrair parte a partir de /content/dam/... mantendo domínio base
-                    const damIdx = full.indexOf('/content/dam/');
-                    if (damIdx !== -1) return 'https://dam.dell.com' + full.substring(damIdx);
-                    // Se houver /details.html/ usar o trecho depois
-                    const dtIdx = full.indexOf('/details.html/');
-                    if (dtIdx !== -1) {
-                        const tail = full.substring(dtIdx + '/details.html'.length);
-                        const damTailIdx = tail.indexOf('/content/dam/');
-                        if (damTailIdx !== -1) return 'https://dam.dell.com' + tail.substring(damTailIdx);
-                    }
-                    return full;
-                } catch { return full; }
-            };
 
             const allLinksSet = new Set<string>();
             // Links do corpo do texto
@@ -1450,7 +1435,8 @@ export class BriefingExtractionService {
                 if (ann.richText?.html) collectRichLinks(ann.richText.html);
             }
             const linksFull = Array.from(allLinksSet);
-            const linksShort = linksFull.map(shortenLink).filter(Boolean);
+            // Usar função utilitária para processar links DAM
+            const linksShort = linksFull.map(processDAMLink).filter(Boolean);
             const linksDetailed = linksFull.map((full, i) => ({ id: i + 1, full, short: linksShort[i] }));
             const commentsNormalized = annotations; // manter todos
 
